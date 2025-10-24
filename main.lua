@@ -38,3 +38,15 @@ function love.keypressed(key)
         match.keypressed(key)
     end
 end
+
+function love.mousepressed(x, y, button)
+    if gameState == "menu" then
+        menu.mousepressed(x, y, button)
+    end
+end
+
+function love.mousemoved(x, y, dx, dy)
+    if gameState == "menu" then
+        menu.mousemoved(x, y)
+    end
+end
