@@ -24,7 +24,8 @@ function menu.update(dt)
 end
 
 function menu.draw()
-    love.graphics.setBackgroundColor(0.1, 0.15, 0.25)
+    -- Clear screen with background color
+    love.graphics.clear(0.1, 0.15, 0.25, 1)
 
     -- Draw title
     love.graphics.setFont(titleFont)
