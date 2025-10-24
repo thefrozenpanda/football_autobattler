@@ -1,0 +1,94 @@
+# American Football Battler - Project Summary
+
+## Overview
+
+**American Football Battler** is a real-time auto-battler game inspired by “The Bazaar” mechanics, where players act as American football coaches.  
+The game revolves around managing "Offense" and "Defense" card units in real-time, accumulating yards, scoring touchdowns, and preventing the AI from doing the same.
+
+**Core Gameplay Loop:**
+- Matches are divided into alternating **phases**: Offense and Defense.
+- Each team’s cards execute actions in **real-time**, with speed influencing how frequently they act.
+- Offensive phases aim to accrue yards to achieve **First Downs** and ultimately score touchdowns.
+- Defensive phases aim to prevent the opponent from gaining yards.
+- Each match lasts **60 seconds**. The team with the most points at the end wins.
+
+---
+
+## What Has Been Done
+
+### Project Structure
+
+The following files and folders have been created:
+
+project/
++- main.lua
++- match.lua
++- phase_manager.lua
++- field_state.lua
++- card.lua
++- card_manager.lua
++- powerup_manager.lua
++- ui.lua
++- assets/
++- sprites/
++- fonts/
++- sounds/
+
+
+
+
+### Boilerplate Code
+
+- **main.lua**: Initializes the game, runs the main Love2D loop.
+- **match.lua**: Manages the overall match timer and phase switching.
+- **phase_manager.lua**: Controls the current phase (offense/defense), updates cards, calculates yard progress.
+- **field_state.lua**: Tracks yards, downs, touchdowns, and turnovers.
+- **card.lua**: Represents a single card/unit with power, speed, and cooldown.
+- **card_manager.lua**: Manages a set of cards for offense or defense and computes yard outcomes.
+- **powerup_manager.lua**: Placeholder for handling temporary stat boosts and power-ups.
+- **ui.lua**: Placeholder for drawing game UI elements like buttons, meters, and indicators.
+
+### Real-Time Auto-Battler Mechanic
+
+- Cards act independently based on a **speed value**, potentially executing multiple times per down.
+- Offense and defense card powers are compared in real-time to calculate **yard changes**.
+- First downs, touchdowns, and turnovers are determined dynamically during the phase.
+
+---
+
+## What Still Needs to Be Done
+
+1. **Visuals / UI**
+   - Draw cards or player representations on the field.
+   - Add progress bars or visual indicators for yards, downs, and touchdowns.
+   - Display temporary power-ups or buffs applied to cards.
+
+2. **Power-ups**
+   - Implement `PowerupManager` functionality.
+   - Example power-ups: double speed, increased power, reset a down, shield from opponent effect.
+
+3. **Difficulty Scaling**
+   - AI behavior: increase defense or offense effectiveness over time.
+   - Random events or modifiers to keep matches engaging.
+
+4. **Scoring and Endgame**
+   - Accurately increment match points for touchdowns.
+   - Properly switch phases and end the match after 60 seconds.
+   - Display winner at the end of the match.
+
+5. **Polish / Gameplay Tuning**
+   - Adjust card speeds, powers, and cooldowns for balanced gameplay.
+   - Add sounds and effects for touchdowns, first downs, turnovers, and power-ups.
+   - Include menus, restart, and pause functionality.
+
+6. **Build & Distribution**
+   - Set up a `.bat` or `.cmd` launcher for Windows.
+   - Optional: package as `.love` file for cross-platform play.
+
+---
+
+## Important Notes
+
+- **LÖVE2D Requirement**: The game runs in the Love2D framework. Ensure it is installed and added to your PATH.
+  ```bash
+  love .
