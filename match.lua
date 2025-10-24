@@ -32,7 +32,7 @@ function match.update(dt)
 end
 
 function match.draw()
-    love.graphics.setBackgroundColor(0.05, 0.15, 0.1)
+    love.graphics.clear(0.05, 0.15, 0.1, 1)
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1)
 
