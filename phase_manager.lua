@@ -1,34 +1,47 @@
 -- phase_manager.lua
 local CardManager = require("card_manager")
 local FieldState = require("field_state")
+local Coach = require("coach")
 
 local PhaseManager = {}
 PhaseManager.__index = PhaseManager
 
-function PhaseManager:new()
+function PhaseManager:new(playerCoachId, aiCoachId)
     local p = {
         currentPhase = "player_offense",  -- "player_offense" or "player_defense"
 
-        -- Player cards
-        playerOffense = CardManager:new("player", "offense"),
-        playerDefense = CardManager:new("player", "defense"),
-
-        -- AI cards
-        aiOffense = CardManager:new("ai", "offense"),
-        aiDefense = CardManager:new("ai", "defense"),
+        -- Get coach data
+        playerCoach = Coach.getById(playerCoachId),
+        aiCoach = Coach.getById(aiCoachId),
 
         -- Field state
         field = FieldState:new(),
 
         -- Scores
         playerScore = 0,
-        aiScore = 0
+        aiScore = 0,
+
+        -- Coach ability timers
+        abilityTimer = 0
     }
     setmetatable(p, PhaseManager)
+
+    -- Create card managers with coach-specific cards
+    p.playerOffense = CardManager:new("player", "offense", p.playerCoach.offensiveCards)
+    p.playerDefense = CardManager:new("player", "defense", p.playerCoach.defensiveCards)
+    p.aiOffense = CardManager:new("ai", "offense", p.aiCoach.offensiveCards)
+    p.aiDefense = CardManager:new("ai", "defense", p.aiCoach.defensiveCards)
+
     return p
 end
 
 function PhaseManager:update(dt)
+    -- Update ability timer
+    self.abilityTimer = self.abilityTimer + dt
+
+    -- Apply coach abilities
+    self:applyCoachAbilities(dt)
+
     -- Update the appropriate cards based on current phase
     if self.currentPhase == "player_offense" then
         self.playerOffense:update(dt)
@@ -47,19 +60,63 @@ function PhaseManager:update(dt)
     end
 end
 
+function PhaseManager:applyCoachAbilities(dt)
+    -- Apply player coach ability
+    if self.currentPhase == "player_offense" then
+        self:applyOffensiveAbility(self.playerCoach, self.playerOffense, dt)
+    else
+        self:applyDefensiveAbility(self.playerCoach, self.playerDefense, dt)
+    end
+
+    -- Apply AI coach ability
+    if self.currentPhase == "player_offense" then
+        self:applyDefensiveAbility(self.aiCoach, self.aiDefense, dt)
+    else
+        self:applyOffensiveAbility(self.aiCoach, self.aiOffense, dt)
+    end
+end
+
+function PhaseManager:applyOffensiveAbility(coach, cardManager, dt)
+    if coach.id == "offensive_guru" then
+        -- No Huddle: Reduce cooldowns by 15%
+        for _, card in ipairs(cardManager.cards) do
+            card.timer = card.timer + (dt * 0.15)
+        end
+    elseif coach.id == "ground_game" then
+        -- Pound the Rock: Running plays gain power over time (1% per second)
+        for _, card in ipairs(cardManager.cards) do
+            if card.position == "RB" or card.position == "FB" then
+                card.power = card.power + (card.power * 0.01 * dt)
+            end
+        end
+    elseif coach.id == "special_teams" then
+        -- Hidden Yardage: Bonus momentum every 6 seconds
+        if self.abilityTimer >= 6 then
+            self.field.yards = self.field.yards + 2
+            self.abilityTimer = 0
+        end
+    end
+end
+
+function PhaseManager:applyDefensiveAbility(coach, cardManager, dt)
+    if coach.id == "defensive_mastermind" then
+        -- Blitz Package: Defensive surge every 8 seconds
+        if self.abilityTimer >= 8 then
+            for _, card in ipairs(cardManager.cards) do
+                card.power = card.power * 1.5  -- Temporary 50% boost
+            end
+            self.abilityTimer = 0
+
+            -- Reset power after a short duration (handled in next frame)
+            love.timer.sleep(0.1)
+            for _, card in ipairs(cardManager.cards) do
+                card.power = card.power / 1.5
+            end
+        end
+    end
+end
+
 function PhaseManager:calculateYards(offense, defense, dt)
-    local offensePower = 0
-    local defensePower = 0
-
-    for _, card in ipairs(offense.cards) do
-        -- Card:update already called Card:act when timer reached cooldown
-        -- We don't double-act here
-    end
-
-    for _, card in ipairs(defense.cards) do
-        -- Same as above
-    end
-
     -- Simple calculation: sum of offense powers vs defense powers
     -- Scaled down for reasonable yard gains
     local offenseTotal = offense:getTotalPower()
@@ -93,6 +150,7 @@ function PhaseManager:switchPhase()
         self.currentPhase = "player_offense"
     end
     self.field:reset()
+    self.abilityTimer = 0  -- Reset ability timer on phase change
 end
 
 function PhaseManager:getActivePlayerCards()
@@ -119,5 +177,12 @@ function PhaseManager:getCurrentPhaseName()
     end
 end
 
-return PhaseManager
+function PhaseManager:getPlayerCoachName()
+    return self.playerCoach.name
+end
 
+function PhaseManager:getAICoachName()
+    return self.aiCoach.name
+end
+
+return PhaseManager
