@@ -35,19 +35,19 @@ function PhaseManager:update(dt)
         self.aiDefense:update(dt)
 
         -- Calculate yard delta (offense - defense)
-        local yardDelta = self:calculateYards(self.playerOffense, self.aiDefense)
+        local yardDelta = self:calculateYards(self.playerOffense, self.aiDefense, dt)
         self.field:update(yardDelta, dt)
     else -- player_defense
         self.aiOffense:update(dt)
         self.playerDefense:update(dt)
 
         -- Calculate yard delta (offense - defense)
-        local yardDelta = self:calculateYards(self.aiOffense, self.playerDefense)
+        local yardDelta = self:calculateYards(self.aiOffense, self.playerDefense, dt)
         self.field:update(yardDelta, dt)
     end
 end
 
-function PhaseManager:calculateYards(offense, defense)
+function PhaseManager:calculateYards(offense, defense, dt)
     local offensePower = 0
     local defensePower = 0
 
