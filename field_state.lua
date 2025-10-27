@@ -3,16 +3,25 @@ local FieldState = {}
 FieldState.__index = FieldState
 
 function FieldState:new()
-    local f = { yards = 0, down = 1 }
+    local f = { yards = 0, down = 1, yardsToGo = 10 }
     setmetatable(f, FieldState)
     return f
 end
 
 function FieldState:update(yardDelta, dt)
     self.yards = self.yards + yardDelta
-    if self.yards >= 10 then
-        self.yards = self.yards - 10
+
+    -- Check for first down
+    if self.yards >= self.yardsToGo then
+        self.yards = self.yards - self.yardsToGo
         self.down = 1
+        self.yardsToGo = 10
+    end
+
+    -- Check if we need to advance down (happens when yards decrease significantly)
+    if self.yards < 0 then
+        self.yards = 0
+        self.down = self.down + 1
     end
 end
 
@@ -22,6 +31,12 @@ end
 
 function FieldState:isTurnover()
     return self.down > 4
+end
+
+function FieldState:reset()
+    self.yards = 0
+    self.down = 1
+    self.yardsToGo = 10
 end
 
 function FieldState:draw()
