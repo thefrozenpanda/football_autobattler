@@ -4,11 +4,27 @@ local Card = require("card")
 local CardManager = {}
 CardManager.__index = CardManager
 
-function CardManager:new(side)
-    local c = { side = side, cards = {} }
+function CardManager:new(side, phase)
+    local c = {
+        side = side,        -- "player" or "ai"
+        phase = phase,      -- "offense" or "defense"
+        cards = {}
+    }
     setmetatable(c, CardManager)
-    c:addCard(Card:new("Player1", 120, 2.0))
-    c:addCard(Card:new("Player2", 100, 1.5))
+
+    -- Create position-specific cards
+    if phase == "offense" then
+        c:addCard(Card:new("QB", 130, 1.8))
+        c:addCard(Card:new("RB", 110, 2.2))
+        c:addCard(Card:new("WR", 100, 2.5))
+        c:addCard(Card:new("WR", 100, 2.5))
+    else -- defense
+        c:addCard(Card:new("LB", 120, 2.0))
+        c:addCard(Card:new("CB", 105, 2.3))
+        c:addCard(Card:new("CB", 105, 2.3))
+        c:addCard(Card:new("S", 115, 1.9))
+    end
+
     return c
 end
 
@@ -22,15 +38,12 @@ function CardManager:update(dt)
     end
 end
 
-function CardManager:computeYards(enemy)
-    local offensePower, defensePower = 0, 0
+function CardManager:getTotalPower()
+    local total = 0
     for _, card in ipairs(self.cards) do
-        offensePower = offensePower + card:act()
+        total = total + card.power
     end
-    for _, card in ipairs(enemy.cards) do
-        defensePower = defensePower + card:act()
-    end
-    return offensePower - defensePower
+    return total
 end
 
 return CardManager
