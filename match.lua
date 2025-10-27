@@ -5,7 +5,9 @@ local match = {}
 
 local phaseManager
 local font
+local titleFont
 local smallFont
+local menuFont
 local matchTime = 60
 local timeLeft = matchTime
 
@@ -15,14 +17,31 @@ local CARD_HEIGHT = 180
 local CARD_PADDING = 20
 local PROGRESS_BAR_HEIGHT = 8
 
+-- Pause menu constants
+local paused = false
+local pauseButtonWidth = 300
+local pauseButtonHeight = 60
+local pauseButtonY = {250, 340}
+local pauseMenuOptions = {"Resume", "Quit"}
+local selectedPauseOption = 0  -- 0 means no selection
+
 function match.load()
     font = love.graphics.newFont(20)
+    titleFont = love.graphics.newFont(48)
     smallFont = love.graphics.newFont(14)
+    menuFont = love.graphics.newFont(28)
     phaseManager = PhaseManager:new()
     timeLeft = matchTime
+    paused = false
+    selectedPauseOption = 0
 end
 
 function match.update(dt)
+    -- Don't update game logic if paused
+    if paused then
+        return
+    end
+
     timeLeft = math.max(0, timeLeft - dt)
 
     -- Update phase manager (cards and yards)
@@ -47,6 +66,11 @@ function match.draw()
 
     -- Draw AI cards (right side)
     match.drawTeamCards(phaseManager:getActiveAICards(), "right", "AI")
+
+    -- Draw pause menu overlay if paused
+    if paused then
+        match.drawPauseMenu()
+    end
 end
 
 function match.drawUI()
@@ -147,9 +171,126 @@ function match.drawCard(card, x, y)
     love.graphics.rectangle("line", progressBarX, progressBarY, progressBarWidth, PROGRESS_BAR_HEIGHT)
 end
 
+function match.drawPauseMenu()
+    -- Semi-transparent overlay
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", 0, 0, 800, 600)
+
+    -- Draw "PAUSED" title
+    love.graphics.setFont(titleFont)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf("PAUSED", 0, 100, 800, "center")
+
+    -- Draw menu options
+    love.graphics.setFont(menuFont)
+    for i, option in ipairs(pauseMenuOptions) do
+        local x = (800 - pauseButtonWidth) / 2
+        local y = pauseButtonY[i]
+
+        -- Draw button background
+        if i == selectedPauseOption then
+            love.graphics.setColor(0.3, 0.5, 0.7, 0.8)
+        else
+            love.graphics.setColor(0.2, 0.3, 0.4, 0.6)
+        end
+        love.graphics.rectangle("fill", x, y, pauseButtonWidth, pauseButtonHeight, 10, 10)
+
+        -- Draw button border
+        if i == selectedPauseOption then
+            love.graphics.setColor(0.5, 0.7, 1.0)
+            love.graphics.setLineWidth(3)
+        else
+            love.graphics.setColor(0.4, 0.5, 0.6)
+            love.graphics.setLineWidth(2)
+        end
+        love.graphics.rectangle("line", x, y, pauseButtonWidth, pauseButtonHeight, 10, 10)
+
+        -- Draw button text
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.printf(option, x, y + 15, pauseButtonWidth, "center")
+    end
+end
+
 function match.keypressed(key)
-    if key == "escape" then
+    if paused then
+        -- Handle pause menu input
+        if key == "escape" then
+            match.resumeGame()
+        elseif key == "up" then
+            selectedPauseOption = selectedPauseOption - 1
+            if selectedPauseOption < 1 then
+                selectedPauseOption = #pauseMenuOptions
+            end
+        elseif key == "down" then
+            selectedPauseOption = selectedPauseOption + 1
+            if selectedPauseOption > #pauseMenuOptions then
+                selectedPauseOption = 1
+            end
+        elseif key == "return" or key == "space" then
+            if selectedPauseOption > 0 then
+                match.selectPauseOption(selectedPauseOption)
+            end
+        end
+    else
+        -- Handle in-game input
+        if key == "escape" then
+            match.pauseGame()
+        end
+    end
+end
+
+function match.pauseGame()
+    paused = true
+    selectedPauseOption = 0
+end
+
+function match.resumeGame()
+    paused = false
+    selectedPauseOption = 0
+end
+
+function match.selectPauseOption(option)
+    if option == 1 then
+        -- Resume
+        match.resumeGame()
+    elseif option == 2 then
+        -- Quit
         love.event.quit()
+    end
+end
+
+function match.mousepressed(x, y, button)
+    if not paused then
+        return
+    end
+
+    if button == 1 then
+        local buttonX = (800 - pauseButtonWidth) / 2
+        for i = 1, #pauseMenuOptions do
+            local buttonYPos = pauseButtonY[i]
+            if x >= buttonX and x <= buttonX + pauseButtonWidth and
+               y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
+                match.selectPauseOption(i)
+                break
+            end
+        end
+    end
+end
+
+function match.mousemoved(x, y)
+    if not paused then
+        return
+    end
+
+    local buttonX = (800 - pauseButtonWidth) / 2
+    selectedPauseOption = 0  -- Reset selection
+    for i = 1, #pauseMenuOptions do
+        local buttonYPos = pauseButtonY[i]
+        if x >= buttonX and x <= buttonX + pauseButtonWidth and
+           y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
+            selectedPauseOption = i
+            break
+        end
     end
 end
 

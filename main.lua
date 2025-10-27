@@ -42,11 +42,15 @@ end
 function love.mousepressed(x, y, button)
     if gameState == "menu" then
         menu.mousepressed(x, y, button)
+    elseif gameState == "game" then
+        match.mousepressed(x, y, button)
     end
 end
 
 function love.mousemoved(x, y, dx, dy)
     if gameState == "menu" then
         menu.mousemoved(x, y)
+    elseif gameState == "game" then
+        match.mousemoved(x, y)
     end
 end
