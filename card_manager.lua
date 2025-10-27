@@ -4,7 +4,7 @@ local Card = require("card")
 local CardManager = {}
 CardManager.__index = CardManager
 
-function CardManager:new(side, phase)
+function CardManager:new(side, phase, cardDefinitions)
     local c = {
         side = side,        -- "player" or "ai"
         phase = phase,      -- "offense" or "defense"
@@ -12,17 +12,11 @@ function CardManager:new(side, phase)
     }
     setmetatable(c, CardManager)
 
-    -- Create position-specific cards
-    if phase == "offense" then
-        c:addCard(Card:new("QB", 130, 1.8))
-        c:addCard(Card:new("RB", 110, 2.2))
-        c:addCard(Card:new("WR", 100, 2.5))
-        c:addCard(Card:new("WR", 100, 2.5))
-    else -- defense
-        c:addCard(Card:new("LB", 120, 2.0))
-        c:addCard(Card:new("CB", 105, 2.3))
-        c:addCard(Card:new("CB", 105, 2.3))
-        c:addCard(Card:new("S", 115, 1.9))
+    -- Create cards from definitions
+    if cardDefinitions then
+        for _, cardDef in ipairs(cardDefinitions) do
+            c:addCard(Card:new(cardDef.position, cardDef.power, cardDef.speed))
+        end
     end
 
     return c
@@ -47,4 +41,3 @@ function CardManager:getTotalPower()
 end
 
 return CardManager
-

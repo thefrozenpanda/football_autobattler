@@ -8,7 +8,7 @@ local font
 local titleFont
 local smallFont
 local menuFont
-local matchTime = 60
+local matchTime = 30  -- Changed to 30 seconds per design doc
 local timeLeft = matchTime
 
 -- Card visual constants
@@ -25,12 +25,12 @@ local pauseButtonY = {250, 340}
 local pauseMenuOptions = {"Resume", "Quit"}
 local selectedPauseOption = 0  -- 0 means no selection
 
-function match.load()
+function match.load(playerCoachId, aiCoachId)
     font = love.graphics.newFont(20)
     titleFont = love.graphics.newFont(48)
     smallFont = love.graphics.newFont(14)
     menuFont = love.graphics.newFont(28)
-    phaseManager = PhaseManager:new()
+    phaseManager = PhaseManager:new(playerCoachId, aiCoachId)
     timeLeft = matchTime
     paused = false
     selectedPauseOption = 0
@@ -62,10 +62,12 @@ function match.draw()
     match.drawUI()
 
     -- Draw player cards (left side)
-    match.drawTeamCards(phaseManager:getActivePlayerCards(), "left", "Player")
+    local playerCoachName = phaseManager:getPlayerCoachName()
+    match.drawTeamCards(phaseManager:getActivePlayerCards(), "left", playerCoachName)
 
     -- Draw AI cards (right side)
-    match.drawTeamCards(phaseManager:getActiveAICards(), "right", "AI")
+    local aiCoachName = phaseManager:getAICoachName()
+    match.drawTeamCards(phaseManager:getActiveAICards(), "right", aiCoachName)
 
     -- Draw pause menu overlay if paused
     if paused then
@@ -148,7 +150,7 @@ function match.drawCard(card, x, y)
 
     -- Draw stats
     love.graphics.setFont(smallFont)
-    love.graphics.printf("PWR: " .. card.power, x, y + 45, CARD_WIDTH, "center")
+    love.graphics.printf("PWR: " .. math.floor(card.power), x, y + 45, CARD_WIDTH, "center")
     love.graphics.printf("SPD: " .. string.format("%.1f", card.speed), x, y + 70, CARD_WIDTH, "center")
 
     -- Draw progress bar
