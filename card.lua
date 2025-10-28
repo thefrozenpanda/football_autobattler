@@ -35,7 +35,7 @@ function Card:new(position, cardType, stats)
 
         -- Common stats
         speed = stats.speed or 1.5,
-        cooldown = 1 / (stats.speed or 1.5),
+        cooldown = stats.speed or 1.5,  -- Cooldown in seconds between actions
         timer = 0,
 
         -- Visual/state
@@ -107,13 +107,19 @@ function Card:act()
 end
 
 function Card:applySlow(duration)
-    self.isSlowed = true
-    self.slowTimer = duration or 2.0  -- Default 2 seconds
+    -- Only apply if not already slowed
+    if not self.isSlowed then
+        self.isSlowed = true
+        self.slowTimer = duration or 2.0  -- Default 2 seconds
+    end
 end
 
 function Card:applyFreeze(duration)
-    self.isFrozen = true
-    self.freezeTimer = duration or 1.0  -- Default 1 second
+    -- Only apply if not already frozen
+    if not self.isFrozen then
+        self.isFrozen = true
+        self.freezeTimer = duration or 1.0  -- Default 1 second
+    end
 end
 
 function Card:getProgress()
