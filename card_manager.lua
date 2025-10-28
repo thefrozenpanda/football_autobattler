@@ -15,7 +15,8 @@ function CardManager:new(side, phase, cardDefinitions)
     -- Create cards from definitions
     if cardDefinitions then
         for _, cardDef in ipairs(cardDefinitions) do
-            c:addCard(Card:new(cardDef.position, cardDef.power, cardDef.speed))
+            local card = Card:new(cardDef.position, cardDef.cardType, cardDef.stats)
+            c:addCard(card)
         end
     end
 
@@ -32,12 +33,48 @@ function CardManager:update(dt)
     end
 end
 
-function CardManager:getTotalPower()
-    local total = 0
+function CardManager:getYardGenerators()
+    local generators = {}
     for _, card in ipairs(self.cards) do
-        total = total + card.power
+        if card.cardType == Card.TYPE.YARD_GENERATOR then
+            table.insert(generators, card)
+        end
     end
-    return total
+    return generators
+end
+
+function CardManager:getBoosters()
+    local boosters = {}
+    for _, card in ipairs(self.cards) do
+        if card.cardType == Card.TYPE.BOOSTER then
+            table.insert(boosters, card)
+        end
+    end
+    return boosters
+end
+
+function CardManager:getDefenders()
+    local defenders = {}
+    for _, card in ipairs(self.cards) do
+        if card.cardType == Card.TYPE.DEFENDER then
+            table.insert(defenders, card)
+        end
+    end
+    return defenders
+end
+
+-- Find cards by position (for targeting)
+function CardManager:getCardsByPosition(positions)
+    local found = {}
+    for _, card in ipairs(self.cards) do
+        for _, pos in ipairs(positions) do
+            if card.position == pos then
+                table.insert(found, card)
+                break
+            end
+        end
+    end
+    return found
 end
 
 return CardManager
