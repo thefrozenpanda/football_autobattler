@@ -147,7 +147,7 @@ function coachSelection.mousepressed(x, y, button)
         -- Check if clicking on a coach card
         for i = 1, #Coach.types do
             local cardX = CARD_START_X + (i - 1) * (CARD_WIDTH + CARD_PADDING)
-            local cardY = 120
+            local cardY = 200
 
             if x >= cardX and x <= cardX + CARD_WIDTH and
                y >= cardY and y <= cardY + CARD_HEIGHT then
@@ -164,7 +164,7 @@ function coachSelection.mousemoved(x, y)
     -- Check if hovering over a coach card
     for i = 1, #Coach.types do
         local cardX = CARD_START_X + (i - 1) * (CARD_WIDTH + CARD_PADDING)
-        local cardY = 120
+        local cardY = 200
 
         if x >= cardX and x <= cardX + CARD_WIDTH and
            y >= cardY and y <= cardY + CARD_HEIGHT then
