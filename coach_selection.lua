@@ -10,10 +10,10 @@ local descFont
 local selectedIndex = 0  -- 0 means no selection
 
 -- Card layout
-local CARD_WIDTH = 180
-local CARD_HEIGHT = 280
-local CARD_PADDING = 15
-local CARD_START_X = 20
+local CARD_WIDTH = 320
+local CARD_HEIGHT = 400
+local CARD_PADDING = 40
+local CARD_START_X = 80
 
 function coachSelection.load()
     titleFont = love.graphics.newFont(36)
@@ -33,17 +33,17 @@ function coachSelection.draw()
     -- Draw title
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("Select Your Coach", 0, 30, 800, "center")
+    love.graphics.printf("Select Your Coach", 0, 50, 1600, "center")
 
     -- Draw subtitle
     love.graphics.setFont(descFont)
     love.graphics.setColor(0.7, 0.7, 0.7)
-    love.graphics.printf("Choose your coaching philosophy to begin", 0, 75, 800, "center")
+    love.graphics.printf("Choose your coaching philosophy to begin", 0, 110, 1600, "center")
 
     -- Draw coach cards
     for i, coach in ipairs(Coach.types) do
         local x = CARD_START_X + (i - 1) * (CARD_WIDTH + CARD_PADDING)
-        local y = 120
+        local y = 200
 
         coachSelection.drawCoachCard(coach, x, y, i == selectedIndex)
     end
@@ -51,7 +51,7 @@ function coachSelection.draw()
     -- Draw instructions
     love.graphics.setFont(descFont)
     love.graphics.setColor(0.6, 0.6, 0.6)
-    love.graphics.printf("Use Arrow Keys or Mouse - Enter or Click to Select", 0, 550, 800, "center")
+    love.graphics.printf("Use Arrow Keys or Mouse - Enter or Click to Select", 0, 820, 1600, "center")
 end
 
 function coachSelection.drawCoachCard(coach, x, y, isSelected)

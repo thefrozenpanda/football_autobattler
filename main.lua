@@ -8,7 +8,7 @@ local gameState = "menu" -- "menu", "coach_selection", or "game"
 
 function love.load()
     love.window.setTitle("The Gridiron Bazaar")
-    love.window.setMode(800, 600, {resizable=false})
+    love.window.setMode(1600, 900, {resizable=false})
 
     menu.load()
 end
