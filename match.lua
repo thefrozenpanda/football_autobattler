@@ -12,52 +12,53 @@ local matchTime = 60  -- Changed to 60 seconds for yard-based system
 local timeLeft = matchTime
 
 -- Card visual constants
-local CARD_WIDTH = 70
-local CARD_HEIGHT = 90
-local CARD_PADDING = 8
-local PROGRESS_BAR_HEIGHT = 4
+local CARD_WIDTH = 100
+local CARD_HEIGHT = 130
+local CARD_PADDING = 12
+local PROGRESS_BAR_HEIGHT = 6
 
 -- Pause menu constants
 local paused = false
 local pauseButtonWidth = 300
 local pauseButtonHeight = 60
-local pauseButtonY = {250, 340}
+local pauseButtonY = {350, 440}
 local pauseMenuOptions = {"Resume", "Quit"}
 local selectedPauseOption = 0
 
 -- Formation positions (relative to team start)
+-- Spread out to prevent overlap with 100x130 cards
 local OFFENSIVE_FORMATION = {
-    {x = 0, y = 0},    -- WR (top)
-    {x = 40, y = 60},  -- OL
-    {x = 0, y = 90},   -- RB
-    {x = -20, y = 120}, -- QB
-    {x = 0, y = 150},   -- RB
-    {x = 40, y = 180},  -- OL
-    {x = 40, y = 120},  -- OL (center)
-    {x = 40, y = 240},  -- OL
-    {x = 40, y = 300},  -- OL
-    {x = 20, y = 210},  -- TE
-    {x = 0, y = 360}    -- WR (bottom)
+    {x = 0, y = 0},      -- WR (top)
+    {x = 0, y = 155},    -- RB
+    {x = -50, y = 205},  -- QB
+    {x = 0, y = 255},    -- RB
+    {x = 90, y = 105},   -- OL
+    {x = 90, y = 215},   -- OL (center)
+    {x = 90, y = 325},   -- OL
+    {x = 200, y = 105},  -- OL
+    {x = 200, y = 325},  -- OL
+    {x = 50, y = 355},   -- TE
+    {x = 0, y = 505}     -- WR (bottom)
 }
 
 local DEFENSIVE_FORMATION = {
-    {x = 0, y = 0},     -- CB (top)
-    {x = -20, y = 40},  -- S
-    {x = 40, y = 60},   -- DL
-    {x = 40, y = 120},  -- DL
-    {x = 40, y = 180},  -- DL
-    {x = 40, y = 240},  -- DL
-    {x = -20, y = 300}, -- S
-    {x = 0, y = 360},   -- CB (bottom)
-    {x = 20, y = 100},  -- LB
-    {x = 20, y = 180},  -- LB
-    {x = 20, y = 260}   -- LB
+    {x = 0, y = 0},      -- CB (top)
+    {x = -50, y = 105},  -- S
+    {x = 90, y = 55},    -- DL
+    {x = 90, y = 205},   -- DL
+    {x = 90, y = 355},   -- DL
+    {x = 200, y = 205},  -- DL
+    {x = -50, y = 405},  -- S
+    {x = 0, y = 505},    -- CB (bottom)
+    {x = 50, y = 105},   -- LB
+    {x = 50, y = 255},   -- LB
+    {x = 50, y = 405}    -- LB
 }
 
 function match.load(playerCoachId, aiCoachId)
-    font = love.graphics.newFont(16)
+    font = love.graphics.newFont(20)
     titleFont = love.graphics.newFont(48)
-    smallFont = love.graphics.newFont(10)
+    smallFont = love.graphics.newFont(14)
     menuFont = love.graphics.newFont(28)
     phaseManager = PhaseManager:new(playerCoachId, aiCoachId)
     timeLeft = matchTime
@@ -108,7 +109,7 @@ function match.drawUI()
 
     -- Phase indicator
     local phaseName = phaseManager:getCurrentPhaseName()
-    love.graphics.printf("Phase: " .. phaseName, 0, 10, 800, "center")
+    love.graphics.printf("Phase: " .. phaseName, 0, 15, 1600, "center")
 
     -- Yards display
     local totalYards = math.floor(phaseManager.field.totalYards)
@@ -119,13 +120,13 @@ function match.drawUI()
     love.graphics.printf(
         string.format("Yards: %d/%d | Down: %d  | %d yards to 1st",
         totalYards, yardsNeeded, phaseManager.field.currentDown, yardsToFirst),
-        0, 30, 800, "center"
+        0, 45, 1600, "center"
     )
 
     -- Down timer
     love.graphics.printf(
         string.format("Down Timer: %.1fs", phaseManager.field.downTimer),
-        0, 50, 800, "center"
+        0, 75, 1600, "center"
     )
 
     -- Score
@@ -133,24 +134,24 @@ function match.drawUI()
     local aiScore = phaseManager.aiScore
     love.graphics.printf(
         string.format("Score - Player: %d | AI: %d", playerScore, aiScore),
-        0, 70, 800, "center"
+        0, 105, 1600, "center"
     )
 
     -- Game time
     love.graphics.printf(
         string.format("Time: %.1f", timeLeft),
-        0, 90, 800, "center"
+        0, 135, 1600, "center"
     )
 end
 
 function match.drawTeamCards(cards, side, teamName, formation)
-    local startX = (side == "left") and 50 or (800 - 150)
-    local startY = 130
+    local startX = (side == "left") and 150 or (1600 - 500)
+    local startY = 180
 
     -- Draw team label
-    love.graphics.setFont(smallFont)
+    love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf(teamName, startX - 20, startY - 20, 150, "center")
+    love.graphics.printf(teamName, startX - 50, startY - 30, 400, "center")
 
     -- Draw cards using formation
     for i, card in ipairs(cards) do
@@ -233,15 +234,15 @@ end
 
 function match.drawPauseMenu()
     love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, 800, 600)
+    love.graphics.rectangle("fill", 0, 0, 1600, 900)
 
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("PAUSED", 0, 100, 800, "center")
+    love.graphics.printf("PAUSED", 0, 200, 1600, "center")
 
     love.graphics.setFont(menuFont)
     for i, option in ipairs(pauseMenuOptions) do
-        local x = (800 - pauseButtonWidth) / 2
+        local x = (1600 - pauseButtonWidth) / 2
         local y = pauseButtonY[i]
 
         if i == selectedPauseOption then
@@ -315,7 +316,7 @@ function match.mousepressed(x, y, button)
     end
 
     if button == 1 then
-        local buttonX = (800 - pauseButtonWidth) / 2
+        local buttonX = (1600 - pauseButtonWidth) / 2
         for i = 1, #pauseMenuOptions do
             local buttonYPos = pauseButtonY[i]
             if x >= buttonX and x <= buttonX + pauseButtonWidth and
@@ -332,7 +333,7 @@ function match.mousemoved(x, y)
         return
     end
 
-    local buttonX = (800 - pauseButtonWidth) / 2
+    local buttonX = (1600 - pauseButtonWidth) / 2
     selectedPauseOption = 0
     for i = 1, #pauseMenuOptions do
         local buttonYPos = pauseButtonY[i]
