@@ -88,7 +88,7 @@ end
 
 function menu.mousepressed(x, y, button)
     if button == 1 then
-        local buttonX = (800 - buttonWidth) / 2
+        local buttonX = (1600 - buttonWidth) / 2
         for i = 1, #menuOptions do
             local buttonYPos = buttonY[i]
             if x >= buttonX and x <= buttonX + buttonWidth and
@@ -101,7 +101,7 @@ function menu.mousepressed(x, y, button)
 end
 
 function menu.mousemoved(x, y)
-    local buttonX = (800 - buttonWidth) / 2
+    local buttonX = (1600 - buttonWidth) / 2
     for i = 1, #menuOptions do
         local buttonYPos = buttonY[i]
         if x >= buttonX and x <= buttonX + buttonWidth and
