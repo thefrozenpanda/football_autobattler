@@ -102,7 +102,7 @@ end
 
 function menu.mousemoved(x, y)
     local buttonX = (1600 - buttonWidth) / 2
-    selectedOption = 1  -- Reset to default
+    selectedOption = 0  -- No selection unless mouse is over a button
 
     for i = 1, #menuOptions do
         local buttonYPos = buttonY[i]
