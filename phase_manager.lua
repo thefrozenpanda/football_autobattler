@@ -7,6 +7,9 @@ local Card = require("card")
 local PhaseManager = {}
 PhaseManager.__index = PhaseManager
 
+-- Debug logger (set by match.lua)
+PhaseManager.logger = nil
+
 function PhaseManager:new(playerCoachId, aiCoachId)
     local p = {
         currentPhase = "player_offense",  -- "player_offense" or "player_defense"
@@ -77,7 +80,7 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
 
     if action.type == "yards" then
         -- Calculate yards with boosts
-        local yards = action.value
+        local baseYards = action.value
         local totalBoost = 0
 
         -- Apply boosts from other offensive cards
@@ -94,17 +97,25 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
         end
 
         -- Apply boost
-        yards = yards * (1 + totalBoost / 100)
+        local boostedYards = baseYards * (1 + totalBoost / 100)
 
         -- Apply coach ability
-        yards = self:applyOffensiveCoachAbility(yards, card)
+        local finalYards = self:applyOffensiveCoachAbility(boostedYards, card)
+
+        -- Log yard generation
+        if PhaseManager.logger then
+            PhaseManager.logger:logYardGeneration(card, baseYards, boostedYards, finalYards)
+        end
 
         -- Add yards to field
-        self.field:addYards(yards)
+        self.field:addYards(finalYards)
 
     elseif action.type == "boost" then
         -- Booster cards don't do anything when they act
         -- Their boost is applied when other cards generate yards
+        if PhaseManager.logger then
+            PhaseManager.logger:logCardAction(card, "BOOST")
+        end
     end
 end
 
@@ -195,6 +206,11 @@ function PhaseManager:switchPhase(isTouchdown)
         self.currentPhase = "player_defense"
     else
         self.currentPhase = "player_offense"
+    end
+
+    -- Log phase change
+    if PhaseManager.logger then
+        PhaseManager.logger:logPhaseChange(self.currentPhase)
     end
 
     -- Determine new starting position and yards needed

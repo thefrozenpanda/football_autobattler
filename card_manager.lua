@@ -4,6 +4,9 @@ local Card = require("card")
 local CardManager = {}
 CardManager.__index = CardManager
 
+-- Debug logger (set by match.lua)
+CardManager.logger = nil
+
 function CardManager:new(side, phase, cardDefinitions)
     local c = {
         side = side,        -- "player" or "ai"
@@ -17,6 +20,11 @@ function CardManager:new(side, phase, cardDefinitions)
         for _, cardDef in ipairs(cardDefinitions) do
             local card = Card:new(cardDef.position, cardDef.cardType, cardDef.stats)
             c:addCard(card)
+
+            -- Log card creation
+            if CardManager.logger then
+                CardManager.logger:logCardCreation(card)
+            end
         end
     end
 

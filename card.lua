@@ -2,6 +2,9 @@
 local Card = {}
 Card.__index = Card
 
+-- Debug logger (set by match.lua)
+Card.logger = nil
+
 -- Card types
 Card.TYPE = {
     YARD_GENERATOR = "yard_generator",  -- QB, RB, WR (generates yards)
@@ -53,6 +56,11 @@ function Card:new(position, cardType, stats)
 end
 
 function Card:update(dt)
+    -- Check for speed anomalies
+    if Card.logger and (self.cooldown < 0.1 or self.cooldown > 10) then
+        Card.logger:logSpeedAnomaly(self, "Abnormal cooldown detected")
+    end
+
     -- Update status effect timers
     if self.slowTimer > 0 then
         self.slowTimer = self.slowTimer - dt
@@ -78,7 +86,7 @@ function Card:update(dt)
 
     -- Don't progress timer if frozen
     if self.isFrozen then
-        return 0
+        return false
     end
 
     -- Progress timer (slower if slowed)
@@ -89,6 +97,12 @@ function Card:update(dt)
         self.timer = 0
         self.justActed = true
         self.actHighlightTimer = 0.2  -- Highlight for 0.2 seconds
+
+        -- Log card action
+        if Card.logger then
+            Card.logger:logCardUpdate(self, dt, true)
+        end
+
         return true  -- Card acted
     end
     return false
@@ -111,6 +125,10 @@ function Card:applySlow(duration)
     if not self.isSlowed then
         self.isSlowed = true
         self.slowTimer = duration or 2.0  -- Default 2 seconds
+
+        if Card.logger then
+            Card.logger:logStatusEffect(self, "SLOW", self.slowTimer)
+        end
     end
 end
 
@@ -119,6 +137,10 @@ function Card:applyFreeze(duration)
     if not self.isFrozen then
         self.isFrozen = true
         self.freezeTimer = duration or 1.0  -- Default 1 second
+
+        if Card.logger then
+            Card.logger:logStatusEffect(self, "FREEZE", self.freezeTimer)
+        end
     end
 end
 

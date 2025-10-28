@@ -1,9 +1,14 @@
 -- match.lua
 local PhaseManager = require("phase_manager")
+local DebugLogger = require("debug_logger")
+local Card = require("card")
+local CardManager = require("card_manager")
+local FieldState = require("field_state")
 
 local match = {}
 
 local phaseManager
+local debugLogger
 local font
 local titleFont
 local smallFont
@@ -56,6 +61,19 @@ local DEFENSIVE_FORMATION = {
 }
 
 function match.load(playerCoachId, aiCoachId)
+    -- Initialize debug logger
+    debugLogger = DebugLogger:new()
+
+    -- Pass logger to all modules
+    Card.logger = debugLogger
+    CardManager.logger = debugLogger
+    PhaseManager.logger = debugLogger
+    FieldState.logger = debugLogger
+
+    debugLogger:log("=== MATCH STARTED ===")
+    debugLogger:log("Player Coach: " .. playerCoachId)
+    debugLogger:log("AI Coach: " .. aiCoachId)
+
     font = love.graphics.newFont(20)
     titleFont = love.graphics.newFont(48)
     smallFont = love.graphics.newFont(14)
@@ -64,6 +82,9 @@ function match.load(playerCoachId, aiCoachId)
     timeLeft = matchTime
     paused = false
     selectedPauseOption = 0
+
+    debugLogger:log("Match initialization complete")
+    debugLogger:log("Down duration: 5.0 seconds")
 end
 
 function match.update(dt)

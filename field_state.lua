@@ -2,6 +2,9 @@
 local FieldState = {}
 FieldState.__index = FieldState
 
+-- Debug logger (set by match.lua)
+FieldState.logger = nil
+
 function FieldState:new(yardsNeeded)
     local f = {
         -- Yard tracking
@@ -70,11 +73,19 @@ function FieldState:advanceDown()
     self.currentDown = self.currentDown + 1
     self.downTimer = self.downDuration
 
+    -- Log down advance
+    if FieldState.logger then
+        FieldState.logger:logDownAdvance(self.currentDown, self.downTimer)
+    end
+
     -- Check for turnover on downs
     if self.currentDown > 4 then
         -- Check if we got the first down
         if self.downYards < 10 then
             self.turnoverOccurred = true
+            if FieldState.logger then
+                FieldState.logger:log("TURNOVER: Failed to get 10 yards in 4 downs")
+            end
         else
             -- Got first down on 4th down
             self:achieveFirstDown()
