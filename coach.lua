@@ -31,32 +31,32 @@ Coach.types = {
 
         -- Offensive lineup (11 players) - Passing focused
         offensiveCards = {
-            yardGen("QB", 4.5, 1.8),    -- Franchise QB
-            yardGen("RB", 2.5, 2.2),    -- Receiving back
-            yardGen("RB", 2.5, 2.2),
-            booster("OL", 25, {"QB"}, 2.0),  -- Center
-            booster("OL", 20, {"QB"}, 2.0),  -- Guard
-            booster("OL", 20, {"QB"}, 2.0),  -- Guard
-            booster("OL", 18, {"QB"}, 2.0),  -- Tackle
-            booster("OL", 18, {"QB"}, 2.0),  -- Tackle
-            yardGen("WR", 3.5, 2.6),    -- WR1
-            yardGen("WR", 3.5, 2.6),    -- WR2
-            booster("TE", 15, {"QB"}, 2.1) -- Blocking TE
+            yardGen("QB", 4.5, 3.6),    -- Franchise QB
+            yardGen("RB", 2.5, 4.4),    -- Receiving back
+            yardGen("RB", 2.5, 4.4),
+            booster("OL", 25, {"QB"}, 4.0),  -- Center
+            booster("OL", 20, {"QB"}, 4.0),  -- Guard
+            booster("OL", 20, {"QB"}, 4.0),  -- Guard
+            booster("OL", 18, {"QB"}, 4.0),  -- Tackle
+            booster("OL", 18, {"QB"}, 4.0),  -- Tackle
+            yardGen("WR", 3.5, 5.2),    -- WR1
+            yardGen("WR", 3.5, 5.2),    -- WR2
+            booster("TE", 15, {"QB"}, 4.2) -- Blocking TE
         },
 
         -- Defensive lineup (11 players) - Balanced defense
         defensiveCards = {
-            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 1.9),
-            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 1.8),
-            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 1.9),
-            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 1.8),
-            defender("LB", Card.EFFECT.SLOW, 2.0, {"RB", "OL"}, 2.1),
-            defender("LB", Card.EFFECT.FREEZE, 1.0, {"RB"}, 2.0),
-            defender("LB", Card.EFFECT.SLOW, 2.0, {"OL"}, 2.1),
-            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 2.5),
-            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 2.5),
-            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 2.2),
-            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 2.2)
+            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 3.8),
+            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 3.6),
+            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 3.8),
+            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 3.6),
+            defender("LB", Card.EFFECT.SLOW, 2.0, {"RB", "OL"}, 4.2),
+            defender("LB", Card.EFFECT.FREEZE, 1.0, {"RB"}, 4.0),
+            defender("LB", Card.EFFECT.SLOW, 2.0, {"OL"}, 4.2),
+            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 5.0),
+            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 5.0),
+            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 4.4),
+            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 4.4)
         }
     },
 
@@ -70,32 +70,32 @@ Coach.types = {
 
         -- Offensive lineup (11 players) - Conservative offense
         offensiveCards = {
-            yardGen("QB", 3.5, 1.7),    -- Game manager QB
-            yardGen("RB", 3.0, 2.1),
-            yardGen("RB", 3.0, 2.1),
-            booster("OL", 20, {"QB", "RB"}, 1.9),
-            booster("OL", 18, {"QB", "RB"}, 1.9),
-            booster("OL", 18, {"QB", "RB"}, 1.9),
-            booster("OL", 15, {"RB"}, 1.9),
-            booster("OL", 15, {"RB"}, 1.9),
-            yardGen("WR", 3.0, 2.4),
-            yardGen("WR", 3.0, 2.4),
-            yardGen("TE", 2.5, 2.0)     -- Receiving TE
+            yardGen("QB", 3.5, 3.4),    -- Game manager QB
+            yardGen("RB", 3.0, 4.2),
+            yardGen("RB", 3.0, 4.2),
+            booster("OL", 20, {"QB", "RB"}, 3.8),
+            booster("OL", 18, {"QB", "RB"}, 3.8),
+            booster("OL", 18, {"QB", "RB"}, 3.8),
+            booster("OL", 15, {"RB"}, 3.8),
+            booster("OL", 15, {"RB"}, 3.8),
+            yardGen("WR", 3.0, 4.8),
+            yardGen("WR", 3.0, 4.8),
+            yardGen("TE", 2.5, 4.0)     -- Receiving TE
         },
 
         -- Defensive lineup (11 players) - DOMINANT defense
         defensiveCards = {
-            defender("DL", Card.EFFECT.REMOVE_YARDS, 2.0, {}, 1.8),
-            defender("DL", Card.EFFECT.SLOW, 2.5, {"QB"}, 1.9),
-            defender("DL", Card.EFFECT.REMOVE_YARDS, 2.0, {}, 1.8),
-            defender("DL", Card.EFFECT.SLOW, 2.5, {"QB"}, 1.9),
-            defender("LB", Card.EFFECT.FREEZE, 1.2, {"RB", "OL"}, 2.0),
-            defender("LB", Card.EFFECT.SLOW, 2.5, {"RB"}, 2.1),
-            defender("LB", Card.EFFECT.FREEZE, 1.2, {"OL"}, 2.0),
-            defender("CB", Card.EFFECT.FREEZE, 1.2, {"WR"}, 2.6),
-            defender("CB", Card.EFFECT.FREEZE, 1.2, {"WR"}, 2.6),
-            defender("S", Card.EFFECT.SLOW, 2.5, {"TE", "WR"}, 2.3),
-            defender("S", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 2.3)
+            defender("DL", Card.EFFECT.REMOVE_YARDS, 2.0, {}, 3.6),
+            defender("DL", Card.EFFECT.SLOW, 2.5, {"QB"}, 3.8),
+            defender("DL", Card.EFFECT.REMOVE_YARDS, 2.0, {}, 3.6),
+            defender("DL", Card.EFFECT.SLOW, 2.5, {"QB"}, 3.8),
+            defender("LB", Card.EFFECT.FREEZE, 1.2, {"RB", "OL"}, 4.0),
+            defender("LB", Card.EFFECT.SLOW, 2.5, {"RB"}, 4.2),
+            defender("LB", Card.EFFECT.FREEZE, 1.2, {"OL"}, 4.0),
+            defender("CB", Card.EFFECT.FREEZE, 1.2, {"WR"}, 5.2),
+            defender("CB", Card.EFFECT.FREEZE, 1.2, {"WR"}, 5.2),
+            defender("S", Card.EFFECT.SLOW, 2.5, {"TE", "WR"}, 4.6),
+            defender("S", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 4.6)
         }
     },
 
@@ -109,32 +109,32 @@ Coach.types = {
 
         -- Offensive lineup (11 players) - Balanced
         offensiveCards = {
-            yardGen("QB", 4.0, 1.8),
-            yardGen("RB", 2.8, 2.2),
-            yardGen("RB", 2.8, 2.2),
-            booster("OL", 18, {"QB", "RB"}, 2.0),
-            booster("OL", 18, {"QB", "RB"}, 2.0),
-            booster("OL", 18, {"QB", "RB"}, 2.0),
-            booster("OL", 18, {"QB", "RB"}, 2.0),
-            booster("OL", 18, {"QB", "RB"}, 2.0),
-            yardGen("WR", 3.2, 2.5),
-            yardGen("WR", 3.2, 2.5),
-            booster("TE", 18, {"QB", "RB"}, 2.0)
+            yardGen("QB", 4.0, 3.6),
+            yardGen("RB", 2.8, 4.4),
+            yardGen("RB", 2.8, 4.4),
+            booster("OL", 18, {"QB", "RB"}, 4.0),
+            booster("OL", 18, {"QB", "RB"}, 4.0),
+            booster("OL", 18, {"QB", "RB"}, 4.0),
+            booster("OL", 18, {"QB", "RB"}, 4.0),
+            booster("OL", 18, {"QB", "RB"}, 4.0),
+            yardGen("WR", 3.2, 5.0),
+            yardGen("WR", 3.2, 5.0),
+            booster("TE", 18, {"QB", "RB"}, 4.0)
         },
 
         -- Defensive lineup (11 players) - Balanced
         defensiveCards = {
-            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 1.9),
-            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.8, {}, 1.9),
-            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 1.9),
-            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.8, {}, 1.9),
-            defender("LB", Card.EFFECT.FREEZE, 1.0, {"RB"}, 2.1),
-            defender("LB", Card.EFFECT.SLOW, 2.0, {"OL"}, 2.1),
-            defender("LB", Card.EFFECT.FREEZE, 1.0, {"RB"}, 2.1),
-            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 2.5),
-            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 2.5),
-            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 2.2),
-            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 2.2)
+            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 3.8),
+            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.8, {}, 3.8),
+            defender("DL", Card.EFFECT.SLOW, 2.0, {"QB"}, 3.8),
+            defender("DL", Card.EFFECT.REMOVE_YARDS, 1.8, {}, 3.8),
+            defender("LB", Card.EFFECT.FREEZE, 1.0, {"RB"}, 4.2),
+            defender("LB", Card.EFFECT.SLOW, 2.0, {"OL"}, 4.2),
+            defender("LB", Card.EFFECT.FREEZE, 1.0, {"RB"}, 4.2),
+            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 5.0),
+            defender("CB", Card.EFFECT.FREEZE, 1.0, {"WR"}, 5.0),
+            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 4.4),
+            defender("S", Card.EFFECT.SLOW, 2.0, {"TE", "WR"}, 4.4)
         }
     },
 
@@ -148,32 +148,32 @@ Coach.types = {
 
         -- Offensive lineup (11 players) - Run-heavy
         offensiveCards = {
-            yardGen("QB", 3.0, 1.7),    -- Run-first QB
-            yardGen("RB", 3.5, 2.3),    -- Power back
-            yardGen("RB", 3.5, 2.3),    -- Speed back
-            booster("OL", 22, {"RB"}, 1.8),  -- Run-blocking specialist
-            booster("OL", 22, {"RB"}, 1.8),
-            booster("OL", 22, {"RB"}, 1.8),
-            booster("OL", 20, {"RB"}, 1.8),
-            booster("OL", 20, {"RB"}, 1.8),
-            yardGen("WR", 2.8, 2.4),    -- Blocking WR
-            yardGen("WR", 2.8, 2.4),
-            booster("TE", 20, {"RB"}, 1.9)  -- Blocking TE
+            yardGen("QB", 3.0, 3.4),    -- Run-first QB
+            yardGen("RB", 3.5, 4.6),    -- Power back
+            yardGen("RB", 3.5, 4.6),    -- Speed back
+            booster("OL", 22, {"RB"}, 3.6),  -- Run-blocking specialist
+            booster("OL", 22, {"RB"}, 3.6),
+            booster("OL", 22, {"RB"}, 3.6),
+            booster("OL", 20, {"RB"}, 3.6),
+            booster("OL", 20, {"RB"}, 3.6),
+            yardGen("WR", 2.8, 4.8),    -- Blocking WR
+            yardGen("WR", 2.8, 4.8),
+            booster("TE", 20, {"RB"}, 3.8)  -- Blocking TE
         },
 
         -- Defensive lineup (11 players) - Run-stuffing defense
         defensiveCards = {
-            defender("DL", Card.EFFECT.SLOW, 2.0, {"RB"}, 1.8),
-            defender("DL", Card.EFFECT.FREEZE, 1.0, {"OL"}, 1.7),
-            defender("DL", Card.EFFECT.SLOW, 2.0, {"RB"}, 1.8),
-            defender("DL", Card.EFFECT.FREEZE, 1.0, {"OL"}, 1.7),
-            defender("LB", Card.EFFECT.FREEZE, 1.2, {"RB"}, 2.0),
-            defender("LB", Card.EFFECT.SLOW, 2.5, {"RB", "OL"}, 2.0),
-            defender("LB", Card.EFFECT.FREEZE, 1.2, {"RB"}, 2.0),
-            defender("CB", Card.EFFECT.SLOW, 2.0, {"WR"}, 2.4),
-            defender("CB", Card.EFFECT.SLOW, 2.0, {"WR"}, 2.4),
-            defender("S", Card.EFFECT.SLOW, 2.0, {"TE"}, 2.1),
-            defender("S", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 2.1)
+            defender("DL", Card.EFFECT.SLOW, 2.0, {"RB"}, 3.6),
+            defender("DL", Card.EFFECT.FREEZE, 1.0, {"OL"}, 3.4),
+            defender("DL", Card.EFFECT.SLOW, 2.0, {"RB"}, 3.6),
+            defender("DL", Card.EFFECT.FREEZE, 1.0, {"OL"}, 3.4),
+            defender("LB", Card.EFFECT.FREEZE, 1.2, {"RB"}, 4.0),
+            defender("LB", Card.EFFECT.SLOW, 2.5, {"RB", "OL"}, 4.0),
+            defender("LB", Card.EFFECT.FREEZE, 1.2, {"RB"}, 4.0),
+            defender("CB", Card.EFFECT.SLOW, 2.0, {"WR"}, 4.8),
+            defender("CB", Card.EFFECT.SLOW, 2.0, {"WR"}, 4.8),
+            defender("S", Card.EFFECT.SLOW, 2.0, {"TE"}, 4.2),
+            defender("S", Card.EFFECT.REMOVE_YARDS, 1.5, {}, 4.2)
         }
     }
 }
