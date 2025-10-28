@@ -9,7 +9,7 @@ local selectedOption = 1
 local menuOptions = {"Start Game", "Exit Game"}
 local buttonWidth = 300
 local buttonHeight = 60
-local buttonY = {350, 440}
+local buttonY = {520, 650}
 
 function menu.load()
     titleFont = love.graphics.newFont(48)
@@ -30,7 +30,7 @@ function menu.draw()
     -- Draw title
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("The Gridiron Bazaar", 0, 250, 1600, "center")
+    love.graphics.printf("The Gridiron Bazaar", 0, 350, 1600, "center")
 
     -- Draw menu options
     love.graphics.setFont(menuFont)
@@ -64,8 +64,8 @@ function menu.draw()
     -- Draw copyright
     love.graphics.setFont(copyrightFont)
     love.graphics.setColor(0.6, 0.6, 0.6)
-    love.graphics.printf("Use Arrow Keys or Mouse to Navigate - Enter or Click to Select", 0, 810, 1600, "center")
-    love.graphics.printf("© 2025 Your Studio Name", 0, 850, 1600, "center")
+    love.graphics.printf("Use Arrow Keys or Mouse to Navigate - Enter or Click to Select", 0, 820, 1600, "center")
+    love.graphics.printf("© 2025 Your Studio Name", 0, 860, 1600, "center")
 end
 
 function menu.keypressed(key)
@@ -102,6 +102,8 @@ end
 
 function menu.mousemoved(x, y)
     local buttonX = (1600 - buttonWidth) / 2
+    selectedOption = 1  -- Reset to default
+
     for i = 1, #menuOptions do
         local buttonYPos = buttonY[i]
         if x >= buttonX and x <= buttonX + buttonWidth and

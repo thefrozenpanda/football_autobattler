@@ -21,7 +21,7 @@ local PROGRESS_BAR_HEIGHT = 6
 local paused = false
 local pauseButtonWidth = 300
 local pauseButtonHeight = 60
-local pauseButtonY = {350, 440}
+local pauseButtonY = {520, 650}
 local pauseMenuOptions = {"Resume", "Quit"}
 local selectedPauseOption = 0
 
@@ -238,7 +238,7 @@ function match.drawPauseMenu()
 
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("PAUSED", 0, 200, 1600, "center")
+    love.graphics.printf("PAUSED", 0, 300, 1600, "center")
 
     love.graphics.setFont(menuFont)
     for i, option in ipairs(pauseMenuOptions) do
