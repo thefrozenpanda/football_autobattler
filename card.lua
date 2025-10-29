@@ -55,7 +55,7 @@ function Card:new(position, cardType, stats)
         -- Offensive stats
         yardsGained = 0,           -- Total yards this card generated
         touchdownsScored = 0,      -- TDs credited to this card
-        cardsBoostd = 0,           -- Times this booster applied boost to another card's action
+        cardsBoosted = 0,          -- Times this booster applied boost to another card's action
 
         -- Defensive stats
         timesSlowed = 0,           -- Times this card applied slow effect
