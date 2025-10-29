@@ -13,8 +13,13 @@ local font
 local titleFont
 local smallFont
 local menuFont
-local matchTime = 60  -- Changed to 60 seconds for yard-based system
+local matchTime = 60  -- Regulation time: 60 seconds
+local overtimeTime = 15  -- Overtime period: 15 seconds
 local timeLeft = matchTime
+local matchEnded = false
+local inOvertime = false
+local overtimePeriod = 0  -- 0 = regulation, 1 = first OT, 2 = second OT, etc.
+local winnerData = nil  -- Will store winner info and MVP stats
 
 -- Card visual constants
 local CARD_WIDTH = 70
@@ -29,6 +34,12 @@ local pauseButtonHeight = 60
 local pauseButtonY = {520, 650}
 local pauseMenuOptions = {"Resume", "Quit"}
 local selectedPauseOption = 0
+
+-- Winner popup constants
+local winnerButtonWidth = 300
+local winnerButtonHeight = 60
+local winnerButtonY = 700
+local winnerButtonHovered = false
 
 -- Formation positions (relative to team start)
 -- Based on Offensive.png rotated 90° clockwise (vertical, facing right)
@@ -85,13 +96,17 @@ function match.load(playerCoachId, aiCoachId)
     timeLeft = matchTime
     paused = false
     selectedPauseOption = 0
+    matchEnded = false
+    inOvertime = false
+    overtimePeriod = 0
+    winnerData = nil
 
     debugLogger:log("Match initialization complete")
     debugLogger:log("Down duration: 5.0 seconds")
 end
 
 function match.update(dt)
-    if paused then
+    if paused or matchEnded then
         return
     end
 
@@ -101,8 +116,119 @@ function match.update(dt)
     phaseManager:checkPhaseEnd()
 
     if timeLeft <= 0 then
-        -- Match over
+        match.handleMatchEnd()
     end
+end
+
+function match.handleMatchEnd()
+    local playerScore = phaseManager.playerScore
+    local aiScore = phaseManager.aiScore
+
+    if playerScore == aiScore then
+        -- Tied - go to overtime
+        overtimePeriod = overtimePeriod + 1
+        inOvertime = true
+        timeLeft = overtimeTime
+
+        local overtimeName = match.getOvertimeName(overtimePeriod)
+        if debugLogger then
+            debugLogger:log("=== " .. overtimeName .. " STARTED ===")
+            debugLogger:log("Score tied " .. playerScore .. "-" .. aiScore)
+        end
+    else
+        -- Game over - declare winner
+        matchEnded = true
+        winnerData = match.calculateWinner()
+
+        if debugLogger then
+            debugLogger:log("=== MATCH ENDED ===")
+            debugLogger:log("Winner: " .. winnerData.winnerName)
+            debugLogger:log("Final Score: Player " .. playerScore .. " - AI " .. aiScore)
+        end
+    end
+end
+
+function match.getOvertimeName(period)
+    local names = {"First Overtime", "Second Overtime", "Third Overtime", "Fourth Overtime", "Fifth Overtime"}
+    if period <= #names then
+        return names[period]
+    else
+        return period .. "th Overtime"
+    end
+end
+
+function match.calculateWinner()
+    local playerScore = phaseManager.playerScore
+    local aiScore = phaseManager.aiScore
+
+    local winner = (playerScore > aiScore) and "player" or "ai"
+    local winnerName = (playerScore > aiScore) and "PLAYER" or "AI"
+    local winnerCoachName = (winner == "player") and phaseManager:getPlayerCoachName() or phaseManager:getAICoachName()
+
+    -- Get MVP stats
+    local offensiveMVP, defensiveMVP
+    if winner == "player" then
+        offensiveMVP = match.getOffensiveMVP(phaseManager.playerOffense.cards)
+        defensiveMVP = match.getDefensiveMVP(phaseManager.playerDefense.cards)
+    else
+        offensiveMVP = match.getOffensiveMVP(phaseManager.aiOffense.cards)
+        defensiveMVP = match.getDefensiveMVP(phaseManager.aiDefense.cards)
+    end
+
+    return {
+        winner = winner,
+        winnerName = winnerName,
+        winnerCoachName = winnerCoachName,
+        playerScore = playerScore,
+        aiScore = aiScore,
+        offensiveMVP = offensiveMVP,
+        defensiveMVP = defensiveMVP
+    }
+end
+
+function match.getOffensiveMVP(cards)
+    local bestCard = nil
+    local bestYards = 0
+
+    for _, card in ipairs(cards) do
+        if card.yardsGained > bestYards then
+            bestYards = card.yardsGained
+            bestCard = card
+        end
+    end
+
+    if bestCard then
+        return {
+            position = bestCard.position,
+            yards = string.format("%.1f", bestCard.yardsGained),
+            touchdowns = bestCard.touchdownsScored
+        }
+    end
+    return {position = "N/A", yards = "0.0", touchdowns = 0}
+end
+
+function match.getDefensiveMVP(cards)
+    local bestCard = nil
+    local bestScore = 0
+
+    for _, card in ipairs(cards) do
+        -- Score defensive impact: slows * 1 + freezes * 2 + yards reduced * 0.5
+        local score = card.timesSlowed + (card.timesFroze * 2) + (card.yardsReduced * 0.5)
+        if score > bestScore then
+            bestScore = score
+            bestCard = card
+        end
+    end
+
+    if bestCard then
+        return {
+            position = bestCard.position,
+            slows = bestCard.timesSlowed,
+            freezes = bestCard.timesFroze,
+            yardsReduced = string.format("%.1f", bestCard.yardsReduced)
+        }
+    end
+    return {position = "N/A", slows = 0, freezes = 0, yardsReduced = "0.0"}
 end
 
 function match.draw()
@@ -124,6 +250,10 @@ function match.draw()
 
     if paused then
         match.drawPauseMenu()
+    end
+
+    if matchEnded and winnerData then
+        match.drawWinnerPopup()
     end
 end
 
@@ -161,11 +291,17 @@ function match.drawUI()
         0, 105, 1600, "center"
     )
 
-    -- Game time
-    love.graphics.printf(
-        string.format("Time: %.1f", timeLeft),
-        0, 135, 1600, "center"
-    )
+    -- Game time with overtime indicator
+    local timeDisplay = string.format("Time: %.1f", timeLeft)
+    if inOvertime then
+        local overtimeName = match.getOvertimeName(overtimePeriod)
+        love.graphics.setColor(1, 0.8, 0)  -- Yellow/gold color for overtime
+        love.graphics.printf(overtimeName, 0, 135, 1600, "center")
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.printf(timeDisplay, 0, 165, 1600, "center")
+    else
+        love.graphics.printf(timeDisplay, 0, 135, 1600, "center")
+    end
 end
 
 function match.drawTeamCards(cards, side, teamName, formation)
@@ -290,6 +426,97 @@ function match.drawPauseMenu()
     end
 end
 
+function match.drawWinnerPopup()
+    -- Semi-transparent overlay
+    love.graphics.setColor(0, 0, 0, 0.85)
+    love.graphics.rectangle("fill", 0, 0, 1600, 900)
+
+    -- Popup background
+    local popupWidth = 700
+    local popupHeight = 550
+    local popupX = (1600 - popupWidth) / 2
+    local popupY = (900 - popupHeight) / 2
+
+    love.graphics.setColor(0.15, 0.2, 0.25)
+    love.graphics.rectangle("fill", popupX, popupY, popupWidth, popupHeight, 15, 15)
+    love.graphics.setColor(0.4, 0.5, 0.6)
+    love.graphics.setLineWidth(3)
+    love.graphics.rectangle("line", popupX, popupY, popupWidth, popupHeight, 15, 15)
+
+    -- Winner title
+    love.graphics.setFont(titleFont)
+    love.graphics.setColor(1, 0.8, 0.2)
+    love.graphics.printf(winnerData.winnerName .. " WINS!", 0, popupY + 30, 1600, "center")
+
+    -- Coach name
+    love.graphics.setFont(menuFont)
+    love.graphics.setColor(0.8, 0.8, 0.8)
+    love.graphics.printf(winnerData.winnerCoachName, 0, popupY + 90, 1600, "center")
+
+    -- Final score
+    love.graphics.setFont(font)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf(
+        string.format("Final Score:  Player %d - %d AI", winnerData.playerScore, winnerData.aiScore),
+        0, popupY + 135, 1600, "center"
+    )
+
+    -- MVP Section
+    love.graphics.setFont(menuFont)
+    love.graphics.setColor(0.9, 0.6, 0.3)
+    love.graphics.printf("Players of the Game", 0, popupY + 185, 1600, "center")
+
+    -- Offensive MVP
+    love.graphics.setFont(font)
+    love.graphics.setColor(0.3, 0.8, 0.3)
+    love.graphics.printf("Offensive Player:", popupX + 50, popupY + 235, popupWidth - 100, "left")
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf(
+        string.format("%s - %.1f yards, %d TDs",
+            winnerData.offensiveMVP.position,
+            tonumber(winnerData.offensiveMVP.yards),
+            winnerData.offensiveMVP.touchdowns),
+        popupX + 50, popupY + 265, popupWidth - 100, "left"
+    )
+
+    -- Defensive MVP
+    love.graphics.setColor(0.3, 0.6, 0.9)
+    love.graphics.printf("Defensive Player:", popupX + 50, popupY + 315, popupWidth - 100, "left")
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf(
+        string.format("%s - %d slows, %d freezes, %.1f yards reduced",
+            winnerData.defensiveMVP.position,
+            winnerData.defensiveMVP.slows,
+            winnerData.defensiveMVP.freezes,
+            tonumber(winnerData.defensiveMVP.yardsReduced)),
+        popupX + 50, popupY + 345, popupWidth - 100, "left"
+    )
+
+    -- Return to Menu button
+    local buttonX = (1600 - winnerButtonWidth) / 2
+    local buttonY = popupY + popupHeight - 90
+
+    if winnerButtonHovered then
+        love.graphics.setColor(0.3, 0.5, 0.7, 0.9)
+    else
+        love.graphics.setColor(0.2, 0.3, 0.4, 0.7)
+    end
+    love.graphics.rectangle("fill", buttonX, buttonY, winnerButtonWidth, winnerButtonHeight, 10, 10)
+
+    if winnerButtonHovered then
+        love.graphics.setColor(0.5, 0.7, 1.0)
+        love.graphics.setLineWidth(3)
+    else
+        love.graphics.setColor(0.4, 0.5, 0.6)
+        love.graphics.setLineWidth(2)
+    end
+    love.graphics.rectangle("line", buttonX, buttonY, winnerButtonWidth, winnerButtonHeight, 10, 10)
+
+    love.graphics.setFont(menuFont)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf("Return to Menu", buttonX, buttonY + 15, winnerButtonWidth, "center")
+end
+
 function match.keypressed(key)
     if paused then
         if key == "escape" then
@@ -335,38 +562,67 @@ function match.selectPauseOption(option)
 end
 
 function match.mousepressed(x, y, button)
-    if not paused then
-        return
-    end
-
     if button == 1 then
-        local buttonX = (1600 - pauseButtonWidth) / 2
-        for i = 1, #pauseMenuOptions do
-            local buttonYPos = pauseButtonY[i]
-            if x >= buttonX and x <= buttonX + pauseButtonWidth and
-               y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
-                match.selectPauseOption(i)
-                break
+        -- Winner popup button
+        if matchEnded and winnerData then
+            local popupHeight = 550
+            local popupY = (900 - popupHeight) / 2
+            local buttonX = (1600 - winnerButtonWidth) / 2
+            local buttonY = popupY + popupHeight - 90
+
+            if x >= buttonX and x <= buttonX + winnerButtonWidth and
+               y >= buttonY and y <= buttonY + winnerButtonHeight then
+                match.returnToMenu()
+                return
+            end
+        end
+
+        -- Pause menu buttons
+        if paused then
+            local buttonX = (1600 - pauseButtonWidth) / 2
+            for i = 1, #pauseMenuOptions do
+                local buttonYPos = pauseButtonY[i]
+                if x >= buttonX and x <= buttonX + pauseButtonWidth and
+                   y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
+                    match.selectPauseOption(i)
+                    break
+                end
             end
         end
     end
 end
 
 function match.mousemoved(x, y)
-    if not paused then
+    -- Winner popup button hover
+    if matchEnded and winnerData then
+        local popupHeight = 550
+        local popupY = (900 - popupHeight) / 2
+        local buttonX = (1600 - winnerButtonWidth) / 2
+        local buttonY = popupY + popupHeight - 90
+
+        winnerButtonHovered = (x >= buttonX and x <= buttonX + winnerButtonWidth and
+                               y >= buttonY and y <= buttonY + winnerButtonHeight)
         return
     end
 
-    local buttonX = (1600 - pauseButtonWidth) / 2
-    selectedPauseOption = 0
-    for i = 1, #pauseMenuOptions do
-        local buttonYPos = pauseButtonY[i]
-        if x >= buttonX and x <= buttonX + pauseButtonWidth and
-           y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
-            selectedPauseOption = i
-            break
+    -- Pause menu button hover
+    if paused then
+        local buttonX = (1600 - pauseButtonWidth) / 2
+        selectedPauseOption = 0
+        for i = 1, #pauseMenuOptions do
+            local buttonYPos = pauseButtonY[i]
+            if x >= buttonX and x <= buttonX + pauseButtonWidth and
+               y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
+                selectedPauseOption = i
+                break
+            end
         end
     end
+end
+
+function match.returnToMenu()
+    -- Set flag to return to menu (main.lua will handle transition)
+    match.shouldReturnToMenu = true
 end
 
 return match
