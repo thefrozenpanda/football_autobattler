@@ -82,6 +82,7 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
         -- Calculate yards with boosts
         local baseYards = action.value
         local totalBoost = 0
+        local boosterCards = {}
 
         -- Apply boosts from other offensive cards
         for _, booster in ipairs(offenseManager.cards) do
@@ -90,6 +91,7 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
                 for _, targetPos in ipairs(booster.boostTargets) do
                     if targetPos == card.position then
                         totalBoost = totalBoost + booster.boostAmount
+                        table.insert(boosterCards, booster)
                         break
                     end
                 end
@@ -101,6 +103,20 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
 
         -- Apply coach ability
         local finalYards = self:applyOffensiveCoachAbility(boostedYards, card)
+
+        -- Track statistics for boosters
+        for _, booster in ipairs(boosterCards) do
+            booster.cardsBoostd = booster.cardsBoostd + 1
+        end
+
+        -- Track yards gained for this card
+        card.yardsGained = card.yardsGained + finalYards
+
+        -- Check if this will cause a touchdown
+        local willScoreTD = (self.field.totalYards + finalYards) >= self.field.yardsNeeded
+        if willScoreTD then
+            card.touchdownsScored = card.touchdownsScored + 1
+        end
 
         -- Log yard generation
         if PhaseManager.logger then
@@ -127,14 +143,20 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
         -- Find target offensive cards
         local targets = offenseManager:getCardsByPosition(action.targets)
         for _, target in ipairs(targets) do
-            target:applySlow(action.strength)
+            local applied = target:applySlow(action.strength)
+            if applied then
+                card.timesSlowed = card.timesSlowed + 1
+            end
         end
 
     elseif action.effect == Card.EFFECT.FREEZE then
         -- Find target offensive cards
         local targets = offenseManager:getCardsByPosition(action.targets)
         for _, target in ipairs(targets) do
-            target:applyFreeze(action.strength)
+            local applied = target:applyFreeze(action.strength)
+            if applied then
+                card.timesFroze = card.timesFroze + 1
+            end
         end
 
     elseif action.effect == Card.EFFECT.REMOVE_YARDS then
@@ -148,6 +170,9 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
                 yardsToRemove = yardsToRemove + 2
             end
         end
+
+        -- Track yards reduced
+        card.yardsReduced = card.yardsReduced + yardsToRemove
 
         self.field:removeYards(yardsToRemove)
     end

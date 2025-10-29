@@ -17,10 +17,10 @@ local matchTime = 60  -- Changed to 60 seconds for yard-based system
 local timeLeft = matchTime
 
 -- Card visual constants
-local CARD_WIDTH = 100
-local CARD_HEIGHT = 130
-local CARD_PADDING = 12
-local PROGRESS_BAR_HEIGHT = 6
+local CARD_WIDTH = 70
+local CARD_HEIGHT = 95
+local CARD_PADDING = 8
+local PROGRESS_BAR_HEIGHT = 5
 
 -- Pause menu constants
 local paused = false
@@ -31,33 +31,36 @@ local pauseMenuOptions = {"Resume", "Quit"}
 local selectedPauseOption = 0
 
 -- Formation positions (relative to team start)
--- Spread out to prevent overlap with 100x130 cards
+-- Based on Offensive.png rotated 90° clockwise (vertical, facing right)
+-- Order matches coach.lua: QB, RB, RB, OL, OL, OL, OL, OL, WR, WR, TE
 local OFFENSIVE_FORMATION = {
-    {x = 0, y = 0},      -- WR (top)
-    {x = 0, y = 155},    -- RB
-    {x = -50, y = 205},  -- QB
-    {x = 0, y = 255},    -- RB
-    {x = 90, y = 105},   -- OL
-    {x = 90, y = 215},   -- OL (center)
-    {x = 90, y = 325},   -- OL
-    {x = 200, y = 105},  -- OL
-    {x = 200, y = 325},  -- OL
-    {x = 50, y = 355},   -- TE
-    {x = 0, y = 505}     -- WR (bottom)
+    {x = 30, y = 10},     -- 1. QB (behind line)
+    {x = 60, y = 100},    -- 2. RB
+    {x = 60, y = 200},    -- 3. RB
+    {x = 0, y = 300},     -- 4. OL (line)
+    {x = 0, y = 350},     -- 5. OL
+    {x = 0, y = 400},     -- 6. OL (center)
+    {x = 0, y = 450},     -- 7. OL
+    {x = 0, y = 500},     -- 8. OL
+    {x = 0, y = 50},      -- 9. WR (wide top)
+    {x = 0, y = 750},     -- 10. WR (wide bottom)
+    {x = 0, y = 550}      -- 11. TE (near line)
 }
 
+-- Based on Defensive.png rotated 90° counter-clockwise (vertical, facing left)
+-- Order matches coach.lua: DL, DL, DL, DL, LB, LB, LB, CB, CB, S, S
 local DEFENSIVE_FORMATION = {
-    {x = 0, y = 0},      -- CB (top)
-    {x = -50, y = 105},  -- S
-    {x = 90, y = 55},    -- DL
-    {x = 90, y = 205},   -- DL
-    {x = 90, y = 355},   -- DL
-    {x = 200, y = 205},  -- DL
-    {x = -50, y = 405},  -- S
-    {x = 0, y = 505},    -- CB (bottom)
-    {x = 50, y = 105},   -- LB
-    {x = 50, y = 255},   -- LB
-    {x = 50, y = 405}    -- LB
+    {x = 0, y = 300},     -- 1. DL (line)
+    {x = 0, y = 350},     -- 2. DL
+    {x = 0, y = 450},     -- 3. DL
+    {x = 0, y = 500},     -- 4. DL
+    {x = 30, y = 350},    -- 5. LB (behind line)
+    {x = 30, y = 425},    -- 6. LB
+    {x = 30, y = 475},    -- 7. LB
+    {x = 0, y = 50},      -- 8. CB (wide top)
+    {x = 0, y = 750},     -- 9. CB (wide bottom)
+    {x = 60, y = 150},    -- 10. S (deep)
+    {x = 60, y = 650}     -- 11. S (deep)
 }
 
 function match.load(playerCoachId, aiCoachId)

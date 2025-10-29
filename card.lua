@@ -49,7 +49,18 @@ function Card:new(position, cardType, stats)
         isSlowed = false,
         slowTimer = 0,
         isFrozen = false,
-        freezeTimer = 0
+        freezeTimer = 0,
+
+        -- Match statistics (tracked throughout the match)
+        -- Offensive stats
+        yardsGained = 0,           -- Total yards this card generated
+        touchdownsScored = 0,      -- TDs credited to this card
+        cardsBoostd = 0,           -- Times this booster applied boost to another card's action
+
+        -- Defensive stats
+        timesSlowed = 0,           -- Times this card applied slow effect
+        timesFroze = 0,            -- Times this card applied freeze effect
+        yardsReduced = 0           -- Total yards removed by this card
     }
     setmetatable(c, Card)
     return c
@@ -129,7 +140,9 @@ function Card:applySlow(duration)
         if Card.logger then
             Card.logger:logStatusEffect(self, "SLOW", self.slowTimer)
         end
+        return true  -- Successfully applied
     end
+    return false  -- Already slowed
 end
 
 function Card:applyFreeze(duration)
@@ -141,7 +154,9 @@ function Card:applyFreeze(duration)
         if Card.logger then
             Card.logger:logStatusEffect(self, "FREEZE", self.freezeTimer)
         end
+        return true  -- Successfully applied
     end
+    return false  -- Already frozen
 end
 
 function Card:getProgress()
