@@ -1,51 +1,68 @@
+--- conf.lua
+--- LÖVE2D Configuration File
+---
+--- This file configures the LÖVE game engine settings for The Gridiron Bazaar.
+--- It sets window properties, enabled modules, and various engine behaviors.
+---
+--- Dependencies: None (LÖVE2D framework only)
+--- Used by: LÖVE2D engine on startup
+--- LÖVE Callbacks: love.conf
+
+--- Configures LÖVE2D engine settings
+--- @param t table The configuration table provided by LÖVE
 function love.conf(t)
-    t.identity = nil                    -- The name of the save directory (string)
-    t.appendidentity = false            -- Search files in source directory before save directory (boolean)
-    t.version = "11.3"                  -- The LÖVE version this game was made for (string)
-    t.console = false                   -- Attach a console (boolean, Windows only)
-    t.accelerometerjoystick = true      -- Enable the accelerometer on iOS and Android by exposing it as a Joystick (boolean)
-    t.externalstorage = false           -- True to save files (and read from the save directory) in external storage on Android (boolean)
-    t.gammacorrect = false              -- Enable gamma-correct rendering, when supported by the system (boolean)
+    -- Application Settings
+    t.identity = "football_autobattler"    -- Save directory name (was nil, now set for proper save location)
+    t.appendidentity = false                -- Search files in source directory before save directory
+    t.version = "11.3"                      -- Target LÖVE version
+    t.console = false                       -- Attach a console (Windows only) - set true for debugging
+    t.accelerometerjoystick = true          -- Enable accelerometer on mobile devices
+    t.externalstorage = false               -- Use external storage on Android
+    t.gammacorrect = false                  -- Gamma-correct rendering
 
-    t.audio.mic = false                 -- Request and use microphone capabilities in Android (boolean)
-    t.audio.mixwithsystem = true        -- Keep background music playing when opening LOVE (boolean, iOS and Android only)
+    -- Audio Settings
+    t.audio.mic = false                     -- Microphone capabilities (Android)
+    t.audio.mixwithsystem = true            -- Keep background music playing (iOS/Android)
 
-    t.window.title = "The Gridiron Bazaar"  -- The window title (string)
-    t.window.icon = nil                 -- Filepath to an image to use as the window's icon (string)
-    t.window.width = 1600               -- The window width (number)
-    t.window.height = 900               -- The window height (number)
-    t.window.borderless = false         -- Remove all border visuals from the window (boolean)
-    t.window.resizable = false          -- Let the window be user-resizable (boolean)
-    t.window.minwidth = 1               -- Minimum window width if the window is resizable (number)
-    t.window.minheight = 1              -- Minimum window height if the window is resizable (number)
-    t.window.fullscreen = false         -- Enable fullscreen (boolean)
-    t.window.fullscreentype = "desktop" -- Choose between "desktop" fullscreen or "exclusive" fullscreen mode (string)
-    t.window.vsync = 1                  -- Vertical sync mode (number)
-    t.window.msaa = 0                   -- The number of samples to use with multi-sampled antialiasing (number)
-    t.window.depth = nil                -- The number of bits per sample in the depth buffer
-    t.window.stencil = nil              -- The number of bits per sample in the stencil buffer
-    t.window.display = 1                -- Index of the monitor to show the window in (number)
-    t.window.highdpi = false            -- Enable high-dpi mode for the window on a Retina display (boolean)
-    t.window.usedpiscale = true         -- Enable automatic DPI scaling when highdpi is set to true as well (boolean)
-    t.window.x = nil                    -- The x-coordinate of the window's position in the specified display (number)
-    t.window.y = nil                    -- The y-coordinate of the window's position in the specified display (number)
+    -- Window Configuration
+    t.window.title = "The Gridiron Bazaar" -- Window title
+    t.window.icon = nil                     -- Window icon (none set)
+    t.window.width = 1600                   -- Window width in pixels
+    t.window.height = 900                   -- Window height in pixels
+    t.window.borderless = false             -- Windowed mode with borders
+    t.window.resizable = false              -- Fixed window size
+    t.window.minwidth = 1                   -- Minimum width if resizable
+    t.window.minheight = 1                  -- Minimum height if resizable
+    t.window.fullscreen = false             -- Windowed mode by default
+    t.window.fullscreentype = "desktop"     -- Desktop fullscreen mode
+    t.window.vsync = 1                      -- Enable vertical sync (prevent tearing)
+    t.window.msaa = 0                       -- Multi-sampled antialiasing samples
+    t.window.depth = nil                    -- Depth buffer bits
+    t.window.stencil = nil                  -- Stencil buffer bits
+    t.window.display = 1                    -- Primary monitor
+    t.window.highdpi = false                -- High-DPI support (Retina displays)
+    t.window.usedpiscale = true             -- Automatic DPI scaling
+    t.window.x = nil                        -- Window X position (centered)
+    t.window.y = nil                        -- Window Y position (centered)
 
-    t.modules.audio = true              -- Enable the audio module (boolean)
-    t.modules.data = true               -- Enable the data module (boolean)
-    t.modules.event = true              -- Enable the event module (boolean)
-    t.modules.font = true               -- Enable the font module (boolean)
-    t.modules.graphics = true           -- Enable the graphics module (boolean)
-    t.modules.image = true              -- Enable the image module (boolean)
-    t.modules.joystick = true           -- Enable the joystick module (boolean)
-    t.modules.keyboard = true           -- Enable the keyboard module (boolean)
-    t.modules.math = true               -- Enable the math module (boolean)
-    t.modules.mouse = true              -- Enable the mouse module (boolean)
-    t.modules.physics = true            -- Enable the physics module (boolean)
-    t.modules.sound = true              -- Enable the sound module (boolean)
-    t.modules.system = true             -- Enable the system module (boolean)
-    t.modules.thread = true             -- Enable the thread module (boolean)
-    t.modules.timer = true              -- Enable the timer module (boolean), Disabling it will result 0 delta time in love.update
-    t.modules.touch = true              -- Enable the touch module (boolean)
-    t.modules.video = true              -- Enable the video module (boolean)
-    t.modules.window = true             -- Enable the window module (boolean)
+    -- Module Configuration
+    -- NOTE: Some unused modules could be disabled for minor performance gain
+    t.modules.audio = true                  -- Audio module (music/sound effects)
+    t.modules.data = true                   -- Data module (encoding/compression)
+    t.modules.event = true                  -- Event module (required)
+    t.modules.font = true                   -- Font module (required for text)
+    t.modules.graphics = true               -- Graphics module (required)
+    t.modules.image = true                  -- Image module (required)
+    t.modules.joystick = true               -- Joystick module (not currently used)
+    t.modules.keyboard = true               -- Keyboard module (required)
+    t.modules.math = true                   -- Math module (required)
+    t.modules.mouse = true                  -- Mouse module (required)
+    t.modules.physics = true                -- Physics module (not currently used)
+    t.modules.sound = true                  -- Sound module (audio playback)
+    t.modules.system = true                 -- System module (OS information)
+    t.modules.thread = true                 -- Threading module (not currently used)
+    t.modules.timer = true                  -- Timer module (required for dt)
+    t.modules.touch = true                  -- Touch module (mobile support)
+    t.modules.video = true                  -- Video module (not currently used)
+    t.modules.window = true                 -- Window module (required)
 end

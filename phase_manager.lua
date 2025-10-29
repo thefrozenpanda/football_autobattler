@@ -106,7 +106,7 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
 
         -- Track statistics for boosters
         for _, booster in ipairs(boosterCards) do
-            booster.cardsBoostd = booster.cardsBoostd + 1
+            booster.cardsBoosted = booster.cardsBoosted + 1
         end
 
         -- Track yards gained for this card
