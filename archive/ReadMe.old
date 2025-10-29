@@ -2,12 +2,12 @@
 
 ## Overview
 
-**American Football Battler** is a real-time auto-battler game inspired by ìThe Bazaarî mechanics, where players act as American football coaches.  
+**American Football Battler** is a real-time auto-battler game inspired by ‚ÄúThe Bazaar‚Äù mechanics, where players act as American football coaches.  
 The game revolves around managing "Offense" and "Defense" card units in real-time, accumulating yards, scoring touchdowns, and preventing the AI from doing the same.
 
 **Core Gameplay Loop:**
 - Matches are divided into alternating **phases**: Offense and Defense.
-- Each teamís cards execute actions in **real-time**, with speed influencing how frequently they act.
+- Each team‚Äôs cards execute actions in **real-time**, with speed influencing how frequently they act.
 - Offensive phases aim to accrue yards to achieve **First Downs** and ultimately score touchdowns.
 - Defensive phases aim to prevent the opponent from gaining yards.
 - Each match lasts **60 seconds**. The team with the most points at the end wins.
@@ -89,6 +89,6 @@ project/
 
 ## Important Notes
 
-- **L÷VE2D Requirement**: The game runs in the Love2D framework. Ensure it is installed and added to your PATH.
+- **L√ñVE2D Requirement**: The game runs in the Love2D framework. Ensure it is installed and added to your PATH.
   ```bash
   love .
