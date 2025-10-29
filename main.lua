@@ -39,6 +39,11 @@ function love.update(dt)
         end
     elseif gameState == "game" then
         match.update(dt)
+        if match.shouldReturnToMenu then
+            gameState = "menu"
+            menu.load()
+            match.shouldReturnToMenu = false
+        end
     end
 end
 
