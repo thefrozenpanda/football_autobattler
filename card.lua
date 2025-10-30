@@ -23,9 +23,11 @@ function Card:new(position, cardType, stats)
     local c = {
         position = position or "Unknown",
         cardType = cardType,
+        number = stats.number or Card.generateNumber(position),  -- Jersey number
 
         -- Yard generator stats
         yardsPerAction = stats.yardsPerAction or 0,
+        baseYardsPerAction = stats.yardsPerAction or 0,  -- Original value before upgrades
 
         -- Booster stats
         boostAmount = stats.boostAmount or 0,       -- Percentage boost (e.g., 20 = 20%)
@@ -39,7 +41,13 @@ function Card:new(position, cardType, stats)
         -- Common stats
         speed = stats.speed or 1.5,
         cooldown = stats.speed or 1.5,  -- Cooldown in seconds between actions
+        baseCooldown = stats.speed or 1.5,  -- Original cooldown before upgrades
         timer = 0,
+
+        -- Upgrade tracking
+        upgradeCount = 0,           -- Number of upgrades applied (max 3)
+        yardsUpgrades = 0,          -- Number of yards upgrades applied
+        cooldownUpgrades = 0,       -- Number of cooldown upgrades applied
 
         -- Visual/state
         justActed = false,
@@ -161,6 +169,106 @@ end
 
 function Card:getProgress()
     return self.timer / self.cooldown
+end
+
+--- Generates a position-realistic jersey number
+--- @param position string Position abbreviation (QB, RB, WR, etc.)
+--- @return number Jersey number
+function Card.generateNumber(position)
+    -- Position-realistic number ranges
+    if position == "QB" then
+        return math.random(1, 19)
+    elseif position == "RB" then
+        return math.random(20, 49)
+    elseif position == "WR" then
+        -- WRs can be 10-19 or 80-89
+        return math.random(0, 1) == 0 and math.random(10, 19) or math.random(80, 89)
+    elseif position == "TE" then
+        -- TEs can be 40-49 or 80-89
+        return math.random(0, 1) == 0 and math.random(40, 49) or math.random(80, 89)
+    elseif position == "OL" then
+        return math.random(50, 79)
+    elseif position == "DL" then
+        -- DL can be 50-79 or 90-99
+        return math.random(0, 1) == 0 and math.random(50, 79) or math.random(90, 99)
+    elseif position == "LB" then
+        -- LBs can be 40-59 or 90-99
+        return math.random(0, 1) == 0 and math.random(40, 59) or math.random(90, 99)
+    elseif position == "CB" or position == "S" then
+        return math.random(20, 49)
+    else
+        return math.random(1, 99)
+    end
+end
+
+--- Checks if this card can be upgraded
+--- @return boolean True if card has not reached max upgrades (3)
+function Card:canUpgrade()
+    return self.upgradeCount < 3
+end
+
+--- Upgrades the card's yards per action
+--- Cost: 50 cash, Effect: +0.5 yards per action
+--- @return boolean True if upgrade successful
+function Card:upgradeYards()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    if self.cardType ~= Card.TYPE.YARD_GENERATOR then
+        return false  -- Only yard generators can upgrade yards
+    end
+
+    self.yardsPerAction = self.yardsPerAction + 0.5
+    self.yardsUpgrades = self.yardsUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+
+    return true
+end
+
+--- Upgrades the card's cooldown (makes card faster)
+--- Cost: 75 cash, Effect: -10% cooldown
+--- @return boolean True if upgrade successful
+function Card:upgradeCooldown()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    -- Reduce cooldown by 10%
+    self.cooldown = self.cooldown * 0.9
+    self.speed = self.cooldown  -- Keep speed in sync
+    self.cooldownUpgrades = self.cooldownUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+
+    return true
+end
+
+--- Gets the cost of upgrading yards
+--- @return number Cost in cash
+function Card.getYardsUpgradeCost()
+    return 50
+end
+
+--- Gets the cost of upgrading cooldown
+--- @return number Cost in cash
+function Card.getCooldownUpgradeCost()
+    return 75
+end
+
+--- Gets the cost of a new bench card
+--- @return number Cost in cash
+function Card.getBenchCardCost()
+    return 200
+end
+
+--- Resets upgrade tracking (for new season)
+function Card:resetUpgrades()
+    self.yardsPerAction = self.baseYardsPerAction
+    self.cooldown = self.baseCooldown
+    self.speed = self.baseCooldown
+    self.upgradeCount = 0
+    self.yardsUpgrades = 0
+    self.cooldownUpgrades = 0
 end
 
 return Card
