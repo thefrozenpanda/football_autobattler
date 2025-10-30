@@ -625,4 +625,28 @@ function match.returnToMenu()
     match.shouldReturnToMenu = true
 end
 
+--- Gets the current player score
+--- @return number Player score
+function match.getPlayerScore()
+    return phaseManager and phaseManager.playerScore or 0
+end
+
+--- Gets the current AI score
+--- @return number AI score
+function match.getAIScore()
+    return phaseManager and phaseManager.aiScore or 0
+end
+
+--- Gets the offensive MVP card
+--- @return table|nil MVP card or nil
+function match.getMVPOffense()
+    return winnerData and winnerData.offensiveMVP or nil
+end
+
+--- Gets the defensive MVP card
+--- @return table|nil MVP card or nil
+function match.getMVPDefense()
+    return winnerData and winnerData.defensiveMVP or nil
+end
+
 return match
