@@ -48,6 +48,10 @@ function Card:new(position, cardType, stats)
         upgradeCount = 0,           -- Number of upgrades applied (max 3)
         yardsUpgrades = 0,          -- Number of yards upgrades applied
         cooldownUpgrades = 0,       -- Number of cooldown upgrades applied
+        boostUpgrades = 0,          -- Number of booster % upgrades applied
+        durationUpgrades = 0,       -- Number of defender duration upgrades applied
+        bonusYardsUpgrades = 0,     -- Number of bonus yards upgrades applied
+        hasImmunity = false,        -- Whether card has freeze/slow immunity
 
         -- Visual/state
         justActed = false,
@@ -140,6 +144,11 @@ function Card:act()
 end
 
 function Card:applySlow(duration)
+    -- Check immunity first
+    if self.hasImmunity then
+        return false  -- Immune to slow
+    end
+
     -- Only apply if not already slowed
     if not self.isSlowed then
         self.isSlowed = true
@@ -154,6 +163,11 @@ function Card:applySlow(duration)
 end
 
 function Card:applyFreeze(duration)
+    -- Check immunity first
+    if self.hasImmunity then
+        return false  -- Immune to freeze
+    end
+
     -- Only apply if not already frozen
     if not self.isFrozen then
         self.isFrozen = true
@@ -261,6 +275,119 @@ function Card.getBenchCardCost()
     return 200
 end
 
+--- Upgrades the booster percentage (boosters only)
+--- Cost: 125 cash, Effect: +5% boost (20% → 25%)
+--- @return boolean True if upgrade successful
+function Card:upgradeBoost()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    if self.cardType ~= Card.TYPE.BOOSTER then
+        return false  -- Only boosters can upgrade boost %
+    end
+
+    self.boostAmount = self.boostAmount + 5
+    self.boostUpgrades = self.boostUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+
+    return true
+end
+
+--- Upgrades the defender effect duration (defenders only)
+--- Cost: 150 cash, Effect: +0.5s duration (2.0s → 2.5s)
+--- @return boolean True if upgrade successful
+function Card:upgradeDuration()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    if self.cardType ~= Card.TYPE.DEFENDER then
+        return false  -- Only defenders can upgrade duration
+    end
+
+    self.effectStrength = self.effectStrength + 0.5
+    self.durationUpgrades = self.durationUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+
+    return true
+end
+
+--- Upgrades card to have 33% chance for +2 bonus yards (yard generators only)
+--- Cost: 200 cash, Effect: 33% chance to gain +2 yards per action
+--- @return boolean True if upgrade successful
+function Card:upgradeBonusYards()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    if self.cardType ~= Card.TYPE.YARD_GENERATOR then
+        return false  -- Only yard generators can get bonus yards
+    end
+
+    self.bonusYardsUpgrades = self.bonusYardsUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+
+    return true
+end
+
+--- Upgrades card to have permanent freeze/slow immunity
+--- Cost: 400 cash, Effect: Never affected by freeze or slow
+--- IMPORTANT: Counts as 2 upgrade slots!
+--- @return boolean True if upgrade successful
+function Card:upgradeImmunity()
+    -- Immunity costs 2 slots, so need at least 2 slots remaining
+    if self.upgradeCount > 1 then
+        return false
+    end
+
+    self.hasImmunity = true
+    self.upgradeCount = self.upgradeCount + 2  -- Takes 2 slots!
+
+    return true
+end
+
+--- Gets the cost of upgrading booster percentage
+--- @return number Cost in cash
+function Card.getBoostUpgradeCost()
+    return 125
+end
+
+--- Gets the cost of upgrading defender duration
+--- @return number Cost in cash
+function Card.getDurationUpgradeCost()
+    return 150
+end
+
+--- Gets the cost of upgrading bonus yards chance
+--- @return number Cost in cash
+function Card.getBonusYardsUpgradeCost()
+    return 200
+end
+
+--- Gets the cost of immunity upgrade
+--- @return number Cost in cash
+function Card.getImmunityUpgradeCost()
+    return 400
+end
+
+--- Calculates actual yards considering bonus yards chance
+--- @param baseYards number Base yards from card
+--- @return number Final yards (with potential bonus)
+function Card:calculateYardsWithBonus(baseYards)
+    if self.bonusYardsUpgrades > 0 then
+        -- Each bonus yards upgrade gives 33% chance for +2 yards
+        local totalChance = self.bonusYardsUpgrades * 0.33
+        totalChance = math.min(totalChance, 0.99)  -- Cap at 99%
+
+        if math.random() < totalChance then
+            return baseYards + 2
+        end
+    end
+
+    return baseYards
+end
+
 --- Resets upgrade tracking (for new season)
 function Card:resetUpgrades()
     self.yardsPerAction = self.baseYardsPerAction
@@ -269,6 +396,10 @@ function Card:resetUpgrades()
     self.upgradeCount = 0
     self.yardsUpgrades = 0
     self.cooldownUpgrades = 0
+    self.boostUpgrades = 0
+    self.durationUpgrades = 0
+    self.bonusYardsUpgrades = 0
+    self.hasImmunity = false
 end
 
 return Card

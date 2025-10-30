@@ -30,6 +30,10 @@ local START_Y = 100
 local UPGRADE_TYPE = {
     YARDS = "yards",
     COOLDOWN = "cooldown",
+    BOOST = "boost",
+    DURATION = "duration",
+    BONUS_YARDS = "bonus_yards",
+    IMMUNITY = "immunity",
     BENCH_CARD = "bench_card"
 }
 
@@ -51,66 +55,153 @@ function TrainingScreen.generateUpgradeOptions()
     -- Get all upgradeable cards (offensive + defensive)
     local upgradeableCards = {}
     for _, card in ipairs(SeasonManager.playerTeam.offensiveCards) do
-        if card:canUpgrade() then
+        if card:canUpgrade() or (not card.hasImmunity and card.upgradeCount <= 1) then
             table.insert(upgradeableCards, card)
         end
     end
     for _, card in ipairs(SeasonManager.playerTeam.defensiveCards) do
-        if card:canUpgrade() then
+        if card:canUpgrade() or (not card.hasImmunity and card.upgradeCount <= 1) then
             table.insert(upgradeableCards, card)
         end
     end
 
-    -- Generate 2 card upgrade options (if possible)
-    local upgradeTypes = {UPGRADE_TYPE.YARDS, UPGRADE_TYPE.COOLDOWN}
+    -- Define all possible upgrade types (equal weight)
+    local allUpgradeTypes = {
+        UPGRADE_TYPE.YARDS,
+        UPGRADE_TYPE.COOLDOWN,
+        UPGRADE_TYPE.BOOST,
+        UPGRADE_TYPE.DURATION,
+        UPGRADE_TYPE.BONUS_YARDS,
+        UPGRADE_TYPE.IMMUNITY,
+        UPGRADE_TYPE.BENCH_CARD
+    }
 
-    for i = 1, 2 do
-        if #upgradeableCards > 0 then
-            local cardIndex = math.random(1, #upgradeableCards)
-            local card = upgradeableCards[cardIndex]
-            local upgradeType = upgradeTypes[math.random(1, #upgradeTypes)]
+    -- Generate 3 random options
+    for i = 1, 3 do
+        local selectedType = allUpgradeTypes[math.random(1, #allUpgradeTypes)]
 
-            -- Only offer yards upgrade for yard generators
-            if upgradeType == UPGRADE_TYPE.YARDS and card.cardType ~= Card.TYPE.YARD_GENERATOR then
-                upgradeType = UPGRADE_TYPE.COOLDOWN
-            end
+        -- Handle bench card option
+        if selectedType == UPGRADE_TYPE.BENCH_CARD then
+            local availableCoaches = Coach.types
+            local randomCoach = availableCoaches[math.random(1, #availableCoaches)]
 
-            table.insert(options, {
-                type = upgradeType,
-                card = card,
-                cost = upgradeType == UPGRADE_TYPE.YARDS and Card.getYardsUpgradeCost() or Card.getCooldownUpgradeCost()
+            -- Pick random card from coach's offensive cards
+            local randomCardData = randomCoach.offensiveCards[math.random(1, #randomCoach.offensiveCards)]
+
+            -- Create new card instance
+            local newCard = Card:new(randomCardData.position, randomCardData.cardType, {
+                yardsPerAction = randomCardData.yardsPerAction or 0,
+                boostAmount = randomCardData.boostAmount or 0,
+                boostTargets = randomCardData.boostTargets or {},
+                effectType = randomCardData.effectType or nil,
+                effectStrength = randomCardData.effectStrength or 0,
+                targetPositions = randomCardData.targetPositions or {},
+                speed = randomCardData.speed or 1.5
             })
 
-            -- Remove card from available pool to avoid duplicates
-            table.remove(upgradeableCards, cardIndex)
+            table.insert(options, {
+                type = UPGRADE_TYPE.BENCH_CARD,
+                card = newCard,
+                cost = Card.getBenchCardCost()
+            })
+        else
+            -- Card-based upgrades
+            if #upgradeableCards > 0 then
+                local cardIndex = math.random(1, #upgradeableCards)
+                local card = upgradeableCards[cardIndex]
+
+                -- Validate upgrade type is compatible with card
+                local finalType, finalCost = TrainingScreen.getValidUpgradeForCard(card, selectedType)
+
+                if finalType then
+                    table.insert(options, {
+                        type = finalType,
+                        card = card,
+                        cost = finalCost
+                    })
+
+                    -- Remove card from pool to avoid duplicates (unless they can still be upgraded)
+                    if not card:canUpgrade() and finalType ~= UPGRADE_TYPE.IMMUNITY then
+                        table.remove(upgradeableCards, cardIndex)
+                    end
+                end
+            end
         end
     end
 
-    -- Third option: New bench card
-    local availableCoaches = Coach.types
-    local randomCoach = availableCoaches[math.random(1, #availableCoaches)]
+    -- If we didn't get 3 options, fill with bench cards
+    while #options < 3 do
+        local availableCoaches = Coach.types
+        local randomCoach = availableCoaches[math.random(1, #availableCoaches)]
 
-    -- Pick random card from coach's offensive cards
-    local randomCardData = randomCoach.offensiveCards[math.random(1, #randomCoach.offensiveCards)]
+        local randomCardData = randomCoach.offensiveCards[math.random(1, #randomCoach.offensiveCards)]
 
-    -- Create new card instance
-    local newCard = Card:new(randomCardData.position, randomCardData.cardType, {
-        yardsPerAction = randomCardData.yardsPerAction or 0,
-        boostAmount = randomCardData.boostAmount or 0,
-        boostTargets = randomCardData.boostTargets or {},
-        effectType = randomCardData.effectType or nil,
-        effectStrength = randomCardData.effectStrength or 0,
-        targetPositions = randomCardData.targetPositions or {},
-        speed = randomCardData.speed or 1.5
-    })
+        local newCard = Card:new(randomCardData.position, randomCardData.cardType, {
+            yardsPerAction = randomCardData.yardsPerAction or 0,
+            boostAmount = randomCardData.boostAmount or 0,
+            boostTargets = randomCardData.boostTargets or {},
+            effectType = randomCardData.effectType or nil,
+            effectStrength = randomCardData.effectStrength or 0,
+            targetPositions = randomCardData.targetPositions or {},
+            speed = randomCardData.speed or 1.5
+        })
 
-    table.insert(options, {
-        type = UPGRADE_TYPE.BENCH_CARD,
-        card = newCard,
-        cost = Card.getBenchCardCost()
-    })
+        table.insert(options, {
+            type = UPGRADE_TYPE.BENCH_CARD,
+            card = newCard,
+            cost = Card.getBenchCardCost()
+        })
+    end
 
     TrainingScreen.upgradeOptions = options
+end
+
+--- Gets a valid upgrade type for a specific card
+--- @param card table The card to upgrade
+--- @param preferredType string The preferred upgrade type
+--- @return string|nil, number|nil Upgrade type and cost, or nil if invalid
+function TrainingScreen.getValidUpgradeForCard(card, preferredType)
+    -- Yards upgrade: only for yard generators
+    if preferredType == UPGRADE_TYPE.YARDS then
+        if card.cardType == Card.TYPE.YARD_GENERATOR and card:canUpgrade() then
+            return UPGRADE_TYPE.YARDS, Card.getYardsUpgradeCost()
+        end
+    end
+
+    -- Boost upgrade: only for boosters
+    if preferredType == UPGRADE_TYPE.BOOST then
+        if card.cardType == Card.TYPE.BOOSTER and card:canUpgrade() then
+            return UPGRADE_TYPE.BOOST, Card.getBoostUpgradeCost()
+        end
+    end
+
+    -- Duration upgrade: only for defenders
+    if preferredType == UPGRADE_TYPE.DURATION then
+        if card.cardType == Card.TYPE.DEFENDER and card:canUpgrade() then
+            return UPGRADE_TYPE.DURATION, Card.getDurationUpgradeCost()
+        end
+    end
+
+    -- Bonus yards: only for yard generators
+    if preferredType == UPGRADE_TYPE.BONUS_YARDS then
+        if card.cardType == Card.TYPE.YARD_GENERATOR and card:canUpgrade() then
+            return UPGRADE_TYPE.BONUS_YARDS, Card.getBonusYardsUpgradeCost()
+        end
+    end
+
+    -- Immunity: for any card type, but costs 2 slots
+    if preferredType == UPGRADE_TYPE.IMMUNITY then
+        if not card.hasImmunity and card.upgradeCount <= 1 then
+            return UPGRADE_TYPE.IMMUNITY, Card.getImmunityUpgradeCost()
+        end
+    end
+
+    -- Cooldown: universal fallback
+    if card:canUpgrade() then
+        return UPGRADE_TYPE.COOLDOWN, Card.getCooldownUpgradeCost()
+    end
+
+    return nil, nil
 end
 
 --- LÖVE Callback: Update Logic
@@ -191,6 +282,14 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
         headerText = "Upgrade Yards"
     elseif option.type == UPGRADE_TYPE.COOLDOWN then
         headerText = "Upgrade Speed"
+    elseif option.type == UPGRADE_TYPE.BOOST then
+        headerText = "Upgrade Boost %"
+    elseif option.type == UPGRADE_TYPE.DURATION then
+        headerText = "Upgrade Duration"
+    elseif option.type == UPGRADE_TYPE.BONUS_YARDS then
+        headerText = "Bonus Yards Chance"
+    elseif option.type == UPGRADE_TYPE.IMMUNITY then
+        headerText = "Freeze/Slow Immunity"
     elseif option.type == UPGRADE_TYPE.BENCH_CARD then
         headerText = "New Bench Card"
     end
@@ -227,6 +326,47 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
         love.graphics.setColor(0.3, 0.8, 0.3)
         local newCooldown = string.format("New: %.2fs (-10%%)", option.card.cooldown * 0.9)
         love.graphics.print(newCooldown, x + 15, contentY)
+
+    elseif option.type == UPGRADE_TYPE.BOOST then
+        local currentBoost = string.format("Current: +%d%% boost", option.card.boostAmount)
+        love.graphics.print(currentBoost, x + 15, contentY)
+        contentY = contentY + 25
+
+        love.graphics.setColor(0.3, 0.8, 0.3)
+        local newBoost = string.format("New: +%d%% boost (+5%%)", option.card.boostAmount + 5)
+        love.graphics.print(newBoost, x + 15, contentY)
+
+    elseif option.type == UPGRADE_TYPE.DURATION then
+        local currentDuration = string.format("Current: %.1fs duration", option.card.effectStrength)
+        love.graphics.print(currentDuration, x + 15, contentY)
+        contentY = contentY + 25
+
+        love.graphics.setColor(0.3, 0.8, 0.3)
+        local newDuration = string.format("New: %.1fs (+0.5s)", option.card.effectStrength + 0.5)
+        love.graphics.print(newDuration, x + 15, contentY)
+
+    elseif option.type == UPGRADE_TYPE.BONUS_YARDS then
+        local currentChance = option.card.bonusYardsUpgrades * 33
+        local currentText = string.format("Current: %d%% bonus chance", currentChance)
+        love.graphics.print(currentText, x + 15, contentY)
+        contentY = contentY + 25
+
+        love.graphics.setColor(0.3, 0.8, 0.3)
+        local newChance = (option.card.bonusYardsUpgrades + 1) * 33
+        local newText = string.format("New: %d%% (+2 yds)", newChance)
+        love.graphics.print(newText, x + 15, contentY)
+
+    elseif option.type == UPGRADE_TYPE.IMMUNITY then
+        love.graphics.setColor(1, 0.8, 0.2)
+        love.graphics.print("PERMANENT IMMUNITY", x + 15, contentY)
+        contentY = contentY + 25
+
+        love.graphics.setColor(0.8, 0.8, 0.9)
+        love.graphics.print("Never slowed or frozen", x + 15, contentY)
+        contentY = contentY + 20
+
+        love.graphics.setColor(0.8, 0.3, 0.3)
+        love.graphics.print("Costs 2 upgrade slots!", x + 15, contentY)
 
     elseif option.type == UPGRADE_TYPE.BENCH_CARD then
         local cardInfo = ""
@@ -335,6 +475,14 @@ function TrainingScreen.purchaseUpgrade(option, index)
         option.card:upgradeYards()
     elseif option.type == UPGRADE_TYPE.COOLDOWN then
         option.card:upgradeCooldown()
+    elseif option.type == UPGRADE_TYPE.BOOST then
+        option.card:upgradeBoost()
+    elseif option.type == UPGRADE_TYPE.DURATION then
+        option.card:upgradeDuration()
+    elseif option.type == UPGRADE_TYPE.BONUS_YARDS then
+        option.card:upgradeBonusYards()
+    elseif option.type == UPGRADE_TYPE.IMMUNITY then
+        option.card:upgradeImmunity()
     elseif option.type == UPGRADE_TYPE.BENCH_CARD then
         -- Add to bench
         table.insert(SeasonManager.playerTeam.benchCards, option.card)

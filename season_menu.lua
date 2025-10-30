@@ -18,6 +18,7 @@ local SeasonManager = require("season_manager")
 local TrainingScreen = nil
 local LineupScreen = nil
 local ScheduleScreen = nil
+local StandingsScreen = nil
 local StatsScreen = nil
 local ScoutingScreen = nil
 
@@ -41,6 +42,7 @@ local navButtons = {
     {id = "training", label = "Training", x = 0},
     {id = "lineup", label = "Lineup", x = 0},
     {id = "schedule", label = "Schedule", x = 0},
+    {id = "standings", label = "Standings", x = 0},
     {id = "stats", label = "Stats", x = 0},
     {id = "next_game", label = "Next Game", x = 0}
 }
@@ -70,6 +72,9 @@ function SeasonMenu.load()
     end
     if not ScheduleScreen then
         ScheduleScreen = require("schedule_screen")
+    end
+    if not StandingsScreen then
+        StandingsScreen = require("standings_screen")
     end
     if not StatsScreen then
         StatsScreen = require("stats_screen")
@@ -101,6 +106,8 @@ function SeasonMenu.update(dt)
         LineupScreen.update(dt)
     elseif SeasonMenu.currentScreen == "schedule" and ScheduleScreen then
         ScheduleScreen.update(dt)
+    elseif SeasonMenu.currentScreen == "standings" and StandingsScreen then
+        StandingsScreen.update(dt)
     elseif SeasonMenu.currentScreen == "stats" and StatsScreen then
         StatsScreen.update(dt)
     elseif SeasonMenu.currentScreen == "next_game" and ScoutingScreen then
@@ -127,6 +134,8 @@ function SeasonMenu.draw()
         LineupScreen.draw()
     elseif SeasonMenu.currentScreen == "schedule" and ScheduleScreen then
         ScheduleScreen.draw()
+    elseif SeasonMenu.currentScreen == "standings" and StandingsScreen then
+        StandingsScreen.draw()
     elseif SeasonMenu.currentScreen == "stats" and StatsScreen then
         StatsScreen.draw()
     elseif SeasonMenu.currentScreen == "next_game" and ScoutingScreen then
@@ -291,6 +300,8 @@ function SeasonMenu.mousepressed(x, y, button)
         LineupScreen.mousepressed(x, adjustedY, button)
     elseif SeasonMenu.currentScreen == "schedule" and ScheduleScreen and ScheduleScreen.mousepressed then
         ScheduleScreen.mousepressed(x, adjustedY, button)
+    elseif SeasonMenu.currentScreen == "standings" and StandingsScreen and StandingsScreen.mousepressed then
+        StandingsScreen.mousepressed(x, adjustedY, button)
     elseif SeasonMenu.currentScreen == "stats" and StatsScreen and StatsScreen.mousepressed then
         StatsScreen.mousepressed(x, adjustedY, button)
     elseif SeasonMenu.currentScreen == "next_game" and ScoutingScreen and ScoutingScreen.mousepressed then
@@ -310,6 +321,8 @@ function SeasonMenu.switchScreen(screenId)
         LineupScreen.load()
     elseif screenId == "schedule" and ScheduleScreen then
         ScheduleScreen.load()
+    elseif screenId == "standings" and StandingsScreen then
+        StandingsScreen.load()
     elseif screenId == "stats" and StatsScreen then
         StatsScreen.load()
     elseif screenId == "next_game" and ScoutingScreen then
