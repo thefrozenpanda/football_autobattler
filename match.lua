@@ -649,4 +649,50 @@ function match.getMVPDefense()
     return winnerData and winnerData.defensiveMVP or nil
 end
 
+--- Simulates a match between two AI teams without rendering
+--- Runs at accelerated speed for quick results
+--- @param teamA table Home team
+--- @param teamB table Away team
+--- @return number, number Home score, away score
+function match.simulateAIMatch(teamA, teamB)
+    -- Create a temporary phase manager for simulation
+    local simPhaseManager = PhaseManager:new(teamA.coachId, teamB.coachId)
+
+    local simTime = matchTime
+    local simInOvertime = false
+    local simOvertimePeriod = 0
+    local timeStep = 0.1  -- Simulate in 0.1 second increments
+
+    -- Run regulation time
+    while simTime > 0 do
+        simPhaseManager:update(timeStep)
+        simTime = simTime - timeStep
+    end
+
+    -- Handle overtime if tied
+    while simPhaseManager.playerScore == simPhaseManager.aiScore do
+        simInOvertime = true
+        simOvertimePeriod = simOvertimePeriod + 1
+        simTime = overtimeTime
+
+        while simTime > 0 do
+            simPhaseManager:update(timeStep)
+            simTime = simTime - timeStep
+        end
+
+        -- Prevent infinite overtime (safety)
+        if simOvertimePeriod > 10 then
+            -- Force a winner by adding 1 point to random team
+            if math.random() > 0.5 then
+                simPhaseManager.playerScore = simPhaseManager.playerScore + 1
+            else
+                simPhaseManager.aiScore = simPhaseManager.aiScore + 1
+            end
+            break
+        end
+    end
+
+    return simPhaseManager.playerScore, simPhaseManager.aiScore
+end
+
 return match

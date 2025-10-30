@@ -35,10 +35,12 @@ local teamNaming = require("team_naming")
 local seasonMenu = require("season_menu")
 local seasonEndScreen = require("season_end_screen")
 local SeasonManager = require("season_manager")
+local simulationPopup = require("simulation_popup")
 
 -- Game State Management
--- Possible states: "menu", "coach_selection", "team_naming", "season_menu", "game", "season_end"
+-- Possible states: "menu", "coach_selection", "team_naming", "season_menu", "game", "simulating", "season_end"
 local gameState = "menu"
+local simulationComplete = false
 
 --- LÖVE Callback: Initialization
 --- Called once at game startup. Initializes the window and loads the main menu.
@@ -163,16 +165,34 @@ function love.update(dt)
                 SeasonManager.lastMatchResult.mvpOffense = match.getMVPOffense()
                 SeasonManager.lastMatchResult.mvpDefense = match.getMVPDefense()
 
-                -- Simulate remaining games in the week
-                SeasonManager.simulateWeek()
-
-                -- Advance to training phase
-                SeasonManager.goToTraining()
+                -- Transition to simulation state
+                gameState = "simulating"
+                simulationComplete = false
+                simulationPopup.show()
             end
 
+            match.shouldReturnToMenu = false
+        end
+
+    -- Simulating AI Games State
+    elseif gameState == "simulating" then
+        if not simulationComplete then
+            -- Run simulation (this happens in one frame)
+            SeasonManager.simulateWeek()
+
+            -- Advance to training phase
+            SeasonManager.goToTraining()
+
+            simulationComplete = true
+
+            -- Brief delay to show popup (transition in next frame)
+            love.timer.sleep(0.5)
+        end
+
+        if simulationComplete then
+            simulationPopup.hide()
             gameState = "season_menu"
             seasonMenu.load()
-            match.shouldReturnToMenu = false
         end
 
     -- Season End State
@@ -205,6 +225,10 @@ function love.draw()
         seasonMenu.draw()
     elseif gameState == "game" then
         match.draw()
+    elseif gameState == "simulating" then
+        -- Draw the match screen in background, then overlay popup
+        match.draw()
+        simulationPopup.draw()
     elseif gameState == "season_end" then
         seasonEndScreen.draw()
     end
