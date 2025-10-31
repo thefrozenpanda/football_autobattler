@@ -61,11 +61,23 @@ function love.update(dt)
     if gameState == "menu" then
         menu.update(dt)
 
-        -- Transition to coach selection when player clicks "Start Game"
+        -- Transition to coach selection when player clicks "Start New Season"
         if menu.startGameRequested then
             gameState = "coach_selection"
             coachSelection.load()
             menu.startGameRequested = false
+        end
+
+        -- Transition to season menu when player clicks "Continue Season"
+        if menu.continueSeasonRequested then
+            if SeasonManager.loadSeason() then
+                gameState = "season_menu"
+                seasonMenu.load()
+            else
+                -- Failed to load - show error or stay in menu
+                print("Error: Failed to load season save")
+            end
+            menu.continueSeasonRequested = false
         end
 
     -- Coach Selection State
@@ -185,6 +197,9 @@ function love.update(dt)
 
             simulationComplete = true
 
+            -- Auto-save after match
+            SeasonManager.saveSeason()
+
             -- Brief delay to show popup (transition in next frame)
             love.timer.sleep(0.5)
         end
@@ -201,11 +216,17 @@ function love.update(dt)
 
         -- Return to menu
         if seasonEndScreen.isReturnToMenuRequested() then
+            -- Delete save file when season ends
+            SeasonManager.deleteSave()
+
             gameState = "menu"
             menu.load()
 
         -- Start new season
         elseif seasonEndScreen.isNewSeasonRequested() then
+            -- Delete save file when starting new season
+            SeasonManager.deleteSave()
+
             gameState = "coach_selection"
             coachSelection.load()
         end

@@ -313,4 +313,388 @@ function SeasonManager.getStandings(conference)
     return Team.sortByStandings(conferenceTeams)
 end
 
+--- Saves the current season state to a file
+--- @return boolean True if save successful
+function SeasonManager.saveSeason()
+    local saveData = {
+        version = "1.0",
+        currentWeek = SeasonManager.currentWeek,
+        currentPhase = SeasonManager.currentPhase,
+        inPlayoffs = SeasonManager.inPlayoffs,
+        teams = {},
+        schedule = {},
+        playoffBracket = {}
+    }
+
+    -- Save all teams
+    for _, team in ipairs(SeasonManager.teams) do
+        local teamData = {
+            name = team.name,
+            conference = team.conference,
+            coachId = team.coachId,
+            isPlayer = team.isPlayer,
+            wins = team.wins,
+            losses = team.losses,
+            pointsFor = team.pointsFor,
+            pointsAgainst = team.pointsAgainst,
+            cash = team.cash,
+            eliminated = team.eliminated
+        }
+
+        -- Save cards with upgrades
+        teamData.offensiveCards = {}
+        for _, card in ipairs(team.offensiveCards) do
+            table.insert(teamData.offensiveCards, {
+                position = card.position,
+                number = card.number,
+                cardType = card.cardType,
+                upgradeCount = card.upgradeCount,
+                yardsUpgrades = card.yardsUpgrades,
+                cooldownUpgrades = card.cooldownUpgrades,
+                boostUpgrades = card.boostUpgrades or 0,
+                durationUpgrades = card.durationUpgrades or 0,
+                bonusYardsUpgrades = card.bonusYardsUpgrades or 0,
+                hasImmunity = card.hasImmunity or false
+            })
+        end
+
+        teamData.defensiveCards = {}
+        for _, card in ipairs(team.defensiveCards) do
+            table.insert(teamData.defensiveCards, {
+                position = card.position,
+                number = card.number,
+                cardType = card.cardType,
+                upgradeCount = card.upgradeCount,
+                yardsUpgrades = card.yardsUpgrades,
+                cooldownUpgrades = card.cooldownUpgrades,
+                boostUpgrades = card.boostUpgrades or 0,
+                durationUpgrades = card.durationUpgrades or 0,
+                bonusYardsUpgrades = card.bonusYardsUpgrades or 0,
+                hasImmunity = card.hasImmunity or false
+            })
+        end
+
+        teamData.benchCards = {}
+        for _, card in ipairs(team.benchCards) do
+            table.insert(teamData.benchCards, {
+                position = card.position,
+                number = card.number,
+                cardType = card.cardType,
+                upgradeCount = card.upgradeCount,
+                yardsUpgrades = card.yardsUpgrades,
+                cooldownUpgrades = card.cooldownUpgrades,
+                boostUpgrades = card.boostUpgrades or 0,
+                durationUpgrades = card.durationUpgrades or 0,
+                bonusYardsUpgrades = card.bonusYardsUpgrades or 0,
+                hasImmunity = card.hasImmunity or false
+            })
+        end
+
+        table.insert(saveData.teams, teamData)
+    end
+
+    -- Save schedule
+    for week, matches in ipairs(SeasonManager.schedule) do
+        saveData.schedule[week] = {}
+        for _, match in ipairs(matches) do
+            table.insert(saveData.schedule[week], {
+                homeTeamName = match.homeTeam.name,
+                awayTeamName = match.awayTeam.name,
+                homeScore = match.homeScore,
+                awayScore = match.awayScore,
+                played = match.played
+            })
+        end
+    end
+
+    -- Save playoff bracket (if exists)
+    if SeasonManager.playoffBracket and SeasonManager.playoffBracket.currentRound then
+        saveData.playoffBracket.currentRound = SeasonManager.playoffBracket.currentRound
+
+        -- Helper function to save a playoff match
+        local function saveMatch(match)
+            if match then
+                return {
+                    homeTeamName = match.homeTeam.name,
+                    awayTeamName = match.awayTeam.name,
+                    homeScore = match.homeScore,
+                    awayScore = match.awayScore,
+                    played = match.played
+                }
+            end
+            return nil
+        end
+
+        -- Save each round
+        if SeasonManager.playoffBracket.wildcard then
+            saveData.playoffBracket.wildcard = {}
+            for _, match in ipairs(SeasonManager.playoffBracket.wildcard) do
+                table.insert(saveData.playoffBracket.wildcard, saveMatch(match))
+            end
+        end
+
+        if SeasonManager.playoffBracket.divisional then
+            saveData.playoffBracket.divisional = {}
+            for _, match in ipairs(SeasonManager.playoffBracket.divisional) do
+                table.insert(saveData.playoffBracket.divisional, saveMatch(match))
+            end
+        end
+
+        if SeasonManager.playoffBracket.conference then
+            saveData.playoffBracket.conference = {}
+            for _, match in ipairs(SeasonManager.playoffBracket.conference) do
+                table.insert(saveData.playoffBracket.conference, saveMatch(match))
+            end
+        end
+
+        if SeasonManager.playoffBracket.championship then
+            saveData.playoffBracket.championship = {}
+            for _, match in ipairs(SeasonManager.playoffBracket.championship) do
+                table.insert(saveData.playoffBracket.championship, saveMatch(match))
+            end
+        end
+    end
+
+    -- Serialize to string
+    local serialized = SeasonManager.serializeTable(saveData)
+
+    -- Write to file
+    local success, message = love.filesystem.write("season_save.lua", serialized)
+    return success
+end
+
+--- Loads season state from file
+--- @return boolean True if load successful
+function SeasonManager.loadSeason()
+    if not love.filesystem.getInfo("season_save.lua") then
+        return false
+    end
+
+    local contents, size = love.filesystem.read("season_save.lua")
+    if not contents then
+        return false
+    end
+
+    -- Deserialize
+    local saveData = SeasonManager.deserializeTable(contents)
+    if not saveData or saveData.version ~= "1.0" then
+        return false
+    end
+
+    -- Restore state
+    SeasonManager.currentWeek = saveData.currentWeek
+    SeasonManager.currentPhase = saveData.currentPhase
+    SeasonManager.inPlayoffs = saveData.inPlayoffs
+
+    -- Restore teams
+    SeasonManager.teams = {}
+    local Card = require("card")
+
+    for _, teamData in ipairs(saveData.teams) do
+        local team = Team:new(teamData.name, teamData.conference, teamData.coachId, teamData.isPlayer)
+        team.wins = teamData.wins
+        team.losses = teamData.losses
+        team.pointsFor = teamData.pointsFor
+        team.pointsAgainst = teamData.pointsAgainst
+        team.cash = teamData.cash
+        team.eliminated = teamData.eliminated or false
+
+        -- Restore cards
+        team.offensiveCards = {}
+        for _, cardData in ipairs(teamData.offensiveCards) do
+            local card = Card:new(cardData.position, cardData.number, cardData.cardType)
+            card.upgradeCount = cardData.upgradeCount
+            card.yardsUpgrades = cardData.yardsUpgrades
+            card.cooldownUpgrades = cardData.cooldownUpgrades
+            card.boostUpgrades = cardData.boostUpgrades or 0
+            card.durationUpgrades = cardData.durationUpgrades or 0
+            card.bonusYardsUpgrades = cardData.bonusYardsUpgrades or 0
+            card.hasImmunity = cardData.hasImmunity or false
+            card:recalculateStats()
+            table.insert(team.offensiveCards, card)
+        end
+
+        team.defensiveCards = {}
+        for _, cardData in ipairs(teamData.defensiveCards) do
+            local card = Card:new(cardData.position, cardData.number, cardData.cardType)
+            card.upgradeCount = cardData.upgradeCount
+            card.yardsUpgrades = cardData.yardsUpgrades
+            card.cooldownUpgrades = cardData.cooldownUpgrades
+            card.boostUpgrades = cardData.boostUpgrades or 0
+            card.durationUpgrades = cardData.durationUpgrades or 0
+            card.bonusYardsUpgrades = cardData.bonusYardsUpgrades or 0
+            card.hasImmunity = cardData.hasImmunity or false
+            card:recalculateStats()
+            table.insert(team.defensiveCards, card)
+        end
+
+        team.benchCards = {}
+        for _, cardData in ipairs(teamData.benchCards) do
+            local card = Card:new(cardData.position, cardData.number, cardData.cardType)
+            card.upgradeCount = cardData.upgradeCount
+            card.yardsUpgrades = cardData.yardsUpgrades
+            card.cooldownUpgrades = cardData.cooldownUpgrades
+            card.boostUpgrades = cardData.boostUpgrades or 0
+            card.durationUpgrades = cardData.durationUpgrades or 0
+            card.bonusYardsUpgrades = cardData.bonusYardsUpgrades or 0
+            card.hasImmunity = cardData.hasImmunity or false
+            card:recalculateStats()
+            table.insert(team.benchCards, card)
+        end
+
+        table.insert(SeasonManager.teams, team)
+
+        if teamData.isPlayer then
+            SeasonManager.playerTeam = team
+        end
+    end
+
+    -- Restore schedule
+    SeasonManager.schedule = {}
+    for week, matchesData in ipairs(saveData.schedule) do
+        SeasonManager.schedule[week] = {}
+        for _, matchData in ipairs(matchesData) do
+            -- Find teams by name
+            local homeTeam = nil
+            local awayTeam = nil
+            for _, team in ipairs(SeasonManager.teams) do
+                if team.name == matchData.homeTeamName then
+                    homeTeam = team
+                end
+                if team.name == matchData.awayTeamName then
+                    awayTeam = team
+                end
+            end
+
+            table.insert(SeasonManager.schedule[week], {
+                homeTeam = homeTeam,
+                awayTeam = awayTeam,
+                homeScore = matchData.homeScore,
+                awayScore = matchData.awayScore,
+                played = matchData.played
+            })
+        end
+    end
+
+    -- Restore playoff bracket
+    if saveData.playoffBracket and saveData.playoffBracket.currentRound then
+        SeasonManager.playoffBracket = {currentRound = saveData.playoffBracket.currentRound}
+
+        local function loadMatch(matchData)
+            if matchData then
+                local homeTeam = nil
+                local awayTeam = nil
+                for _, team in ipairs(SeasonManager.teams) do
+                    if team.name == matchData.homeTeamName then
+                        homeTeam = team
+                    end
+                    if team.name == matchData.awayTeamName then
+                        awayTeam = team
+                    end
+                end
+
+                return {
+                    homeTeam = homeTeam,
+                    awayTeam = awayTeam,
+                    homeScore = matchData.homeScore,
+                    awayScore = matchData.awayScore,
+                    played = matchData.played
+                }
+            end
+            return nil
+        end
+
+        if saveData.playoffBracket.wildcard then
+            SeasonManager.playoffBracket.wildcard = {}
+            for _, matchData in ipairs(saveData.playoffBracket.wildcard) do
+                table.insert(SeasonManager.playoffBracket.wildcard, loadMatch(matchData))
+            end
+        end
+
+        if saveData.playoffBracket.divisional then
+            SeasonManager.playoffBracket.divisional = {}
+            for _, matchData in ipairs(saveData.playoffBracket.divisional) do
+                table.insert(SeasonManager.playoffBracket.divisional, loadMatch(matchData))
+            end
+        end
+
+        if saveData.playoffBracket.conference then
+            SeasonManager.playoffBracket.conference = {}
+            for _, matchData in ipairs(saveData.playoffBracket.conference) do
+                table.insert(SeasonManager.playoffBracket.conference, loadMatch(matchData))
+            end
+        end
+
+        if saveData.playoffBracket.championship then
+            SeasonManager.playoffBracket.championship = {}
+            for _, matchData in ipairs(saveData.playoffBracket.championship) do
+                table.insert(SeasonManager.playoffBracket.championship, loadMatch(matchData))
+            end
+        end
+    end
+
+    return true
+end
+
+--- Checks if a save file exists
+--- @return boolean True if save exists
+function SeasonManager.saveExists()
+    return love.filesystem.getInfo("season_save.lua") ~= nil
+end
+
+--- Deletes the save file
+--- @return boolean True if deletion successful
+function SeasonManager.deleteSave()
+    return love.filesystem.remove("season_save.lua")
+end
+
+--- Simple table serializer
+--- @param t table The table to serialize
+--- @param indent string Current indentation
+--- @return string Serialized table as Lua code
+function SeasonManager.serializeTable(t, indent)
+    indent = indent or ""
+    local result = "{\n"
+
+    for k, v in pairs(t) do
+        result = result .. indent .. "  "
+
+        -- Key
+        if type(k) == "string" then
+            result = result .. "[\"" .. k .. "\"] = "
+        else
+            result = result .. "[" .. tostring(k) .. "] = "
+        end
+
+        -- Value
+        if type(v) == "table" then
+            result = result .. SeasonManager.serializeTable(v, indent .. "  ")
+        elseif type(v) == "string" then
+            result = result .. "\"" .. v .. "\""
+        elseif type(v) == "boolean" then
+            result = result .. tostring(v)
+        elseif type(v) == "number" then
+            result = result .. tostring(v)
+        else
+            result = result .. "nil"
+        end
+
+        result = result .. ",\n"
+    end
+
+    result = result .. indent .. "}"
+    return result
+end
+
+--- Simple table deserializer
+--- @param str string Serialized table string
+--- @return table Deserialized table
+function SeasonManager.deserializeTable(str)
+    local chunk = loadstring("return " .. str)
+    if chunk then
+        return chunk()
+    end
+    return nil
+end
+
 return SeasonManager
