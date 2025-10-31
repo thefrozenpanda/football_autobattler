@@ -133,6 +133,38 @@ function SeasonManager.goToMatch()
     SeasonManager.currentPhase = SeasonManager.PHASE.MATCH
 end
 
+--- Updates player team cards with stats from the match
+--- Copies match statistics from match cards to team cards
+--- @param offensiveCards table Array of offensive cards from match
+--- @param defensiveCards table Array of defensive cards from match
+function SeasonManager.updatePlayerCardStats(offensiveCards, defensiveCards)
+    if not SeasonManager.playerTeam then
+        return
+    end
+
+    -- Update offensive cards
+    for i, matchCard in ipairs(offensiveCards) do
+        if SeasonManager.playerTeam.offensiveCards[i] then
+            local teamCard = SeasonManager.playerTeam.offensiveCards[i]
+            -- Accumulate stats
+            teamCard.yardsGained = (teamCard.yardsGained or 0) + matchCard.yardsGained
+            teamCard.touchdownsScored = (teamCard.touchdownsScored or 0) + matchCard.touchdownsScored
+            teamCard.cardsBoosted = (teamCard.cardsBoosted or 0) + matchCard.cardsBoosted
+        end
+    end
+
+    -- Update defensive cards
+    for i, matchCard in ipairs(defensiveCards) do
+        if SeasonManager.playerTeam.defensiveCards[i] then
+            local teamCard = SeasonManager.playerTeam.defensiveCards[i]
+            -- Accumulate stats
+            teamCard.timesSlowed = (teamCard.timesSlowed or 0) + matchCard.timesSlowed
+            teamCard.timesFroze = (teamCard.timesFroze or 0) + matchCard.timesFroze
+            teamCard.yardsReduced = (teamCard.yardsReduced or 0) + matchCard.yardsReduced
+        end
+    end
+end
+
 --- Records the result of a match
 --- @param homeTeam Team The home team
 --- @param awayTeam Team The away team
@@ -145,6 +177,18 @@ function SeasonManager.recordMatchResult(homeTeam, awayTeam, homeScore, awayScor
     else
         awayTeam:recordWin(awayScore, homeScore, homeTeam.name)
         homeTeam:recordLoss(homeScore, awayScore, awayTeam.name)
+    end
+
+    -- Update schedule to mark match as played and save scores
+    if SeasonManager.schedule[SeasonManager.currentWeek] then
+        for _, match in ipairs(SeasonManager.schedule[SeasonManager.currentWeek]) do
+            if match.homeTeam == homeTeam and match.awayTeam == awayTeam then
+                match.homeScore = homeScore
+                match.awayScore = awayScore
+                match.played = true
+                break
+            end
+        end
     end
 
     -- Track if this was player's match
@@ -342,20 +386,36 @@ function SeasonManager.saveSeason()
             eliminated = team.eliminated
         }
 
-        -- Save cards with upgrades
+        -- Save cards with upgrades and match statistics
         teamData.offensiveCards = {}
         for _, card in ipairs(team.offensiveCards) do
             table.insert(teamData.offensiveCards, {
                 position = card.position,
                 number = card.number,
                 cardType = card.cardType,
+                -- Base stats
+                baseYardsPerAction = card.baseYardsPerAction,
+                baseCooldown = card.baseCooldown,
+                -- Current stats
+                yardsPerAction = card.yardsPerAction,
+                cooldown = card.cooldown,
+                boostAmount = card.boostAmount,
+                boostTargets = card.boostTargets,
+                effectType = card.effectType,
+                effectStrength = card.effectStrength,
+                targetPositions = card.targetPositions,
+                -- Upgrade tracking
                 upgradeCount = card.upgradeCount,
                 yardsUpgrades = card.yardsUpgrades,
                 cooldownUpgrades = card.cooldownUpgrades,
                 boostUpgrades = card.boostUpgrades or 0,
                 durationUpgrades = card.durationUpgrades or 0,
                 bonusYardsUpgrades = card.bonusYardsUpgrades or 0,
-                hasImmunity = card.hasImmunity or false
+                hasImmunity = card.hasImmunity or false,
+                -- Match statistics
+                yardsGained = card.yardsGained or 0,
+                touchdownsScored = card.touchdownsScored or 0,
+                cardsBoosted = card.cardsBoosted or 0
             })
         end
 
@@ -365,13 +425,29 @@ function SeasonManager.saveSeason()
                 position = card.position,
                 number = card.number,
                 cardType = card.cardType,
+                -- Base stats
+                baseYardsPerAction = card.baseYardsPerAction,
+                baseCooldown = card.baseCooldown,
+                -- Current stats
+                yardsPerAction = card.yardsPerAction,
+                cooldown = card.cooldown,
+                boostAmount = card.boostAmount,
+                boostTargets = card.boostTargets,
+                effectType = card.effectType,
+                effectStrength = card.effectStrength,
+                targetPositions = card.targetPositions,
+                -- Upgrade tracking
                 upgradeCount = card.upgradeCount,
                 yardsUpgrades = card.yardsUpgrades,
                 cooldownUpgrades = card.cooldownUpgrades,
                 boostUpgrades = card.boostUpgrades or 0,
                 durationUpgrades = card.durationUpgrades or 0,
                 bonusYardsUpgrades = card.bonusYardsUpgrades or 0,
-                hasImmunity = card.hasImmunity or false
+                hasImmunity = card.hasImmunity or false,
+                -- Match statistics
+                timesSlowed = card.timesSlowed or 0,
+                timesFroze = card.timesFroze or 0,
+                yardsReduced = card.yardsReduced or 0
             })
         end
 
@@ -381,13 +457,32 @@ function SeasonManager.saveSeason()
                 position = card.position,
                 number = card.number,
                 cardType = card.cardType,
+                -- Base stats
+                baseYardsPerAction = card.baseYardsPerAction,
+                baseCooldown = card.baseCooldown,
+                -- Current stats
+                yardsPerAction = card.yardsPerAction,
+                cooldown = card.cooldown,
+                boostAmount = card.boostAmount,
+                boostTargets = card.boostTargets,
+                effectType = card.effectType,
+                effectStrength = card.effectStrength,
+                targetPositions = card.targetPositions,
+                -- Upgrade tracking
                 upgradeCount = card.upgradeCount,
                 yardsUpgrades = card.yardsUpgrades,
                 cooldownUpgrades = card.cooldownUpgrades,
                 boostUpgrades = card.boostUpgrades or 0,
                 durationUpgrades = card.durationUpgrades or 0,
                 bonusYardsUpgrades = card.bonusYardsUpgrades or 0,
-                hasImmunity = card.hasImmunity or false
+                hasImmunity = card.hasImmunity or false,
+                -- Match statistics (for all card types)
+                yardsGained = card.yardsGained or 0,
+                touchdownsScored = card.touchdownsScored or 0,
+                cardsBoosted = card.cardsBoosted or 0,
+                timesSlowed = card.timesSlowed or 0,
+                timesFroze = card.timesFroze or 0,
+                yardsReduced = card.yardsReduced or 0
             })
         end
 
@@ -503,7 +598,21 @@ function SeasonManager.loadSeason()
         -- Restore cards
         team.offensiveCards = {}
         for _, cardData in ipairs(teamData.offensiveCards) do
-            local card = Card:new(cardData.position, cardData.number, cardData.cardType)
+            -- Create stats object from saved data
+            local stats = {
+                number = cardData.number,
+                yardsPerAction = cardData.baseYardsPerAction or cardData.yardsPerAction or 0,
+                speed = cardData.baseCooldown or cardData.cooldown or 1.5,
+                boostAmount = cardData.boostAmount or 0,
+                boostTargets = cardData.boostTargets or {},
+                effectType = cardData.effectType,
+                effectStrength = cardData.effectStrength or 0,
+                targetPositions = cardData.targetPositions or {}
+            }
+
+            local card = Card:new(cardData.position, cardData.cardType, stats)
+
+            -- Restore upgrade tracking
             card.upgradeCount = cardData.upgradeCount
             card.yardsUpgrades = cardData.yardsUpgrades
             card.cooldownUpgrades = cardData.cooldownUpgrades
@@ -511,13 +620,37 @@ function SeasonManager.loadSeason()
             card.durationUpgrades = cardData.durationUpgrades or 0
             card.bonusYardsUpgrades = cardData.bonusYardsUpgrades or 0
             card.hasImmunity = cardData.hasImmunity or false
-            card:recalculateStats()
+
+            -- Restore match statistics
+            card.yardsGained = cardData.yardsGained or 0
+            card.touchdownsScored = cardData.touchdownsScored or 0
+            card.cardsBoosted = cardData.cardsBoosted or 0
+
+            -- Apply upgrades to get current stats
+            if cardData.upgradeCount and cardData.upgradeCount > 0 then
+                card:recalculateStats()
+            end
+
             table.insert(team.offensiveCards, card)
         end
 
         team.defensiveCards = {}
         for _, cardData in ipairs(teamData.defensiveCards) do
-            local card = Card:new(cardData.position, cardData.number, cardData.cardType)
+            -- Create stats object from saved data
+            local stats = {
+                number = cardData.number,
+                yardsPerAction = cardData.baseYardsPerAction or cardData.yardsPerAction or 0,
+                speed = cardData.baseCooldown or cardData.cooldown or 1.5,
+                boostAmount = cardData.boostAmount or 0,
+                boostTargets = cardData.boostTargets or {},
+                effectType = cardData.effectType,
+                effectStrength = cardData.effectStrength or 0,
+                targetPositions = cardData.targetPositions or {}
+            }
+
+            local card = Card:new(cardData.position, cardData.cardType, stats)
+
+            -- Restore upgrade tracking
             card.upgradeCount = cardData.upgradeCount
             card.yardsUpgrades = cardData.yardsUpgrades
             card.cooldownUpgrades = cardData.cooldownUpgrades
@@ -525,13 +658,37 @@ function SeasonManager.loadSeason()
             card.durationUpgrades = cardData.durationUpgrades or 0
             card.bonusYardsUpgrades = cardData.bonusYardsUpgrades or 0
             card.hasImmunity = cardData.hasImmunity or false
-            card:recalculateStats()
+
+            -- Restore match statistics
+            card.timesSlowed = cardData.timesSlowed or 0
+            card.timesFroze = cardData.timesFroze or 0
+            card.yardsReduced = cardData.yardsReduced or 0
+
+            -- Apply upgrades to get current stats
+            if cardData.upgradeCount and cardData.upgradeCount > 0 then
+                card:recalculateStats()
+            end
+
             table.insert(team.defensiveCards, card)
         end
 
         team.benchCards = {}
         for _, cardData in ipairs(teamData.benchCards) do
-            local card = Card:new(cardData.position, cardData.number, cardData.cardType)
+            -- Create stats object from saved data
+            local stats = {
+                number = cardData.number,
+                yardsPerAction = cardData.baseYardsPerAction or cardData.yardsPerAction or 0,
+                speed = cardData.baseCooldown or cardData.cooldown or 1.5,
+                boostAmount = cardData.boostAmount or 0,
+                boostTargets = cardData.boostTargets or {},
+                effectType = cardData.effectType,
+                effectStrength = cardData.effectStrength or 0,
+                targetPositions = cardData.targetPositions or {}
+            }
+
+            local card = Card:new(cardData.position, cardData.cardType, stats)
+
+            -- Restore upgrade tracking
             card.upgradeCount = cardData.upgradeCount
             card.yardsUpgrades = cardData.yardsUpgrades
             card.cooldownUpgrades = cardData.cooldownUpgrades
@@ -539,7 +696,20 @@ function SeasonManager.loadSeason()
             card.durationUpgrades = cardData.durationUpgrades or 0
             card.bonusYardsUpgrades = cardData.bonusYardsUpgrades or 0
             card.hasImmunity = cardData.hasImmunity or false
-            card:recalculateStats()
+
+            -- Restore match statistics (for all card types)
+            card.yardsGained = cardData.yardsGained or 0
+            card.touchdownsScored = cardData.touchdownsScored or 0
+            card.cardsBoosted = cardData.cardsBoosted or 0
+            card.timesSlowed = cardData.timesSlowed or 0
+            card.timesFroze = cardData.timesFroze or 0
+            card.yardsReduced = cardData.yardsReduced or 0
+
+            -- Apply upgrades to get current stats
+            if cardData.upgradeCount and cardData.upgradeCount > 0 then
+                card:recalculateStats()
+            end
+
             table.insert(team.benchCards, card)
         end
 
@@ -641,6 +811,39 @@ end
 --- @return boolean True if save exists
 function SeasonManager.saveExists()
     return love.filesystem.getInfo("season_save.lua") ~= nil
+end
+
+--- Gets basic save info without fully loading the save
+--- @return table|nil Save info with teamName, wins, losses, week, or nil if no save
+function SeasonManager.getSaveInfo()
+    if not SeasonManager.saveExists() then
+        return nil
+    end
+
+    local saveStr = love.filesystem.read("season_save.lua")
+    if not saveStr then
+        return nil
+    end
+
+    -- Parse the save file to extract basic info
+    local saveData = SeasonManager.deserializeTable(saveStr)
+    if not saveData or not saveData.teams then
+        return nil
+    end
+
+    -- Find the player team
+    for _, teamData in ipairs(saveData.teams) do
+        if teamData.isPlayer then
+            return {
+                teamName = teamData.name,
+                wins = teamData.wins,
+                losses = teamData.losses,
+                week = saveData.currentWeek or 1
+            }
+        end
+    end
+
+    return nil
 end
 
 --- Deletes the save file

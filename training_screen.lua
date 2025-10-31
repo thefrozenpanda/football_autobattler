@@ -72,85 +72,34 @@ function TrainingScreen.generateUpgradeOptions()
         UPGRADE_TYPE.BOOST,
         UPGRADE_TYPE.DURATION,
         UPGRADE_TYPE.BONUS_YARDS,
-        UPGRADE_TYPE.IMMUNITY,
-        UPGRADE_TYPE.BENCH_CARD
+        UPGRADE_TYPE.IMMUNITY
     }
 
     -- Generate 3 random options
     for i = 1, 3 do
         local selectedType = allUpgradeTypes[math.random(1, #allUpgradeTypes)]
 
-        -- Handle bench card option
-        if selectedType == UPGRADE_TYPE.BENCH_CARD then
-            local availableCoaches = Coach.types
-            local randomCoach = availableCoaches[math.random(1, #availableCoaches)]
+        -- Card-based upgrades
+        if #upgradeableCards > 0 then
+            local cardIndex = math.random(1, #upgradeableCards)
+            local card = upgradeableCards[cardIndex]
 
-            -- Pick random card from coach's offensive cards
-            local randomCardData = randomCoach.offensiveCards[math.random(1, #randomCoach.offensiveCards)]
+            -- Validate upgrade type is compatible with card
+            local finalType, finalCost = TrainingScreen.getValidUpgradeForCard(card, selectedType)
 
-            -- Create new card instance
-            local newCard = Card:new(randomCardData.position, randomCardData.cardType, {
-                yardsPerAction = randomCardData.yardsPerAction or 0,
-                boostAmount = randomCardData.boostAmount or 0,
-                boostTargets = randomCardData.boostTargets or {},
-                effectType = randomCardData.effectType or nil,
-                effectStrength = randomCardData.effectStrength or 0,
-                targetPositions = randomCardData.targetPositions or {},
-                speed = randomCardData.speed or 1.5
-            })
+            if finalType then
+                table.insert(options, {
+                    type = finalType,
+                    card = card,
+                    cost = finalCost
+                })
 
-            table.insert(options, {
-                type = UPGRADE_TYPE.BENCH_CARD,
-                card = newCard,
-                cost = Card.getBenchCardCost()
-            })
-        else
-            -- Card-based upgrades
-            if #upgradeableCards > 0 then
-                local cardIndex = math.random(1, #upgradeableCards)
-                local card = upgradeableCards[cardIndex]
-
-                -- Validate upgrade type is compatible with card
-                local finalType, finalCost = TrainingScreen.getValidUpgradeForCard(card, selectedType)
-
-                if finalType then
-                    table.insert(options, {
-                        type = finalType,
-                        card = card,
-                        cost = finalCost
-                    })
-
-                    -- Remove card from pool to avoid duplicates (unless they can still be upgraded)
-                    if not card:canUpgrade() and finalType ~= UPGRADE_TYPE.IMMUNITY then
-                        table.remove(upgradeableCards, cardIndex)
-                    end
+                -- Remove card from pool to avoid duplicates (unless they can still be upgraded)
+                if not card:canUpgrade() and finalType ~= UPGRADE_TYPE.IMMUNITY then
+                    table.remove(upgradeableCards, cardIndex)
                 end
             end
         end
-    end
-
-    -- If we didn't get 3 options, fill with bench cards
-    while #options < 3 do
-        local availableCoaches = Coach.types
-        local randomCoach = availableCoaches[math.random(1, #availableCoaches)]
-
-        local randomCardData = randomCoach.offensiveCards[math.random(1, #randomCoach.offensiveCards)]
-
-        local newCard = Card:new(randomCardData.position, randomCardData.cardType, {
-            yardsPerAction = randomCardData.yardsPerAction or 0,
-            boostAmount = randomCardData.boostAmount or 0,
-            boostTargets = randomCardData.boostTargets or {},
-            effectType = randomCardData.effectType or nil,
-            effectStrength = randomCardData.effectStrength or 0,
-            targetPositions = randomCardData.targetPositions or {},
-            speed = randomCardData.speed or 1.5
-        })
-
-        table.insert(options, {
-            type = UPGRADE_TYPE.BENCH_CARD,
-            card = newCard,
-            cost = Card.getBenchCardCost()
-        })
     end
 
     TrainingScreen.upgradeOptions = options
