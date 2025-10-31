@@ -21,6 +21,12 @@ local inOvertime = false
 local overtimePeriod = 0  -- 0 = regulation, 1 = first OT, 2 = second OT, etc.
 local winnerData = nil  -- Will store winner info and MVP stats
 
+-- Team and coach information
+local playerTeamName = ""
+local aiTeamName = ""
+local playerCoachName = ""
+local aiCoachName = ""
+
 -- Card visual constants
 local CARD_WIDTH = 70
 local CARD_HEIGHT = 95
@@ -42,39 +48,41 @@ local winnerButtonY = 700
 local winnerButtonHovered = false
 
 -- Formation positions (relative to team start)
--- Based on Offensive.png rotated 90° clockwise (vertical, facing right)
+-- Grid: 3 columns (A, B, C) x 10 rows (1-10)
+-- Column spacing: 100px, Row spacing: 75px
 -- Order matches coach.lua: QB, RB, RB, OL, OL, OL, OL, OL, WR, WR, TE
 local OFFENSIVE_FORMATION = {
-    {x = 30, y = 10},     -- 1. QB (behind line)
-    {x = 60, y = 100},    -- 2. RB
-    {x = 60, y = 200},    -- 3. RB
-    {x = 0, y = 300},     -- 4. OL (line)
-    {x = 0, y = 350},     -- 5. OL
-    {x = 0, y = 400},     -- 6. OL (center)
-    {x = 0, y = 450},     -- 7. OL
-    {x = 0, y = 500},     -- 8. OL
-    {x = 0, y = 50},      -- 9. WR (wide top)
-    {x = 0, y = 750},     -- 10. WR (wide bottom)
-    {x = 0, y = 550}      -- 11. TE (near line)
+    {x = 100, y = 375},   -- 1. QB (B6)
+    {x = 0, y = 300},     -- 2. RB (A5)
+    {x = 0, y = 450},     -- 3. RB (A7)
+    {x = 200, y = 225},   -- 4. OL (C4)
+    {x = 200, y = 300},   -- 5. OL (C5)
+    {x = 200, y = 375},   -- 6. OL (C6)
+    {x = 200, y = 450},   -- 7. OL (C7)
+    {x = 200, y = 525},   -- 8. OL (C8)
+    {x = 200, y = 0},     -- 9. WR (C1)
+    {x = 200, y = 675},   -- 10. WR (C10)
+    {x = 100, y = 150}    -- 11. TE (B3)
 }
 
--- Based on Defensive.png rotated 90° counter-clockwise (vertical, facing left)
+-- Defensive formation (right side of screen)
+-- Grid: 3 columns (A, B, C) x 10 rows (1-10)
 -- Order matches coach.lua: DL, DL, DL, DL, LB, LB, LB, CB, CB, S, S
 local DEFENSIVE_FORMATION = {
-    {x = 0, y = 300},     -- 1. DL (line)
-    {x = 0, y = 350},     -- 2. DL
-    {x = 0, y = 450},     -- 3. DL
-    {x = 0, y = 500},     -- 4. DL
-    {x = 30, y = 350},    -- 5. LB (behind line)
-    {x = 30, y = 425},    -- 6. LB
-    {x = 30, y = 475},    -- 7. LB
-    {x = 0, y = 50},      -- 8. CB (wide top)
-    {x = 0, y = 750},     -- 9. CB (wide bottom)
-    {x = 60, y = 150},    -- 10. S (deep)
-    {x = 60, y = 650}     -- 11. S (deep)
+    {x = 0, y = 225},     -- 1. DL (A4)
+    {x = 0, y = 300},     -- 2. DL (A5)
+    {x = 0, y = 375},     -- 3. DL (A6)
+    {x = 0, y = 450},     -- 4. DL (A7)
+    {x = 100, y = 225},   -- 5. LB (B4)
+    {x = 100, y = 375},   -- 6. LB (B6)
+    {x = 100, y = 525},   -- 7. LB (B8)
+    {x = 0, y = 0},       -- 8. CB (A1)
+    {x = 0, y = 675},     -- 9. CB (A10)
+    {x = 200, y = 150},   -- 10. S (C3)
+    {x = 200, y = 600}    -- 11. S (C9)
 }
 
-function match.load(playerCoachId, aiCoachId)
+function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     -- Initialize debug logger
     debugLogger = DebugLogger:new()
 
@@ -87,6 +95,13 @@ function match.load(playerCoachId, aiCoachId)
     debugLogger:log("=== MATCH STARTED ===")
     debugLogger:log("Player Coach: " .. playerCoachId)
     debugLogger:log("AI Coach: " .. aiCoachId)
+
+    -- Store team and coach names
+    local Coach = require("coach")
+    playerTeamName = playerTeam or "Player"
+    aiTeamName = aiTeam or "Opponent"
+    playerCoachName = Coach.getById(playerCoachId).name
+    aiCoachName = Coach.getById(aiCoachId).name
 
     font = love.graphics.newFont(20)
     titleFont = love.graphics.newFont(48)
@@ -103,7 +118,7 @@ function match.load(playerCoachId, aiCoachId)
     match.shouldReturnToMenu = false  -- Reset flag for new match
 
     debugLogger:log("Match initialization complete")
-    debugLogger:log("Down duration: 5.0 seconds")
+    debugLogger:log("Down duration: 3.0 seconds")
 end
 
 function match.update(dt)
@@ -284,12 +299,24 @@ function match.drawUI()
         0, 75, 1600, "center"
     )
 
+    -- Team names and coaches
+    love.graphics.printf(
+        string.format("%s  vs  %s", playerTeamName, aiTeamName),
+        0, 105, 1600, "center"
+    )
+    love.graphics.setFont(smallFont)
+    love.graphics.printf(
+        string.format("(%s)  vs  (%s)", playerCoachName, aiCoachName),
+        0, 128, 1600, "center"
+    )
+    love.graphics.setFont(font)
+
     -- Score
     local playerScore = phaseManager.playerScore
     local aiScore = phaseManager.aiScore
     love.graphics.printf(
-        string.format("Score - Player: %d | AI: %d", playerScore, aiScore),
-        0, 105, 1600, "center"
+        string.format("Score: %d - %d", playerScore, aiScore),
+        0, 150, 1600, "center"
     )
 
     -- Game time with overtime indicator
@@ -297,11 +324,11 @@ function match.drawUI()
     if inOvertime then
         local overtimeName = match.getOvertimeName(overtimePeriod)
         love.graphics.setColor(1, 0.8, 0)  -- Yellow/gold color for overtime
-        love.graphics.printf(overtimeName, 0, 135, 1600, "center")
+        love.graphics.printf(overtimeName, 0, 180, 1600, "center")
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf(timeDisplay, 0, 165, 1600, "center")
+        love.graphics.printf(timeDisplay, 0, 210, 1600, "center")
     else
-        love.graphics.printf(timeDisplay, 0, 135, 1600, "center")
+        love.graphics.printf(timeDisplay, 0, 180, 1600, "center")
     end
 end
 
@@ -371,6 +398,22 @@ function match.drawCard(card, x, y)
         local effectName = card.effectType == Card.EFFECT.SLOW and "SLW" or
                           card.effectType == Card.EFFECT.FREEZE and "FRZ" or "REM"
         love.graphics.printf(effectName, x, y + 20, CARD_WIDTH, "center")
+    end
+
+    -- Draw jersey number (center of card)
+    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setColor(1, 1, 1, 0.8)
+    love.graphics.printf(
+        string.format("#%d", card.number),
+        x, y + 40, CARD_WIDTH, "center"
+    )
+
+    -- Draw upgrade count (top-right corner)
+    if card.upgradeCount and card.upgradeCount > 0 then
+        love.graphics.setFont(love.graphics.newFont(16))
+        love.graphics.setColor(1, 0.8, 0.2)
+        local upgradeText = string.format("+%d", card.upgradeCount)
+        love.graphics.print(upgradeText, x + CARD_WIDTH - 24, y + 5)
     end
 
     -- Draw progress bar

@@ -126,11 +126,13 @@ function love.update(dt)
             local matchData = SeasonManager.getPlayerMatch()
 
             if matchData then
-                -- Load match with player and opponent coach IDs
+                -- Load match with player and opponent info
                 gameState = "game"
                 match.load(
                     SeasonManager.playerTeam.coachId,
-                    matchData.opponentTeam.coachId
+                    matchData.opponentTeam.coachId,
+                    SeasonManager.playerTeam.name,
+                    matchData.opponentTeam.name
                 )
 
                 -- Advance to match phase
