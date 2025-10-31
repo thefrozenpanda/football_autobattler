@@ -55,6 +55,7 @@ function SeasonManager.startNewSeason(playerCoachId, playerTeamName)
     playerTeam.offensiveCards = Coach.createCardSet(coachData.offensiveCards)
     playerTeam.defensiveCards = Coach.createCardSet(coachData.defensiveCards)
     playerTeam.benchCards = {}  -- Start with empty bench
+    playerTeam.cash = 100  -- Starting cash for first week training
 
     -- Replace a random Conference A team with player team
     for i, team in ipairs(SeasonManager.teams) do
