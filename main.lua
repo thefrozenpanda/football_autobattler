@@ -122,6 +122,9 @@ function love.update(dt)
         -- Check if player clicked "Start Match" from scouting screen
         local scoutingScreen = require("scouting_screen")
         if scoutingScreen.isStartMatchRequested() then
+            -- Reset the flag immediately to prevent match restart loop
+            scoutingScreen.startMatchRequested = false
+
             -- Get match data
             local matchData = SeasonManager.getPlayerMatch()
 
@@ -269,7 +272,7 @@ function love.keypressed(key)
     elseif gameState == "team_naming" then
         teamNaming.keypressed(key)
     elseif gameState == "season_menu" then
-        -- Season menu doesn't need keypressed
+        seasonMenu.keypressed(key)
     elseif gameState == "game" then
         match.keypressed(key)
     elseif gameState == "season_end" then
