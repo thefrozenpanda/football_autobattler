@@ -15,6 +15,8 @@ local Card = require("card")
 
 -- State
 LineupScreen.hoveredCard = nil  -- Card being hovered for tooltip
+LineupScreen.selectedCard = nil  -- Card selected for swapping
+LineupScreen.selectedCardLocation = nil  -- {section, index} where card is located
 LineupScreen.contentHeight = 700
 
 -- UI configuration
@@ -27,6 +29,8 @@ local CARDS_PER_ROW = 11
 --- Initializes the lineup screen
 function LineupScreen.load()
     LineupScreen.hoveredCard = nil
+    LineupScreen.selectedCard = nil
+    LineupScreen.selectedCardLocation = nil
 end
 
 --- LÖVE Callback: Update Logic
@@ -36,7 +40,8 @@ function LineupScreen.update(dt)
     local mx, my = love.mouse.getPosition()
     my = my - 100  -- Adjust for header
 
-    LineupScreen.hoveredCard = LineupScreen.getCardAtPosition(mx, my)
+    local card, section, index = LineupScreen.getCardAtPosition(mx, my)
+    LineupScreen.hoveredCard = card
 end
 
 --- LÖVE Callback: Draw UI
@@ -98,7 +103,7 @@ function LineupScreen.drawCardRow(cards, y, section)
 
     for i, card in ipairs(cards) do
         local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
-        LineupScreen.drawCard(card, x, y, mx, my)
+        LineupScreen.drawCard(card, x, y, mx, my, section, i)
     end
 end
 
@@ -108,12 +113,28 @@ end
 --- @param y number Y position
 --- @param mx number Mouse X position
 --- @param my number Mouse Y position
-function LineupScreen.drawCard(card, x, y, mx, my)
+--- @param section string Section identifier (optional)
+--- @param index number Card index in section (optional)
+function LineupScreen.drawCard(card, x, y, mx, my, section, index)
     local hovering = mx >= x and mx <= x + CARD_WIDTH and
                     my >= y and my <= y + CARD_HEIGHT
 
+    local isSelected = (LineupScreen.selectedCard == card)
+    local canSwapWith = false
+
+    -- Check if this card can be swapped with selected card
+    if LineupScreen.selectedCard and not isSelected then
+        canSwapWith = (LineupScreen.selectedCard.position == card.position)
+    end
+
     -- Background
-    if hovering then
+    if isSelected then
+        love.graphics.setColor(0.4, 0.5, 0.3)  -- Green tint for selected
+    elseif canSwapWith and hovering then
+        love.graphics.setColor(0.3, 0.4, 0.5)  -- Blue tint for valid swap target
+    elseif canSwapWith then
+        love.graphics.setColor(0.25, 0.3, 0.35)  -- Subtle blue for swappable
+    elseif hovering then
         love.graphics.setColor(0.3, 0.35, 0.4)
     else
         love.graphics.setColor(0.2, 0.2, 0.25)
@@ -147,15 +168,24 @@ function LineupScreen.drawCard(card, x, y, mx, my)
         local upgradeText = string.format("+%d", card.upgradeCount)
         love.graphics.print(upgradeText, x + CARD_WIDTH - 35, y + 5)
     end
+
+    -- Swap indicator for swappable cards
+    if canSwapWith then
+        love.graphics.setFont(love.graphics.newFont(24))
+        love.graphics.setColor(0.5, 0.8, 1)
+        love.graphics.print("⇄", x + CARD_WIDTH - 28, y + CARD_HEIGHT - 30)
+    end
 end
 
 --- Gets the card at the given mouse position
 --- @param mx number Mouse X position
 --- @param my number Mouse Y position
 --- @return table|nil The card at the position, or nil
+--- @return string|nil The section ("offense", "defense", "bench")
+--- @return number|nil The index in the section
 function LineupScreen.getCardAtPosition(mx, my)
     if not SeasonManager.playerTeam then
-        return nil
+        return nil, nil, nil
     end
 
     local yOffset = 20 + SECTION_Y_OFFSET
@@ -164,7 +194,7 @@ function LineupScreen.getCardAtPosition(mx, my)
     for i, card in ipairs(SeasonManager.playerTeam.offensiveCards) do
         local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
         if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
-            return card
+            return card, "offense", i
         end
     end
 
@@ -174,7 +204,7 @@ function LineupScreen.getCardAtPosition(mx, my)
     for i, card in ipairs(SeasonManager.playerTeam.defensiveCards) do
         local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
         if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
-            return card
+            return card, "defense", i
         end
     end
 
@@ -184,11 +214,11 @@ function LineupScreen.getCardAtPosition(mx, my)
     for i, card in ipairs(SeasonManager.playerTeam.benchCards) do
         local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
         if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
-            return card
+            return card, "bench", i
         end
     end
 
-    return nil
+    return nil, nil, nil
 end
 
 --- Draws a tooltip for a card
@@ -308,13 +338,93 @@ function LineupScreen.drawTooltip(card)
     end
 end
 
+--- Swaps two cards between sections
+--- @param section1 string First card's section
+--- @param index1 number First card's index
+--- @param section2 string Second card's section
+--- @param index2 number Second card's index
+function LineupScreen.swapCards(section1, index1, section2, index2)
+    if not SeasonManager.playerTeam then
+        return
+    end
+
+    -- Get the card arrays
+    local array1 = nil
+    local array2 = nil
+
+    if section1 == "offense" then
+        array1 = SeasonManager.playerTeam.offensiveCards
+    elseif section1 == "defense" then
+        array1 = SeasonManager.playerTeam.defensiveCards
+    elseif section1 == "bench" then
+        array1 = SeasonManager.playerTeam.benchCards
+    end
+
+    if section2 == "offense" then
+        array2 = SeasonManager.playerTeam.offensiveCards
+    elseif section2 == "defense" then
+        array2 = SeasonManager.playerTeam.defensiveCards
+    elseif section2 == "bench" then
+        array2 = SeasonManager.playerTeam.benchCards
+    end
+
+    if not array1 or not array2 then
+        return
+    end
+
+    -- Perform the swap
+    local temp = array1[index1]
+    array1[index1] = array2[index2]
+    array2[index2] = temp
+end
+
 --- LÖVE Callback: Mouse Pressed
 --- @param x number Mouse X position
 --- @param y number Mouse Y position
 --- @param button number Mouse button
 function LineupScreen.mousepressed(x, y, button)
-    -- Currently no click interactions
-    -- Future: Could implement card swapping between starters and bench
+    if button ~= 1 then
+        return
+    end
+
+    local card, section, index = LineupScreen.getCardAtPosition(x, y)
+
+    if not card then
+        -- Clicked empty space - deselect
+        LineupScreen.selectedCard = nil
+        LineupScreen.selectedCardLocation = nil
+        return
+    end
+
+    -- If no card selected, select this one
+    if not LineupScreen.selectedCard then
+        LineupScreen.selectedCard = card
+        LineupScreen.selectedCardLocation = {section = section, index = index}
+        return
+    end
+
+    -- If clicking the same card, deselect
+    if LineupScreen.selectedCard == card then
+        LineupScreen.selectedCard = nil
+        LineupScreen.selectedCardLocation = nil
+        return
+    end
+
+    -- Check if cards can be swapped (same position)
+    if LineupScreen.selectedCard.position == card.position then
+        LineupScreen.swapCards(
+            LineupScreen.selectedCardLocation.section,
+            LineupScreen.selectedCardLocation.index,
+            section,
+            index
+        )
+        LineupScreen.selectedCard = nil
+        LineupScreen.selectedCardLocation = nil
+    else
+        -- Different position - select the new card instead
+        LineupScreen.selectedCard = card
+        LineupScreen.selectedCardLocation = {section = section, index = index}
+    end
 end
 
 return LineupScreen

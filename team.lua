@@ -187,6 +187,12 @@ function Team.generateLeague()
     for i, name in ipairs(Team.CONFERENCE_A) do
         local randomCoach = Coach.getRandom()
         local team = Team:new(name, "A", randomCoach.id, false)
+
+        -- Populate cards from coach
+        team.offensiveCards = Coach.createCardSet(randomCoach.offensiveCards)
+        team.defensiveCards = Coach.createCardSet(randomCoach.defensiveCards)
+        team.benchCards = {}  -- AI teams start with empty bench
+
         table.insert(teams, team)
     end
 
@@ -194,6 +200,12 @@ function Team.generateLeague()
     for i, name in ipairs(Team.CONFERENCE_B) do
         local randomCoach = Coach.getRandom()
         local team = Team:new(name, "B", randomCoach.id, false)
+
+        -- Populate cards from coach
+        team.offensiveCards = Coach.createCardSet(randomCoach.offensiveCards)
+        team.defensiveCards = Coach.createCardSet(randomCoach.defensiveCards)
+        team.benchCards = {}  -- AI teams start with empty bench
+
         table.insert(teams, team)
     end
 

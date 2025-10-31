@@ -11,18 +11,22 @@
 
 local menu = {}
 
+-- Dependencies
+local SeasonManager = require("season_manager")
+
 -- Public State
-menu.startGameRequested = false  -- Flag set when player clicks "Start Game"
+menu.startGameRequested = false     -- Flag set when player clicks "Start Game"
+menu.continueSeasonRequested = false  -- Flag set when player clicks "Continue Season"
 
 -- UI Configuration
 local titleFont
 local menuFont
 local copyrightFont
 local selectedOption = 1          -- Currently selected menu option (1-based index)
-local menuOptions = {"Start Game", "Exit Game"}
+local menuOptions = {"Start New Season", "Continue Season", "Exit Game"}
 local buttonWidth = 300
 local buttonHeight = 60
-local buttonY = {520, 650}        -- Y positions for each button
+local buttonY = {450, 580, 710}   -- Y positions for each button
 
 --- Initializes the menu
 --- Creates fonts and resets menu state. Called when entering menu from other states.
@@ -35,6 +39,7 @@ function menu.load()
     -- Reset menu state
     selectedOption = 1
     menu.startGameRequested = false
+    menu.continueSeasonRequested = false
 end
 
 --- Updates menu logic
@@ -55,14 +60,22 @@ function menu.draw()
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf("The Gridiron Bazaar", 0, 350, 1600, "center")
 
+    -- Check if save exists
+    local hasSave = SeasonManager.saveExists()
+
     -- Draw menu buttons
     love.graphics.setFont(menuFont)
     for i, option in ipairs(menuOptions) do
         local x = (1600 - buttonWidth) / 2
         local y = buttonY[i]
 
+        -- Check if this option is disabled
+        local isDisabled = (i == 2 and not hasSave)  -- Continue Season disabled if no save
+
         -- Draw button background (highlighted if selected)
-        if i == selectedOption then
+        if isDisabled then
+            love.graphics.setColor(0.15, 0.15, 0.2, 0.4)  -- Very dark/grayed out
+        elseif i == selectedOption then
             love.graphics.setColor(0.3, 0.5, 0.7, 0.8)  -- Bright blue when selected
         else
             love.graphics.setColor(0.2, 0.3, 0.4, 0.6)  -- Dark gray when not selected
@@ -70,7 +83,10 @@ function menu.draw()
         love.graphics.rectangle("fill", x, y, buttonWidth, buttonHeight, 10, 10)
 
         -- Draw button border (thicker if selected)
-        if i == selectedOption then
+        if isDisabled then
+            love.graphics.setColor(0.3, 0.3, 0.35)
+            love.graphics.setLineWidth(2)
+        elseif i == selectedOption then
             love.graphics.setColor(0.5, 0.7, 1.0)
             love.graphics.setLineWidth(3)
         else
@@ -80,7 +96,11 @@ function menu.draw()
         love.graphics.rectangle("line", x, y, buttonWidth, buttonHeight, 10, 10)
 
         -- Draw button text
-        love.graphics.setColor(1, 1, 1)
+        if isDisabled then
+            love.graphics.setColor(0.4, 0.4, 0.45)  -- Grayed out text
+        else
+            love.graphics.setColor(1, 1, 1)
+        end
         love.graphics.printf(option, x, y + 15, buttonWidth, "center")
     end
 
@@ -163,9 +183,19 @@ end
 --- @param option number The menu option index (1 or 2)
 function menu.selectOption(option)
     if option == 1 then
-        -- Start Game - signal to main.lua
+        -- Start New Season - check for existing save
+        if SeasonManager.saveExists() then
+            -- Show overwrite warning (for now, just delete and start)
+            -- TODO: Add confirmation dialog
+            SeasonManager.deleteSave()
+        end
         menu.startGameRequested = true
     elseif option == 2 then
+        -- Continue Season - only if save exists
+        if SeasonManager.saveExists() then
+            menu.continueSeasonRequested = true
+        end
+    elseif option == 3 then
         -- Exit Game
         love.event.quit()
     end
