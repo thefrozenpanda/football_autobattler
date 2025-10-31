@@ -160,6 +160,9 @@ function love.update(dt)
 
         -- Return to season menu when match ends
         if match.shouldReturnToMenu then
+            -- Reset flag immediately
+            match.shouldReturnToMenu = false
+
             -- Record match result
             local matchData = SeasonManager.getPlayerMatch()
             if matchData then
@@ -182,8 +185,6 @@ function love.update(dt)
                 simulationComplete = false
                 simulationPopup.show()
             end
-
-            match.shouldReturnToMenu = false
         end
 
     -- Simulating AI Games State

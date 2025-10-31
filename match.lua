@@ -100,6 +100,7 @@ function match.load(playerCoachId, aiCoachId)
     inOvertime = false
     overtimePeriod = 0
     winnerData = nil
+    match.shouldReturnToMenu = false  -- Reset flag for new match
 
     debugLogger:log("Match initialization complete")
     debugLogger:log("Down duration: 5.0 seconds")
