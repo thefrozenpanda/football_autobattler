@@ -14,8 +14,8 @@ function FieldState:new(yardsNeeded)
 
         -- Down tracking
         currentDown = 1,             -- Current down (1-4)
-        downTimer = 5.0,             -- Time remaining in current down (5 seconds)
-        downDuration = 5.0,          -- Duration of each down
+        downTimer = 3.0,             -- Time remaining in current down (3 seconds)
+        downDuration = 3.0,          -- Duration of each down
 
         -- Field position (for turnovers)
         fieldPosition = 20,          -- Current yard line (20 = own 20)

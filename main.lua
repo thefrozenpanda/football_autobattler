@@ -126,11 +126,13 @@ function love.update(dt)
             local matchData = SeasonManager.getPlayerMatch()
 
             if matchData then
-                -- Load match with player and opponent coach IDs
+                -- Load match with player and opponent info
                 gameState = "game"
                 match.load(
                     SeasonManager.playerTeam.coachId,
-                    matchData.opponentTeam.coachId
+                    matchData.opponentTeam.coachId,
+                    SeasonManager.playerTeam.name,
+                    matchData.opponentTeam.name
                 )
 
                 -- Advance to match phase
@@ -160,6 +162,9 @@ function love.update(dt)
 
         -- Return to season menu when match ends
         if match.shouldReturnToMenu then
+            -- Reset flag immediately
+            match.shouldReturnToMenu = false
+
             -- Record match result
             local matchData = SeasonManager.getPlayerMatch()
             if matchData then
@@ -182,8 +187,6 @@ function love.update(dt)
                 simulationComplete = false
                 simulationPopup.show()
             end
-
-            match.shouldReturnToMenu = false
         end
 
     -- Simulating AI Games State
