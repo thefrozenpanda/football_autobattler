@@ -194,4 +194,17 @@ function Coach.getRandom()
     return Coach.types[index]
 end
 
+-- Create card instances from coach card definitions
+-- Converts the card definition tables into actual Card instances
+-- @param cardDefs table Array of card definitions (e.g., coachData.offensiveCards)
+-- @return table Array of Card instances
+function Coach.createCardSet(cardDefs)
+    local cards = {}
+    for i, cardDef in ipairs(cardDefs) do
+        local card = Card:new(cardDef.position, cardDef.cardType, cardDef.stats)
+        table.insert(cards, card)
+    end
+    return cards
+end
+
 return Coach
