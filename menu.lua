@@ -102,6 +102,24 @@ function menu.draw()
             love.graphics.setColor(1, 1, 1)
         end
         love.graphics.printf(option, x, y + 15, buttonWidth, "center")
+
+        -- Draw save info under "Continue Season" button (option 2)
+        if i == 2 then
+            love.graphics.setFont(copyrightFont)
+            if hasSave then
+                local saveInfo = SeasonManager.getSaveInfo()
+                if saveInfo then
+                    love.graphics.setColor(0.8, 0.8, 0.8)
+                    local infoText = string.format("%s (%d-%d) - Week %d",
+                        saveInfo.teamName, saveInfo.wins, saveInfo.losses, saveInfo.week)
+                    love.graphics.printf(infoText, x, y + buttonHeight + 5, buttonWidth, "center")
+                end
+            else
+                love.graphics.setColor(0.5, 0.5, 0.5)
+                love.graphics.printf("No Current Save", x, y + buttonHeight + 5, buttonWidth, "center")
+            end
+            love.graphics.setFont(menuFont)  -- Reset font
+        end
     end
 
     -- Draw instructions and copyright

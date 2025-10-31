@@ -185,6 +185,12 @@ function love.update(dt)
                 SeasonManager.lastMatchResult.mvpOffense = match.getMVPOffense()
                 SeasonManager.lastMatchResult.mvpDefense = match.getMVPDefense()
 
+                -- Update player team cards with match statistics
+                SeasonManager.updatePlayerCardStats(
+                    match.getPlayerOffensiveCards(),
+                    match.getPlayerDefensiveCards()
+                )
+
                 -- Transition to simulation state
                 gameState = "simulating"
                 simulationComplete = false
@@ -197,6 +203,9 @@ function love.update(dt)
         if not simulationComplete then
             -- Run simulation (this happens in one frame)
             SeasonManager.simulateWeek()
+
+            -- Advance to next week
+            SeasonManager.nextWeek()
 
             -- Advance to training phase
             SeasonManager.goToTraining()

@@ -253,19 +253,25 @@ function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound)
         local opponentScore = isPlayerHome and match.awayScore or match.homeScore
         local playerWon = playerScore > opponentScore
 
-        love.graphics.setFont(love.graphics.newFont(24))
+        -- Show score inline: "24 - 17 (W)" or "17 - 24 (L)"
+        love.graphics.setFont(love.graphics.newFont(20))
+        love.graphics.setColor(1, 1, 1)
+        local scoreText = string.format("%d - %d ", playerScore, opponentScore)
+        love.graphics.print(scoreText, START_X + GAME_WIDTH - 150, y + 12)
 
+        -- W/L indicator
+        local scoreWidth = love.graphics.getFont():getWidth(scoreText)
         if playerWon then
             love.graphics.setColor(0.3, 0.8, 0.3)
-            love.graphics.print(string.format("W %d-%d", playerScore, opponentScore), START_X + GAME_WIDTH - 120, y + 8)
+            love.graphics.print("(W)", START_X + GAME_WIDTH - 150 + scoreWidth, y + 12)
         else
             love.graphics.setColor(0.8, 0.3, 0.3)
-            love.graphics.print(string.format("L %d-%d", playerScore, opponentScore), START_X + GAME_WIDTH - 120, y + 8)
+            love.graphics.print("(L)", START_X + GAME_WIDTH - 150 + scoreWidth, y + 12)
         end
     else
-        love.graphics.setFont(love.graphics.newFont(20))
+        love.graphics.setFont(love.graphics.newFont(18))
         love.graphics.setColor(0.6, 0.6, 0.7)
-        love.graphics.print("Not played", START_X + GAME_WIDTH - 120, y + 12)
+        love.graphics.print("Not played", START_X + GAME_WIDTH - 120, y + 14)
     end
 
     return y + GAME_ROW_HEIGHT

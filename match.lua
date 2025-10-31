@@ -167,6 +167,19 @@ function match.update(dt)
     phaseManager:update(dt)
     phaseManager:checkPhaseEnd()
 
+    -- In overtime, end game immediately if anyone scores
+    if inOvertime and phaseManager.playerScore ~= phaseManager.aiScore then
+        matchEnded = true
+        winnerData = match.calculateWinner()
+
+        if debugLogger then
+            debugLogger:log("=== OVERTIME ENDED - SUDDEN DEATH ===")
+            debugLogger:log("Winner: " .. winnerData.winnerName)
+            debugLogger:log("Final Score: Player " .. phaseManager.playerScore .. " - AI " .. phaseManager.aiScore)
+        end
+        return
+    end
+
     if timeLeft <= 0 then
         match.handleMatchEnd()
     end
@@ -736,6 +749,18 @@ end
 --- @return table|nil MVP card or nil
 function match.getMVPDefense()
     return winnerData and winnerData.defensiveMVP or nil
+end
+
+--- Gets the player's offensive cards from the current match
+--- @return table Array of offensive cards
+function match.getPlayerOffensiveCards()
+    return phaseManager and phaseManager.playerOffense.cards or {}
+end
+
+--- Gets the player's defensive cards from the current match
+--- @return table Array of defensive cards
+function match.getPlayerDefensiveCards()
+    return phaseManager and phaseManager.playerDefense.cards or {}
 end
 
 --- Simulates a match between two AI teams without rendering

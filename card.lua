@@ -402,4 +402,41 @@ function Card:resetUpgrades()
     self.hasImmunity = false
 end
 
+--- Recalculates stats based on stored upgrade counts (used when loading from save)
+function Card:recalculateStats()
+    -- Start from base stats
+    self.yardsPerAction = self.baseYardsPerAction
+    self.cooldown = self.baseCooldown
+    self.speed = self.baseCooldown
+
+    -- Apply yards upgrades (+0.5 per upgrade)
+    if self.yardsUpgrades and self.yardsUpgrades > 0 then
+        self.yardsPerAction = self.yardsPerAction + (self.yardsUpgrades * 0.5)
+    end
+
+    -- Apply cooldown upgrades (-10% per upgrade)
+    if self.cooldownUpgrades and self.cooldownUpgrades > 0 then
+        for i = 1, self.cooldownUpgrades do
+            self.cooldown = self.cooldown * 0.9
+        end
+        self.speed = self.cooldown
+    end
+
+    -- Apply boost upgrades (+5% per upgrade)
+    if self.boostUpgrades and self.boostUpgrades > 0 then
+        -- Need to calculate base boost amount
+        local baseBoost = self.boostAmount - (self.boostUpgrades * 5)
+        self.boostAmount = baseBoost + (self.boostUpgrades * 5)
+    end
+
+    -- Apply duration upgrades (+0.5s per upgrade)
+    if self.durationUpgrades and self.durationUpgrades > 0 then
+        -- Need to calculate base effect strength
+        local baseStrength = self.effectStrength - (self.durationUpgrades * 0.5)
+        self.effectStrength = baseStrength + (self.durationUpgrades * 0.5)
+    end
+
+    -- bonusYardsUpgrades and hasImmunity are already stored as flags, no recalc needed
+end
+
 return Card
