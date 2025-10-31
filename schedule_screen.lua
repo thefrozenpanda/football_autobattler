@@ -190,8 +190,6 @@ function ScheduleScreen.drawSchedule(yOffset)
             end
         end
     end
-
-    love.graphics.pop()
 end
 
 --- Draws a single game row
