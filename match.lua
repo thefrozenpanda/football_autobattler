@@ -28,8 +28,8 @@ local playerCoachName = ""
 local aiCoachName = ""
 
 -- Card visual constants
-local CARD_WIDTH = 70
-local CARD_HEIGHT = 95
+local CARD_WIDTH = 60
+local CARD_HEIGHT = 60
 local CARD_PADDING = 8
 local PROGRESS_BAR_HEIGHT = 5
 
@@ -47,39 +47,75 @@ local winnerButtonHeight = 60
 local winnerButtonY = 700
 local winnerButtonHovered = false
 
+-- Card dimensions (calculated dynamically to fit 3x10 grid with 5px spacing)
+-- Grid area: ~300px wide x ~700px tall
+-- With 5px spacing: (300 - 10) / 3 = 96.67px per column, (700 - 45) / 10 = 65.5px per row
+local CARD_WIDTH = 60   -- Reduced to fit better with spacing
+local CARD_HEIGHT = 60  -- Reduced to fit better with spacing
+
 -- Formation positions (relative to team start)
 -- Grid: 3 columns (A, B, C) x 10 rows (1-10)
--- Column spacing: 100px, Row spacing: 75px
+-- Column spacing: CARD_WIDTH + 5px, Row spacing: CARD_HEIGHT + 5px
 -- Order matches coach.lua: QB, RB, RB, OL, OL, OL, OL, OL, WR, WR, TE
 local OFFENSIVE_FORMATION = {
-    {x = 100, y = 375},   -- 1. QB (B6)
-    {x = 0, y = 300},     -- 2. RB (A5)
-    {x = 0, y = 450},     -- 3. RB (A7)
-    {x = 200, y = 225},   -- 4. OL (C4)
-    {x = 200, y = 300},   -- 5. OL (C5)
-    {x = 200, y = 375},   -- 6. OL (C6)
-    {x = 200, y = 450},   -- 7. OL (C7)
-    {x = 200, y = 525},   -- 8. OL (C8)
-    {x = 200, y = 0},     -- 9. WR (C1)
-    {x = 200, y = 675},   -- 10. WR (C10)
-    {x = 100, y = 150}    -- 11. TE (B3)
+    {x = 65, y = 390},    -- 1. QB (B6)
+    {x = 0, y = 325},     -- 2. RB (A5)
+    {x = 0, y = 455},     -- 3. RB (A7)
+    {x = 130, y = 260},   -- 4. OL (C4)
+    {x = 130, y = 325},   -- 5. OL (C5)
+    {x = 130, y = 390},   -- 6. OL (C6)
+    {x = 130, y = 455},   -- 7. OL (C7)
+    {x = 130, y = 520},   -- 8. OL (C8)
+    {x = 130, y = 65},    -- 9. WR (C1)
+    {x = 130, y = 650},   -- 10. WR (C10)
+    {x = 65, y = 195}     -- 11. TE (B3)
 }
 
--- Defensive formation (right side of screen)
+-- Defensive formation (for AI when defending - right side)
 -- Grid: 3 columns (A, B, C) x 10 rows (1-10)
 -- Order matches coach.lua: DL, DL, DL, DL, LB, LB, LB, CB, CB, S, S
 local DEFENSIVE_FORMATION = {
-    {x = 0, y = 225},     -- 1. DL (A4)
-    {x = 0, y = 300},     -- 2. DL (A5)
-    {x = 0, y = 375},     -- 3. DL (A6)
-    {x = 0, y = 450},     -- 4. DL (A7)
-    {x = 100, y = 225},   -- 5. LB (B4)
-    {x = 100, y = 375},   -- 6. LB (B6)
-    {x = 100, y = 525},   -- 7. LB (B8)
-    {x = 0, y = 0},       -- 8. CB (A1)
-    {x = 0, y = 675},     -- 9. CB (A10)
-    {x = 200, y = 150},   -- 10. S (C3)
-    {x = 200, y = 600}    -- 11. S (C9)
+    {x = 0, y = 260},     -- 1. DL (A4)
+    {x = 0, y = 325},     -- 2. DL (A5)
+    {x = 0, y = 390},     -- 3. DL (A6)
+    {x = 0, y = 455},     -- 4. DL (A7)
+    {x = 65, y = 260},    -- 5. LB (B4)
+    {x = 65, y = 390},    -- 6. LB (B6)
+    {x = 65, y = 520},    -- 7. LB (B8)
+    {x = 0, y = 65},      -- 8. CB (A1)
+    {x = 0, y = 650},     -- 9. CB (A10)
+    {x = 130, y = 195},   -- 10. S (C3)
+    {x = 130, y = 585}    -- 11. S (C9)
+}
+
+-- Mirrored offensive formation (for AI when attacking - flipped horizontally)
+local OFFENSIVE_FORMATION_MIRRORED = {
+    {x = 65, y = 390},    -- 1. QB (B6)
+    {x = 130, y = 325},   -- 2. RB (C5 mirrored from A5)
+    {x = 130, y = 455},   -- 3. RB (C7 mirrored from A7)
+    {x = 0, y = 260},     -- 4. OL (A4 mirrored from C4)
+    {x = 0, y = 325},     -- 5. OL (A5 mirrored from C5)
+    {x = 0, y = 390},     -- 6. OL (A6 mirrored from C6)
+    {x = 0, y = 455},     -- 7. OL (A7 mirrored from C7)
+    {x = 0, y = 520},     -- 8. OL (A8 mirrored from C8)
+    {x = 0, y = 65},      -- 9. WR (A1 mirrored from C1)
+    {x = 0, y = 650},     -- 10. WR (A10 mirrored from C10)
+    {x = 65, y = 195}     -- 11. TE (B3)
+}
+
+-- Mirrored defensive formation (for player when defending - flipped horizontally)
+local DEFENSIVE_FORMATION_MIRRORED = {
+    {x = 130, y = 260},   -- 1. DL (C4 mirrored from A4)
+    {x = 130, y = 325},   -- 2. DL (C5 mirrored from A5)
+    {x = 130, y = 390},   -- 3. DL (C6 mirrored from A6)
+    {x = 130, y = 455},   -- 4. DL (C7 mirrored from A7)
+    {x = 65, y = 260},    -- 5. LB (B4)
+    {x = 65, y = 390},    -- 6. LB (B6)
+    {x = 65, y = 520},    -- 7. LB (B8)
+    {x = 130, y = 65},    -- 8. CB (C1 mirrored from A1)
+    {x = 130, y = 650},   -- 9. CB (C10 mirrored from A10)
+    {x = 0, y = 195},     -- 10. S (A3 mirrored from C3)
+    {x = 0, y = 585}      -- 11. S (A9 mirrored from C9)
 }
 
 function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
@@ -257,12 +293,18 @@ function match.draw()
     local aiCards = phaseManager:getActiveAICards()
 
     local playerIsOffense = (phaseManager.currentPhase == "player_offense")
-    local playerFormation = playerIsOffense and OFFENSIVE_FORMATION or DEFENSIVE_FORMATION
-    local aiFormation = playerIsOffense and DEFENSIVE_FORMATION or OFFENSIVE_FORMATION
+
+    -- Use mirrored formations when appropriate
+    local playerFormation = playerIsOffense and OFFENSIVE_FORMATION or DEFENSIVE_FORMATION_MIRRORED
+    local aiFormation = playerIsOffense and DEFENSIVE_FORMATION or OFFENSIVE_FORMATION_MIRRORED
+
+    -- Construct team labels with coach types
+    local playerLabel = string.format("%s (%s)", playerTeamName, playerCoachName)
+    local aiLabel = string.format("%s (%s)", aiTeamName, aiCoachName)
 
     -- Draw cards
-    match.drawTeamCards(playerCards, "left", phaseManager:getPlayerCoachName(), playerFormation)
-    match.drawTeamCards(aiCards, "right", phaseManager:getAICoachName(), aiFormation)
+    match.drawTeamCards(playerCards, "left", playerLabel, playerFormation)
+    match.drawTeamCards(aiCards, "right", aiLabel, aiFormation)
 
     if paused then
         match.drawPauseMenu()
@@ -378,42 +420,45 @@ function match.drawCard(card, x, y)
     love.graphics.rectangle("line", x, y, CARD_WIDTH, CARD_HEIGHT, 5, 5)
 
     -- Draw position name
-    love.graphics.setFont(smallFont)
+    love.graphics.setFont(love.graphics.newFont(12))
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf(card.position, x, y + 5, CARD_WIDTH, "center")
+    love.graphics.printf(card.position, x, y + 3, CARD_WIDTH, "center")
 
     -- Draw stats based on card type
     local Card = require("card")
     if card.cardType == Card.TYPE.YARD_GENERATOR then
+        love.graphics.setFont(love.graphics.newFont(11))
         love.graphics.printf(
             string.format("%.1f yd", card.yardsPerAction),
-            x, y + 20, CARD_WIDTH, "center"
+            x, y + 16, CARD_WIDTH, "center"
         )
     elseif card.cardType == Card.TYPE.BOOSTER then
+        love.graphics.setFont(love.graphics.newFont(11))
         love.graphics.printf(
             string.format("+%d%%", card.boostAmount),
-            x, y + 20, CARD_WIDTH, "center"
+            x, y + 16, CARD_WIDTH, "center"
         )
     elseif card.cardType == Card.TYPE.DEFENDER then
+        love.graphics.setFont(love.graphics.newFont(11))
         local effectName = card.effectType == Card.EFFECT.SLOW and "SLW" or
                           card.effectType == Card.EFFECT.FREEZE and "FRZ" or "REM"
-        love.graphics.printf(effectName, x, y + 20, CARD_WIDTH, "center")
+        love.graphics.printf(effectName, x, y + 16, CARD_WIDTH, "center")
     end
 
     -- Draw jersey number (center of card)
-    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setFont(love.graphics.newFont(20))
     love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.printf(
         string.format("#%d", card.number),
-        x, y + 40, CARD_WIDTH, "center"
+        x, y + 32, CARD_WIDTH, "center"
     )
 
     -- Draw upgrade count (top-right corner)
     if card.upgradeCount and card.upgradeCount > 0 then
-        love.graphics.setFont(love.graphics.newFont(16))
+        love.graphics.setFont(love.graphics.newFont(13))
         love.graphics.setColor(1, 0.8, 0.2)
         local upgradeText = string.format("+%d", card.upgradeCount)
-        love.graphics.print(upgradeText, x + CARD_WIDTH - 24, y + 5)
+        love.graphics.print(upgradeText, x + CARD_WIDTH - 20, y + 3)
     end
 
     -- Draw progress bar

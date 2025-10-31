@@ -27,17 +27,16 @@ local ROW_HEIGHT = 35
 local HEADER_HEIGHT = 40
 local START_Y = 20
 
--- Column definitions
+-- Column definitions (Type column removed, widths expanded to fit headers + sort indicator)
 local columns = {
-    {id = "position", label = "Pos", x = 50, width = 80},
-    {id = "number", label = "#", x = 130, width = 60},
-    {id = "type", label = "Type", x = 190, width = 120},
-    {id = "yardsGained", label = "Yards", x = 310, width = 80},
-    {id = "touchdownsScored", label = "TDs", x = 390, width = 60},
-    {id = "cardsBoosted", label = "Boosts", x = 450, width = 80},
-    {id = "timesSlowed", label = "Slows", x = 530, width = 80},
-    {id = "timesFroze", label = "Freezes", x = 610, width = 80},
-    {id = "yardsReduced", label = "Yds Removed", x = 690, width = 120}
+    {id = "position", label = "Pos", x = 50, width = 100},
+    {id = "number", label = "#", x = 150, width = 80},
+    {id = "yardsGained", label = "Yards", x = 230, width = 110},
+    {id = "touchdownsScored", label = "TDs", x = 340, width = 90},
+    {id = "cardsBoosted", label = "Boosts", x = 430, width = 110},
+    {id = "timesSlowed", label = "Slows", x = 540, width = 110},
+    {id = "timesFroze", label = "Freezes", x = 650, width = 120},
+    {id = "yardsReduced", label = "Yds Removed", x = 770, width = 150}
 }
 
 --- Initializes the stats screen
@@ -90,8 +89,6 @@ function StatsScreen.getCardValue(card, column)
         return card.position
     elseif column == "number" then
         return card.number
-    elseif column == "type" then
-        return card.cardType
     elseif column == "yardsGained" then
         return card.yardsGained or 0
     elseif column == "touchdownsScored" then
@@ -171,11 +168,27 @@ function StatsScreen.drawTableHeader(y)
         love.graphics.setColor(1, 1, 1)
         love.graphics.print(col.label, col.x + 10, y + 10)
 
-        -- Sort indicator
+        -- Sort indicator (triangle)
         if StatsScreen.sortColumn == col.id then
-            local arrow = StatsScreen.sortAscending and "▲" or "▼"
             love.graphics.setColor(0.8, 0.8, 1)
-            love.graphics.print(arrow, col.x + col.width - 20, y + 10)
+            local arrowX = col.x + col.width - 15
+            local arrowY = y + HEADER_HEIGHT / 2
+
+            if StatsScreen.sortAscending then
+                -- Ascending: upward triangle ▲
+                love.graphics.polygon("fill",
+                    arrowX, arrowY - 5,      -- top point
+                    arrowX - 5, arrowY + 3,  -- bottom left
+                    arrowX + 5, arrowY + 3   -- bottom right
+                )
+            else
+                -- Descending: downward triangle ▼
+                love.graphics.polygon("fill",
+                    arrowX, arrowY + 5,      -- bottom point
+                    arrowX - 5, arrowY - 3,  -- top left
+                    arrowX + 5, arrowY - 3   -- top right
+                )
+            end
         end
 
         -- Border
@@ -208,14 +221,6 @@ function StatsScreen.drawTableRow(card, y, alternate)
             value = card.position
         elseif col.id == "number" then
             value = string.format("#%d", card.number)
-        elseif col.id == "type" then
-            if card.cardType == Card.TYPE.YARD_GENERATOR then
-                value = "Generator"
-            elseif card.cardType == Card.TYPE.BOOSTER then
-                value = "Booster"
-            elseif card.cardType == Card.TYPE.DEFENDER then
-                value = "Defender"
-            end
         elseif col.id == "yardsGained" then
             value = string.format("%.0f", card.yardsGained or 0)
         elseif col.id == "touchdownsScored" then

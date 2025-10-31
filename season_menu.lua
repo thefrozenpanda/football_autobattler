@@ -26,6 +26,7 @@ local ScoutingScreen = nil
 SeasonMenu.currentScreen = "training"  -- Current active screen
 SeasonMenu.saveRequested = false
 SeasonMenu.quitRequested = false
+SeasonMenu.pauseMenuVisible = false
 
 -- UI configuration
 local SCREEN_WIDTH = 1600
@@ -37,8 +38,14 @@ local NAV_BUTTON_HEIGHT = 60
 local NAV_BUTTON_SPACING = 20
 local HEADER_HEIGHT = 100
 
--- Navigation buttons
+-- Pause menu constants
+local PAUSE_BUTTON_WIDTH = 300
+local PAUSE_BUTTON_HEIGHT = 60
+local PAUSE_BUTTON_Y = {400, 530}
+
+-- Navigation buttons (Menu button added to the left of Training)
 local navButtons = {
+    {id = "menu", label = "Menu", x = 0},
     {id = "training", label = "Training", x = 0},
     {id = "lineup", label = "Lineup", x = 0},
     {id = "schedule", label = "Schedule", x = 0},
@@ -47,11 +54,6 @@ local navButtons = {
     {id = "next_game", label = "Next Game", x = 0}
 }
 
--- Action buttons
-local actionButtons = {
-    {id = "save", label = "Save", x = 50, y = 20, width = 120, height = 40},
-    {id = "quit", label = "Quit", x = 190, y = 20, width = 120, height = 40}
-}
 
 --- Initializes the season menu
 function SeasonMenu.load()
@@ -94,6 +96,7 @@ function SeasonMenu.load()
 
     SeasonMenu.saveRequested = false
     SeasonMenu.quitRequested = false
+    SeasonMenu.pauseMenuVisible = false
 end
 
 --- LÖVE Callback: Update Logic
@@ -146,6 +149,11 @@ function SeasonMenu.draw()
 
     -- Draw navigation bar
     SeasonMenu.drawNavigationBar()
+
+    -- Draw pause menu overlay if visible
+    if SeasonMenu.pauseMenuVisible then
+        SeasonMenu.drawPauseMenu()
+    end
 end
 
 --- Draws the header with team info
@@ -191,30 +199,6 @@ function SeasonMenu.drawHeader()
         love.graphics.setColor(0.3, 0.8, 0.3)
         local cashText = string.format("Cash: $%d", SeasonManager.playerTeam.cash)
         love.graphics.print(cashText, SCREEN_WIDTH / 2 - 100, 60)
-    end
-
-    -- Action buttons (Save, Quit)
-    local mx, my = love.mouse.getPosition()
-    for _, button in ipairs(actionButtons) do
-        local hovering = mx >= button.x and mx <= button.x + button.width and
-                        my >= button.y and my <= button.y + button.height
-
-        if hovering then
-            love.graphics.setColor(0.3, 0.3, 0.4)
-        else
-            love.graphics.setColor(0.2, 0.2, 0.25)
-        end
-
-        love.graphics.rectangle("fill", button.x, button.y, button.width, button.height)
-
-        love.graphics.setColor(0.5, 0.5, 0.6)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", button.x, button.y, button.width, button.height)
-
-        love.graphics.setFont(love.graphics.newFont(20))
-        love.graphics.setColor(1, 1, 1)
-        local textWidth = love.graphics.getFont():getWidth(button.label)
-        love.graphics.print(button.label, button.x + (button.width - textWidth) / 2, button.y + 10)
     end
 end
 
@@ -270,24 +254,40 @@ function SeasonMenu.mousepressed(x, y, button)
         return
     end
 
-    -- Check action buttons
-    for _, btn in ipairs(actionButtons) do
-        if x >= btn.x and x <= btn.x + btn.width and
-           y >= btn.y and y <= btn.y + btn.height then
-            if btn.id == "save" then
-                SeasonMenu.saveRequested = true
-            elseif btn.id == "quit" then
-                SeasonMenu.quitRequested = true
-            end
+    -- Check pause menu buttons if visible
+    if SeasonMenu.pauseMenuVisible then
+        local pauseButtonX = (SCREEN_WIDTH - PAUSE_BUTTON_WIDTH) / 2
+
+        -- Save button
+        if x >= pauseButtonX and x <= pauseButtonX + PAUSE_BUTTON_WIDTH and
+           y >= PAUSE_BUTTON_Y[1] and y <= PAUSE_BUTTON_Y[1] + PAUSE_BUTTON_HEIGHT then
+            SeasonMenu.saveRequested = true
+            SeasonMenu.pauseMenuVisible = false
             return
         end
+
+        -- Quit button
+        if x >= pauseButtonX and x <= pauseButtonX + PAUSE_BUTTON_WIDTH and
+           y >= PAUSE_BUTTON_Y[2] and y <= PAUSE_BUTTON_Y[2] + PAUSE_BUTTON_HEIGHT then
+            SeasonMenu.quitRequested = true
+            SeasonMenu.pauseMenuVisible = false
+            return
+        end
+
+        -- Click outside menu closes it
+        SeasonMenu.pauseMenuVisible = false
+        return
     end
 
     -- Check navigation buttons
     for _, btn in ipairs(navButtons) do
         if x >= btn.x and x <= btn.x + NAV_BUTTON_WIDTH and
            y >= NAV_BAR_Y + 10 and y <= NAV_BAR_Y + 10 + NAV_BUTTON_HEIGHT then
-            SeasonMenu.switchScreen(btn.id)
+            if btn.id == "menu" then
+                SeasonMenu.pauseMenuVisible = true
+            else
+                SeasonMenu.switchScreen(btn.id)
+            end
             return
         end
     end
@@ -306,6 +306,60 @@ function SeasonMenu.mousepressed(x, y, button)
         StatsScreen.mousepressed(x, adjustedY, button)
     elseif SeasonMenu.currentScreen == "next_game" and ScoutingScreen and ScoutingScreen.mousepressed then
         ScoutingScreen.mousepressed(x, adjustedY, button)
+    end
+end
+
+--- Draws the pause menu overlay
+function SeasonMenu.drawPauseMenu()
+    -- Semi-transparent overlay
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+
+    -- Title
+    love.graphics.setFont(love.graphics.newFont(48))
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf("PAUSED", 0, 300, SCREEN_WIDTH, "center")
+
+    -- Buttons
+    local mx, my = love.mouse.getPosition()
+    local pauseButtons = {"Save", "Quit"}
+    love.graphics.setFont(love.graphics.newFont(28))
+
+    for i, label in ipairs(pauseButtons) do
+        local x = (SCREEN_WIDTH - PAUSE_BUTTON_WIDTH) / 2
+        local y = PAUSE_BUTTON_Y[i]
+        local hovering = mx >= x and mx <= x + PAUSE_BUTTON_WIDTH and
+                        my >= y and my <= y + PAUSE_BUTTON_HEIGHT
+
+        -- Button background
+        if hovering then
+            love.graphics.setColor(0.3, 0.5, 0.7, 0.8)
+        else
+            love.graphics.setColor(0.2, 0.3, 0.4, 0.6)
+        end
+        love.graphics.rectangle("fill", x, y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT, 10, 10)
+
+        -- Button border
+        if hovering then
+            love.graphics.setColor(0.5, 0.7, 1.0)
+            love.graphics.setLineWidth(3)
+        else
+            love.graphics.setColor(0.4, 0.5, 0.6)
+            love.graphics.setLineWidth(2)
+        end
+        love.graphics.rectangle("line", x, y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT, 10, 10)
+
+        -- Button text
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.printf(label, x, y + 15, PAUSE_BUTTON_WIDTH, "center")
+    end
+end
+
+--- LÖVE Callback: Keyboard Pressed
+--- @param key string The key that was pressed
+function SeasonMenu.keypressed(key)
+    if key == "escape" then
+        SeasonMenu.pauseMenuVisible = not SeasonMenu.pauseMenuVisible
     end
 end
 
