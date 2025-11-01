@@ -37,17 +37,29 @@ local seasonEndScreen = require("season_end_screen")
 local SeasonManager = require("season_manager")
 local simulationPopup = require("simulation_popup")
 
+-- Options and settings
+local optionsMenu = require("options_menu")
+local SettingsManager = require("settings_manager")
+local UIScale = require("ui_scale")
+
 -- Game State Management
--- Possible states: "menu", "coach_selection", "team_naming", "season_menu", "game", "simulating", "season_end"
+-- Possible states: "menu", "coach_selection", "team_naming", "season_menu", "game", "simulating", "season_end", "options"
 local gameState = "menu"
+local previousState = "menu"  -- Track previous state for returning from options
 local simulationComplete = false
 
 --- LÖVE Callback: Initialization
 --- Called once at game startup. Initializes the window and loads the main menu.
 function love.load()
-    -- Set window properties (NOTE: Duplicates conf.lua settings, but ensures correct state)
+    -- Load and apply saved settings
+    local settings = SettingsManager.load()
+    SettingsManager.apply(settings)
+
+    -- Initialize UI scaling
+    UIScale.update()
+
+    -- Set window title
     love.window.setTitle("The Gridiron Bazaar")
-    love.window.setMode(1600, 900, {resizable=false})
 
     -- Initialize main menu
     menu.load()
@@ -78,6 +90,14 @@ function love.update(dt)
                 print("Error: Failed to load season save")
             end
             menu.continueSeasonRequested = false
+        end
+
+        -- Transition to options menu
+        if menu.optionsRequested then
+            previousState = "menu"
+            gameState = "options"
+            optionsMenu.load("menu")
+            menu.optionsRequested = false
         end
 
     -- Coach Selection State
@@ -163,6 +183,14 @@ function love.update(dt)
     elseif gameState == "game" then
         match.update(dt)
 
+        -- Transition to options menu from pause menu
+        if match.optionsRequested then
+            previousState = "game"
+            gameState = "options"
+            optionsMenu.load("pause")
+            match.optionsRequested = false
+        end
+
         -- Return to season menu when match ends
         if match.shouldReturnToMenu then
             -- Reset flag immediately
@@ -225,6 +253,32 @@ function love.update(dt)
             seasonMenu.load()
         end
 
+    -- Options Menu State
+    elseif gameState == "options" then
+        optionsMenu.update(dt)
+
+        -- Return to previous state
+        if optionsMenu.backRequested then
+            optionsMenu.backRequested = false
+
+            -- Reload UI if settings changed
+            if optionsMenu.needsReload then
+                optionsMenu.needsReload = false
+
+                -- Reload all UI modules to reflect new scaling
+                if previousState == "menu" then
+                    gameState = "menu"
+                    menu.load()
+                elseif previousState == "game" then
+                    gameState = "game"
+                    -- No need to reload match, just update UI scale
+                    UIScale.update()
+                end
+            else
+                gameState = previousState
+            end
+        end
+
     -- Season End State
     elseif gameState == "season_end" then
         seasonEndScreen.update(dt)
@@ -265,6 +319,8 @@ function love.draw()
         -- Draw the match screen in background, then overlay popup
         match.draw()
         simulationPopup.draw()
+    elseif gameState == "options" then
+        optionsMenu.draw()
     elseif gameState == "season_end" then
         seasonEndScreen.draw()
     end
@@ -284,6 +340,8 @@ function love.keypressed(key)
         seasonMenu.keypressed(key)
     elseif gameState == "game" then
         match.keypressed(key)
+    elseif gameState == "options" then
+        optionsMenu.keypressed(key)
     elseif gameState == "season_end" then
         -- Season end doesn't need keypressed
     end
@@ -305,6 +363,8 @@ function love.mousepressed(x, y, button)
         seasonMenu.mousepressed(x, y, button)
     elseif gameState == "game" then
         match.mousepressed(x, y, button)
+    elseif gameState == "options" then
+        optionsMenu.mousepressed(x, y, button)
     elseif gameState == "season_end" then
         seasonEndScreen.mousepressed(x, y, button)
     end
@@ -324,6 +384,8 @@ function love.mousemoved(x, y, dx, dy)
         coachSelection.mousemoved(x, y)
     elseif gameState == "game" then
         match.mousemoved(x, y)
+    elseif gameState == "options" then
+        optionsMenu.mousemoved(x, y)
     end
 end
 

@@ -4,6 +4,7 @@ local DebugLogger = require("debug_logger")
 local Card = require("card")
 local CardManager = require("card_manager")
 local FieldState = require("field_state")
+local UIScale = require("ui_scale")
 
 local match = {}
 
@@ -37,9 +38,10 @@ local PROGRESS_BAR_HEIGHT = 5
 local paused = false
 local pauseButtonWidth = 300
 local pauseButtonHeight = 60
-local pauseButtonY = {520, 650}
-local pauseMenuOptions = {"Resume", "Quit"}
+local pauseButtonY = {450, 560, 670}
+local pauseMenuOptions = {"Resume", "Options", "Quit"}
 local selectedPauseOption = 0
+match.optionsRequested = false  -- Flag set when player clicks "Options" from pause menu
 
 -- Winner popup constants
 local winnerButtonWidth = 300
@@ -152,6 +154,7 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     overtimePeriod = 0
     winnerData = nil
     match.shouldReturnToMenu = false  -- Reset flag for new match
+    match.optionsRequested = false  -- Reset options flag
 
     debugLogger:log("Match initialization complete")
     debugLogger:log("Down duration: 3.0 seconds")
@@ -495,36 +498,42 @@ function match.drawCard(card, x, y)
 end
 
 function match.drawPauseMenu()
+    local screenWidth = UIScale.getWidth()
+    local screenHeight = UIScale.getHeight()
+
     love.graphics.setColor(0, 0, 0, 0.7)
-    love.graphics.rectangle("fill", 0, 0, 1600, 900)
+    love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
 
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("PAUSED", 0, 300, 1600, "center")
+    love.graphics.printf("PAUSED", 0, UIScale.scaleY(300), screenWidth, "center")
 
     love.graphics.setFont(menuFont)
+    local scaledButtonWidth = UIScale.scaleWidth(pauseButtonWidth)
+    local scaledButtonHeight = UIScale.scaleHeight(pauseButtonHeight)
+
     for i, option in ipairs(pauseMenuOptions) do
-        local x = (1600 - pauseButtonWidth) / 2
-        local y = pauseButtonY[i]
+        local x = UIScale.centerX(scaledButtonWidth)
+        local y = UIScale.scaleY(pauseButtonY[i])
 
         if i == selectedPauseOption then
             love.graphics.setColor(0.3, 0.5, 0.7, 0.8)
         else
             love.graphics.setColor(0.2, 0.3, 0.4, 0.6)
         end
-        love.graphics.rectangle("fill", x, y, pauseButtonWidth, pauseButtonHeight, 10, 10)
+        love.graphics.rectangle("fill", x, y, scaledButtonWidth, scaledButtonHeight, 10, 10)
 
         if i == selectedPauseOption then
             love.graphics.setColor(0.5, 0.7, 1.0)
-            love.graphics.setLineWidth(3)
+            love.graphics.setLineWidth(UIScale.scaleUniform(3))
         else
             love.graphics.setColor(0.4, 0.5, 0.6)
-            love.graphics.setLineWidth(2)
+            love.graphics.setLineWidth(UIScale.scaleUniform(2))
         end
-        love.graphics.rectangle("line", x, y, pauseButtonWidth, pauseButtonHeight, 10, 10)
+        love.graphics.rectangle("line", x, y, scaledButtonWidth, scaledButtonHeight, 10, 10)
 
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf(option, x, y + 15, pauseButtonWidth, "center")
+        love.graphics.printf(option, x, y + UIScale.scaleHeight(15), scaledButtonWidth, "center")
     end
 end
 
@@ -659,6 +668,9 @@ function match.selectPauseOption(option)
     if option == 1 then
         match.resumeGame()
     elseif option == 2 then
+        -- Options
+        match.optionsRequested = true
+    elseif option == 3 then
         love.event.quit()
     end
 end
@@ -681,11 +693,14 @@ function match.mousepressed(x, y, button)
 
         -- Pause menu buttons
         if paused then
-            local buttonX = (1600 - pauseButtonWidth) / 2
+            local scaledButtonWidth = UIScale.scaleWidth(pauseButtonWidth)
+            local scaledButtonHeight = UIScale.scaleHeight(pauseButtonHeight)
+            local buttonX = UIScale.centerX(scaledButtonWidth)
+
             for i = 1, #pauseMenuOptions do
-                local buttonYPos = pauseButtonY[i]
-                if x >= buttonX and x <= buttonX + pauseButtonWidth and
-                   y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
+                local buttonYPos = UIScale.scaleY(pauseButtonY[i])
+                if x >= buttonX and x <= buttonX + scaledButtonWidth and
+                   y >= buttonYPos and y <= buttonYPos + scaledButtonHeight then
                     match.selectPauseOption(i)
                     break
                 end
@@ -709,12 +724,15 @@ function match.mousemoved(x, y)
 
     -- Pause menu button hover
     if paused then
-        local buttonX = (1600 - pauseButtonWidth) / 2
+        local scaledButtonWidth = UIScale.scaleWidth(pauseButtonWidth)
+        local scaledButtonHeight = UIScale.scaleHeight(pauseButtonHeight)
+        local buttonX = UIScale.centerX(scaledButtonWidth)
         selectedPauseOption = 0
+
         for i = 1, #pauseMenuOptions do
-            local buttonYPos = pauseButtonY[i]
-            if x >= buttonX and x <= buttonX + pauseButtonWidth and
-               y >= buttonYPos and y <= buttonYPos + pauseButtonHeight then
+            local buttonYPos = UIScale.scaleY(pauseButtonY[i])
+            if x >= buttonX and x <= buttonX + scaledButtonWidth and
+               y >= buttonYPos and y <= buttonYPos + scaledButtonHeight then
                 selectedPauseOption = i
                 break
             end
