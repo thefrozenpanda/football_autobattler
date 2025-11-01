@@ -13,33 +13,39 @@ local menu = {}
 
 -- Dependencies
 local SeasonManager = require("season_manager")
+local UIScale = require("ui_scale")
 
 -- Public State
 menu.startGameRequested = false     -- Flag set when player clicks "Start Game"
 menu.continueSeasonRequested = false  -- Flag set when player clicks "Continue Season"
+menu.optionsRequested = false       -- Flag set when player clicks "Options"
 
 -- UI Configuration
 local titleFont
 local menuFont
 local copyrightFont
 local selectedOption = 1          -- Currently selected menu option (1-based index)
-local menuOptions = {"Start New Season", "Continue Season", "Exit Game"}
+local menuOptions = {"Start New Season", "Continue Season", "Options", "Exit Game"}
 local buttonWidth = 300
 local buttonHeight = 60
-local buttonY = {450, 580, 710}   -- Y positions for each button
+local buttonY = {400, 510, 620, 730}   -- Y positions for each button
 
 --- Initializes the menu
 --- Creates fonts and resets menu state. Called when entering menu from other states.
 function menu.load()
-    -- Create fonts for different text elements
-    titleFont = love.graphics.newFont(48)
-    menuFont = love.graphics.newFont(28)
-    copyrightFont = love.graphics.newFont(18)
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts for different text elements (scaled)
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(48))
+    menuFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    copyrightFont = love.graphics.newFont(UIScale.scaleFontSize(18))
 
     -- Reset menu state
     selectedOption = 1
     menu.startGameRequested = false
     menu.continueSeasonRequested = false
+    menu.optionsRequested = false
 end
 
 --- Updates menu logic
@@ -55,10 +61,14 @@ function menu.draw()
     -- Clear screen with dark blue background
     love.graphics.clear(0.1, 0.15, 0.25, 1)
 
+    -- Scale button dimensions
+    local scaledButtonWidth = UIScale.scaleWidth(buttonWidth)
+    local scaledButtonHeight = UIScale.scaleHeight(buttonHeight)
+
     -- Draw game title
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("The Gridiron Bazaar", 0, 350, 1600, "center")
+    love.graphics.printf("The Gridiron Bazaar", 0, UIScale.scaleY(350), UIScale.getWidth(), "center")
 
     -- Check if save exists
     local hasSave = SeasonManager.saveExists()
@@ -66,8 +76,8 @@ function menu.draw()
     -- Draw menu buttons
     love.graphics.setFont(menuFont)
     for i, option in ipairs(menuOptions) do
-        local x = (1600 - buttonWidth) / 2
-        local y = buttonY[i]
+        local x = UIScale.centerX(scaledButtonWidth)
+        local y = UIScale.scaleY(buttonY[i])
 
         -- Check if this option is disabled
         local isDisabled = (i == 2 and not hasSave)  -- Continue Season disabled if no save
@@ -80,20 +90,20 @@ function menu.draw()
         else
             love.graphics.setColor(0.2, 0.3, 0.4, 0.6)  -- Dark gray when not selected
         end
-        love.graphics.rectangle("fill", x, y, buttonWidth, buttonHeight, 10, 10)
+        love.graphics.rectangle("fill", x, y, scaledButtonWidth, scaledButtonHeight, 10, 10)
 
         -- Draw button border (thicker if selected)
         if isDisabled then
             love.graphics.setColor(0.3, 0.3, 0.35)
-            love.graphics.setLineWidth(2)
+            love.graphics.setLineWidth(UIScale.scaleUniform(2))
         elseif i == selectedOption then
             love.graphics.setColor(0.5, 0.7, 1.0)
-            love.graphics.setLineWidth(3)
+            love.graphics.setLineWidth(UIScale.scaleUniform(3))
         else
             love.graphics.setColor(0.4, 0.5, 0.6)
-            love.graphics.setLineWidth(2)
+            love.graphics.setLineWidth(UIScale.scaleUniform(2))
         end
-        love.graphics.rectangle("line", x, y, buttonWidth, buttonHeight, 10, 10)
+        love.graphics.rectangle("line", x, y, scaledButtonWidth, scaledButtonHeight, 10, 10)
 
         -- Draw button text
         if isDisabled then
@@ -101,7 +111,7 @@ function menu.draw()
         else
             love.graphics.setColor(1, 1, 1)
         end
-        love.graphics.printf(option, x, y + 15, buttonWidth, "center")
+        love.graphics.printf(option, x, y + UIScale.scaleHeight(15), scaledButtonWidth, "center")
 
         -- Draw save info under "Continue Season" button (option 2)
         if i == 2 then
@@ -112,11 +122,11 @@ function menu.draw()
                     love.graphics.setColor(0.8, 0.8, 0.8)
                     local infoText = string.format("%s (%d-%d) - Week %d",
                         saveInfo.teamName, saveInfo.wins, saveInfo.losses, saveInfo.week)
-                    love.graphics.printf(infoText, x, y + buttonHeight + 5, buttonWidth, "center")
+                    love.graphics.printf(infoText, x, y + scaledButtonHeight + UIScale.scaleHeight(5), scaledButtonWidth, "center")
                 end
             else
                 love.graphics.setColor(0.5, 0.5, 0.5)
-                love.graphics.printf("No Current Save", x, y + buttonHeight + 5, buttonWidth, "center")
+                love.graphics.printf("No Current Save", x, y + scaledButtonHeight + UIScale.scaleHeight(5), scaledButtonWidth, "center")
             end
             love.graphics.setFont(menuFont)  -- Reset font
         end
@@ -125,8 +135,8 @@ function menu.draw()
     -- Draw instructions and copyright
     love.graphics.setFont(copyrightFont)
     love.graphics.setColor(0.6, 0.6, 0.6)
-    love.graphics.printf("Use Arrow Keys or Mouse to Navigate - Enter or Click to Select", 0, 820, 1600, "center")
-    love.graphics.printf("© 2025 The Gridiron Bazaar", 0, 860, 1600, "center")
+    love.graphics.printf("Use Arrow Keys or Mouse to Navigate - Enter or Click to Select", 0, UIScale.scaleY(820), UIScale.getWidth(), "center")
+    love.graphics.printf("© 2025 The Gridiron Bazaar", 0, UIScale.scaleY(860), UIScale.getWidth(), "center")
 end
 
 --- Handles keyboard input for menu navigation
@@ -161,13 +171,15 @@ end
 --- @param button number Mouse button (1=left, 2=right, 3=middle)
 function menu.mousepressed(x, y, button)
     if button == 1 then  -- Left click only
-        local buttonX = (1600 - buttonWidth) / 2
+        local scaledButtonWidth = UIScale.scaleWidth(buttonWidth)
+        local scaledButtonHeight = UIScale.scaleHeight(buttonHeight)
+        local buttonX = UIScale.centerX(scaledButtonWidth)
 
         -- Check each button for collision
         for i = 1, #menuOptions do
-            local buttonYPos = buttonY[i]
-            if x >= buttonX and x <= buttonX + buttonWidth and
-               y >= buttonYPos and y <= buttonYPos + buttonHeight then
+            local buttonYPos = UIScale.scaleY(buttonY[i])
+            if x >= buttonX and x <= buttonX + scaledButtonWidth and
+               y >= buttonYPos and y <= buttonYPos + scaledButtonHeight then
                 menu.selectOption(i)
                 break
             end
@@ -181,14 +193,16 @@ end
 --- @param x number Mouse X position in pixels
 --- @param y number Mouse Y position in pixels
 function menu.mousemoved(x, y)
-    local buttonX = (1600 - buttonWidth) / 2
+    local scaledButtonWidth = UIScale.scaleWidth(buttonWidth)
+    local scaledButtonHeight = UIScale.scaleHeight(buttonHeight)
+    local buttonX = UIScale.centerX(scaledButtonWidth)
     selectedOption = 0  -- No selection by default (no highlight)
 
     -- Check if mouse is over any button
     for i = 1, #menuOptions do
-        local buttonYPos = buttonY[i]
-        if x >= buttonX and x <= buttonX + buttonWidth and
-           y >= buttonYPos and y <= buttonYPos + buttonHeight then
+        local buttonYPos = UIScale.scaleY(buttonY[i])
+        if x >= buttonX and x <= buttonX + scaledButtonWidth and
+           y >= buttonYPos and y <= buttonYPos + scaledButtonHeight then
             selectedOption = i
             break
         end
@@ -196,9 +210,11 @@ function menu.mousemoved(x, y)
 end
 
 --- Executes the selected menu option
---- Option 1: Start Game (sets flag for main.lua to detect)
---- Option 2: Exit Game (quits application)
---- @param option number The menu option index (1 or 2)
+--- Option 1: Start New Season
+--- Option 2: Continue Season
+--- Option 3: Options
+--- Option 4: Exit Game
+--- @param option number The menu option index (1-4)
 function menu.selectOption(option)
     if option == 1 then
         -- Start New Season - check for existing save
@@ -214,6 +230,9 @@ function menu.selectOption(option)
             menu.continueSeasonRequested = true
         end
     elseif option == 3 then
+        -- Options
+        menu.optionsRequested = true
+    elseif option == 4 then
         -- Exit Game
         love.event.quit()
     end
