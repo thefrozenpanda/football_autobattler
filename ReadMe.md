@@ -190,6 +190,23 @@ The Gridiron Bazaar transforms American football into a strategic auto-battler e
 - **Home Field Advantage**: Bonus for home team
 - **Momentum System**: Hot/cold streaks affect performance
 
+### Updated Card Training
+- **Additional Trainings**: Critical Chance (1.5x card effects), 
+- **Week vs Season vs Perm Boots**: 
+- **Training Card Tiers**: Bronze, Silver, and Gold. Add the ability to upgrade a boost so as to not take up multiple slots for the same Training Type. 
+- **Selective Training**: Add the ability to specify who the training is assigned to.
+
+### Updated Coaching System
+- **Updated Archtypes**: Archtypes now only allow the user to select 1 coach skill initially. Additional skills, both active and passive, are unlocked through gaining levels. Levels are gained through gaining experience. Experience is gained through completing games, seasons, and coaching challenges.
+- **Coordinators**: Add offensive, defensive, and speacial teams coordinators to the game. Their purpose is to provide additional benefits, in the form of passive bonuses, to their respective group of players. They will also have their own sub-archtypes and leveling system. At their maximum level, they will unlock their lone activatable ability. Activatable abilities are used during matches to provide a short term boost to their group of players.
+
+### New Mode: Dynasty
+- **New Game Mode: Dynasty**: Dynasty mode is meant to be a multi-season adventure into managing and growing a team. The player 
+- **Offseason Training Mode**: In between seasons, 
+- **Player Aging**: As season go by, players will gain age. This will affect their .
+- **New Phase: Draft**: Add the ability to specify who the training is assigned to.
+- **New Phase: Free Agency**: Add the ability to specify who the training is assigned to.
+
 ---
 
 ## Suggestions for Enhanced Football Realism
@@ -364,3 +381,4 @@ A: Not yet - rosters are fixed per coach. This is planned for future updates.
 ---
 
 For more information, see CODE_REVIEW_REPORT.md for technical details.
+
