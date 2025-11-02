@@ -16,6 +16,7 @@ local SeasonEndScreen = {}
 
 local SeasonManager = require("season_manager")
 local flux = require("lib.flux")
+local UIScale = require("ui_scale")
 
 -- State
 SeasonEndScreen.outcome = "missed_playoffs"  -- "champion", "playoffs", "missed_playoffs"
@@ -27,15 +28,32 @@ SeasonEndScreen.newSeasonRequested = false
 local titleAnimState = {scale = 1.0, glow = 0}
 local pulseCount = 0
 
--- UI configuration
-local SCREEN_WIDTH = 1600
-local SCREEN_HEIGHT = 900
+-- UI configuration (base values for 1600x900)
 local BUTTON_WIDTH = 250
 local BUTTON_HEIGHT = 60
 local BUTTON_SPACING = 30
 
+-- Fonts
+local titleFont
+local subtitleFont
+local messageFont
+local encourageFont
+local recordFont
+local buttonFont
+
 --- Initializes the season end screen
 function SeasonEndScreen.load()
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(56))
+    subtitleFont = love.graphics.newFont(UIScale.scaleFontSize(32))
+    messageFont = love.graphics.newFont(UIScale.scaleFontSize(32))
+    encourageFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    recordFont = love.graphics.newFont(UIScale.scaleFontSize(36))
+    buttonFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+
     SeasonEndScreen.returnToMenuRequested = false
     SeasonEndScreen.newSeasonRequested = false
 
@@ -112,12 +130,13 @@ end
 function SeasonEndScreen.draw()
     -- Background
     love.graphics.setColor(0.1, 0.1, 0.15)
-    love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+    love.graphics.rectangle("fill", 0, 0, UIScale.getWidth(), UIScale.getHeight())
 
-    local yOffset = 150
+    local yOffset = UIScale.scaleY(150)
+    local screenCenterX = UIScale.getWidth() / 2
 
     -- Title based on outcome
-    love.graphics.setFont(love.graphics.newFont(56))
+    love.graphics.setFont(titleFont)
 
     if SeasonEndScreen.outcome == "champion" then
         love.graphics.push()
@@ -125,94 +144,96 @@ function SeasonEndScreen.draw()
         -- Apply glow effect
         if titleAnimState.glow > 0 then
             love.graphics.setColor(1, 1, 1, titleAnimState.glow)
-            love.graphics.circle("fill", SCREEN_WIDTH/2, yOffset + 30, 200)
+            love.graphics.circle("fill", screenCenterX, yOffset + UIScale.scaleHeight(30), UIScale.scaleUniform(200))
         end
 
         -- Apply scale to title
         local titleText = "CHAMPIONS!"
-        local titleWidth = love.graphics.getFont():getWidth(titleText)
-        local titleX = (SCREEN_WIDTH - titleWidth) / 2
+        local titleWidth = titleFont:getWidth(titleText)
+        local titleX = (UIScale.getWidth() - titleWidth) / 2
         local titleY = yOffset
 
-        love.graphics.translate(SCREEN_WIDTH/2, yOffset + 30)
+        love.graphics.translate(screenCenterX, yOffset + UIScale.scaleHeight(30))
         love.graphics.scale(titleAnimState.scale, titleAnimState.scale)
-        love.graphics.translate(-SCREEN_WIDTH/2, -(yOffset + 30))
+        love.graphics.translate(-screenCenterX, -(yOffset + UIScale.scaleHeight(30)))
 
         love.graphics.setColor(1, 0.8, 0.2)
         love.graphics.print(titleText, titleX, titleY)
 
         love.graphics.pop()
 
-        yOffset = yOffset + 100
+        yOffset = yOffset + UIScale.scaleHeight(100)
 
-        love.graphics.setFont(love.graphics.newFont(32))
+        love.graphics.setFont(subtitleFont)
         love.graphics.setColor(0.9, 0.9, 1)
         local congratsText = string.format("Congratulations! %s won the championship!", SeasonManager.playerTeam.name)
-        local congratsWidth = love.graphics.getFont():getWidth(congratsText)
-        love.graphics.print(congratsText, (SCREEN_WIDTH - congratsWidth) / 2, yOffset)
+        local congratsWidth = subtitleFont:getWidth(congratsText)
+        love.graphics.print(congratsText, (UIScale.getWidth() - congratsWidth) / 2, yOffset)
 
     elseif SeasonEndScreen.outcome == "playoffs" then
         love.graphics.setColor(0.7, 0.7, 0.9)
         local titleText = "Season Complete"
-        local titleWidth = love.graphics.getFont():getWidth(titleText)
-        love.graphics.print(titleText, (SCREEN_WIDTH - titleWidth) / 2, yOffset)
+        local titleWidth = titleFont:getWidth(titleText)
+        love.graphics.print(titleText, (UIScale.getWidth() - titleWidth) / 2, yOffset)
 
-        yOffset = yOffset + 100
+        yOffset = yOffset + UIScale.scaleHeight(100)
 
-        love.graphics.setFont(love.graphics.newFont(32))
+        love.graphics.setFont(messageFont)
         love.graphics.setColor(0.8, 0.8, 0.9)
         local messageText = "Good season! You made the playoffs."
-        local messageWidth = love.graphics.getFont():getWidth(messageText)
-        love.graphics.print(messageText, (SCREEN_WIDTH - messageWidth) / 2, yOffset)
+        local messageWidth = messageFont:getWidth(messageText)
+        love.graphics.print(messageText, (UIScale.getWidth() - messageWidth) / 2, yOffset)
 
-        yOffset = yOffset + 50
+        yOffset = yOffset + UIScale.scaleHeight(50)
 
-        love.graphics.setFont(love.graphics.newFont(28))
+        love.graphics.setFont(encourageFont)
         love.graphics.setColor(0.7, 0.7, 0.8)
         local encourageText = "Better luck next year!"
-        local encourageWidth = love.graphics.getFont():getWidth(encourageText)
-        love.graphics.print(encourageText, (SCREEN_WIDTH - encourageWidth) / 2, yOffset)
+        local encourageWidth = encourageFont:getWidth(encourageText)
+        love.graphics.print(encourageText, (UIScale.getWidth() - encourageWidth) / 2, yOffset)
 
     else
         love.graphics.setColor(0.7, 0.5, 0.5)
         local titleText = "Season Complete"
-        local titleWidth = love.graphics.getFont():getWidth(titleText)
-        love.graphics.print(titleText, (SCREEN_WIDTH - titleWidth) / 2, yOffset)
+        local titleWidth = titleFont:getWidth(titleText)
+        love.graphics.print(titleText, (UIScale.getWidth() - titleWidth) / 2, yOffset)
 
-        yOffset = yOffset + 100
+        yOffset = yOffset + UIScale.scaleHeight(100)
 
-        love.graphics.setFont(love.graphics.newFont(32))
+        love.graphics.setFont(messageFont)
         love.graphics.setColor(0.8, 0.7, 0.7)
         local messageText = "You missed the playoffs this season."
-        local messageWidth = love.graphics.getFont():getWidth(messageText)
-        love.graphics.print(messageText, (SCREEN_WIDTH - messageWidth) / 2, yOffset)
+        local messageWidth = messageFont:getWidth(messageText)
+        love.graphics.print(messageText, (UIScale.getWidth() - messageWidth) / 2, yOffset)
 
-        yOffset = yOffset + 50
+        yOffset = yOffset + UIScale.scaleHeight(50)
 
-        love.graphics.setFont(love.graphics.newFont(28))
+        love.graphics.setFont(encourageFont)
         love.graphics.setColor(0.7, 0.7, 0.8)
         local encourageText = "Train harder and come back next season!"
-        local encourageWidth = love.graphics.getFont():getWidth(encourageText)
-        love.graphics.print(encourageText, (SCREEN_WIDTH - encourageWidth) / 2, yOffset)
+        local encourageWidth = encourageFont:getWidth(encourageText)
+        love.graphics.print(encourageText, (UIScale.getWidth() - encourageWidth) / 2, yOffset)
     end
 
-    yOffset = yOffset + 100
+    yOffset = yOffset + UIScale.scaleHeight(100)
 
     -- Final record
-    love.graphics.setFont(love.graphics.newFont(36))
+    love.graphics.setFont(recordFont)
     love.graphics.setColor(1, 1, 1)
     local recordText = string.format("Final Record: %s", SeasonEndScreen.finalRecord)
-    local recordWidth = love.graphics.getFont():getWidth(recordText)
-    love.graphics.print(recordText, (SCREEN_WIDTH - recordWidth) / 2, yOffset)
+    local recordWidth = recordFont:getWidth(recordText)
+    love.graphics.print(recordText, (UIScale.getWidth() - recordWidth) / 2, yOffset)
 
-    yOffset = yOffset + 150
+    yOffset = yOffset + UIScale.scaleHeight(150)
 
     -- Buttons
-    local totalButtonWidth = (BUTTON_WIDTH * 2) + BUTTON_SPACING
-    local buttonStartX = (SCREEN_WIDTH - totalButtonWidth) / 2
+    local scaledButtonWidth = UIScale.scaleWidth(BUTTON_WIDTH)
+    local scaledButtonSpacing = UIScale.scaleUniform(BUTTON_SPACING)
+    local totalButtonWidth = (scaledButtonWidth * 2) + scaledButtonSpacing
+    local buttonStartX = (UIScale.getWidth() - totalButtonWidth) / 2
 
-    SeasonEndScreen.drawButton("Main Menu", buttonStartX, yOffset, BUTTON_WIDTH, BUTTON_HEIGHT, "menu")
-    SeasonEndScreen.drawButton("New Season", buttonStartX + BUTTON_WIDTH + BUTTON_SPACING, yOffset, BUTTON_WIDTH, BUTTON_HEIGHT, "new_season")
+    SeasonEndScreen.drawButton("Main Menu", buttonStartX, yOffset, scaledButtonWidth, UIScale.scaleHeight(BUTTON_HEIGHT), "menu")
+    SeasonEndScreen.drawButton("New Season", buttonStartX + scaledButtonWidth + scaledButtonSpacing, yOffset, scaledButtonWidth, UIScale.scaleHeight(BUTTON_HEIGHT), "new_season")
 end
 
 --- Draws a button
@@ -236,14 +257,14 @@ function SeasonEndScreen.drawButton(text, x, y, width, height, id)
 
     -- Border
     love.graphics.setColor(0.5, 0.5, 0.6)
-    love.graphics.setLineWidth(3)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
     love.graphics.rectangle("line", x, y, width, height)
 
     -- Text
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(buttonFont)
     love.graphics.setColor(1, 1, 1)
-    local textWidth = love.graphics.getFont():getWidth(text)
-    love.graphics.print(text, x + (width - textWidth) / 2, y + 15)
+    local textWidth = buttonFont:getWidth(text)
+    love.graphics.print(text, x + (width - textWidth) / 2, y + UIScale.scaleHeight(15))
 end
 
 --- LÖVE Callback: Mouse Pressed
@@ -255,30 +276,33 @@ function SeasonEndScreen.mousepressed(x, y, button)
         return
     end
 
-    local yOffset = 150
+    local yOffset = UIScale.scaleY(150)
 
     -- Calculate button Y position (same logic as draw)
     if SeasonEndScreen.outcome == "champion" then
-        yOffset = yOffset + 100 + 100
+        yOffset = yOffset + UIScale.scaleHeight(100) + UIScale.scaleHeight(100)
     else
-        yOffset = yOffset + 100 + 50 + 50
+        yOffset = yOffset + UIScale.scaleHeight(100) + UIScale.scaleHeight(50) + UIScale.scaleHeight(50)
     end
 
-    yOffset = yOffset + 100 + 150
+    yOffset = yOffset + UIScale.scaleHeight(100) + UIScale.scaleHeight(150)
 
-    local totalButtonWidth = (BUTTON_WIDTH * 2) + BUTTON_SPACING
-    local buttonStartX = (SCREEN_WIDTH - totalButtonWidth) / 2
+    local scaledButtonWidth = UIScale.scaleWidth(BUTTON_WIDTH)
+    local scaledButtonHeight = UIScale.scaleHeight(BUTTON_HEIGHT)
+    local scaledButtonSpacing = UIScale.scaleUniform(BUTTON_SPACING)
+    local totalButtonWidth = (scaledButtonWidth * 2) + scaledButtonSpacing
+    local buttonStartX = (UIScale.getWidth() - totalButtonWidth) / 2
 
     -- Main Menu button
-    if x >= buttonStartX and x <= buttonStartX + BUTTON_WIDTH and
-       y >= yOffset and y <= yOffset + BUTTON_HEIGHT then
+    if x >= buttonStartX and x <= buttonStartX + scaledButtonWidth and
+       y >= yOffset and y <= yOffset + scaledButtonHeight then
         SeasonEndScreen.returnToMenuRequested = true
     end
 
     -- New Season button
-    local newSeasonX = buttonStartX + BUTTON_WIDTH + BUTTON_SPACING
-    if x >= newSeasonX and x <= newSeasonX + BUTTON_WIDTH and
-       y >= yOffset and y <= yOffset + BUTTON_HEIGHT then
+    local newSeasonX = buttonStartX + scaledButtonWidth + scaledButtonSpacing
+    if x >= newSeasonX and x <= newSeasonX + scaledButtonWidth and
+       y >= yOffset and y <= yOffset + scaledButtonHeight then
         SeasonEndScreen.newSeasonRequested = true
     end
 end
