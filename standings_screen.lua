@@ -16,20 +16,21 @@ local StandingsScreen = {}
 
 local SeasonManager = require("season_manager")
 local Team = require("team")
+local UIScale = require("ui_scale")
 
 -- State
 StandingsScreen.sortColumn = "position"  -- Current sort column
 StandingsScreen.sortAscending = true  -- Sort direction
 StandingsScreen.contentHeight = 700
 
--- UI configuration
+-- UI configuration (base values for 1600x900)
 local COLUMN_START_X = 50
 local ROW_HEIGHT = 35
 local HEADER_HEIGHT = 40
 local CONFERENCE_WIDTH = 700
 local CONFERENCE_SPACING = 100
 
--- Column definitions for each conference
+-- Column definitions for each conference (base widths for 1600x900)
 local columns = {
     {id = "position", label = "Seed", width = 60},
     {id = "team", label = "Team", width = 250},
@@ -38,8 +39,25 @@ local columns = {
     {id = "playoff", label = "Playoffs", width = 100}
 }
 
+-- Fonts
+local titleFont
+local conferenceFont
+local headerFont
+local rowFont
+local rowFontBold
+
 --- Initializes the standings screen
 function StandingsScreen.load()
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(32))
+    conferenceFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    headerFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+    rowFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+    rowFontBold = love.graphics.newFont(UIScale.scaleFontSize(20))
+
     StandingsScreen.sortColumn = "position"
     StandingsScreen.sortAscending = true
 end
@@ -53,19 +71,23 @@ end
 --- LÖVE Callback: Draw UI
 function StandingsScreen.draw()
     -- Title
-    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
     local titleText = "Conference Standings"
-    local titleWidth = love.graphics.getFont():getWidth(titleText)
-    love.graphics.print(titleText, (1600 - titleWidth) / 2, 20)
+    local titleWidth = titleFont:getWidth(titleText)
+    love.graphics.print(titleText, (UIScale.getWidth() - titleWidth) / 2, UIScale.scaleY(20))
 
-    local yOffset = 80
+    local yOffset = UIScale.scaleY(80)
 
     -- Draw Conference A
-    StandingsScreen.drawConference("A", COLUMN_START_X, yOffset)
+    local scaledStartX = UIScale.scaleX(COLUMN_START_X)
+    local scaledConferenceWidth = UIScale.scaleWidth(CONFERENCE_WIDTH)
+    local scaledSpacing = UIScale.scaleUniform(CONFERENCE_SPACING)
+
+    StandingsScreen.drawConference("A", scaledStartX, yOffset)
 
     -- Draw Conference B
-    StandingsScreen.drawConference("B", COLUMN_START_X + CONFERENCE_WIDTH + CONFERENCE_SPACING, yOffset)
+    StandingsScreen.drawConference("B", scaledStartX + scaledConferenceWidth + scaledSpacing, yOffset)
 end
 
 --- Draws a single conference standings
@@ -74,24 +96,25 @@ end
 --- @param y number Y position
 function StandingsScreen.drawConference(conference, x, y)
     -- Conference header
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(conferenceFont)
     love.graphics.setColor(0.8, 0.9, 1)
     local headerText = "Conference " .. conference
     love.graphics.print(headerText, x, y)
 
-    y = y + 45
+    y = y + UIScale.scaleHeight(45)
 
     -- Get standings
     local standings = SeasonManager.getStandings(conference)
 
     -- Draw table header
     StandingsScreen.drawTableHeader(x, y)
-    y = y + HEADER_HEIGHT
+    y = y + UIScale.scaleHeight(HEADER_HEIGHT)
 
     -- Draw rows
+    local scaledRowHeight = UIScale.scaleHeight(ROW_HEIGHT)
     for i, team in ipairs(standings) do
         StandingsScreen.drawTeamRow(team, i, x, y, i % 2 == 0)
-        y = y + ROW_HEIGHT
+        y = y + scaledRowHeight
     end
 end
 
@@ -101,17 +124,19 @@ end
 function StandingsScreen.drawTableHeader(x, y)
     -- Header background
     love.graphics.setColor(0.2, 0.25, 0.3)
-    love.graphics.rectangle("fill", x, y, CONFERENCE_WIDTH, HEADER_HEIGHT)
+    local scaledConferenceWidth = UIScale.scaleWidth(CONFERENCE_WIDTH)
+    local scaledHeaderHeight = UIScale.scaleHeight(HEADER_HEIGHT)
+    love.graphics.rectangle("fill", x, y, scaledConferenceWidth, scaledHeaderHeight)
 
-    love.graphics.setFont(love.graphics.newFont(18))
+    love.graphics.setFont(headerFont)
 
-    local currentX = x + 10
+    local currentX = x + UIScale.scaleUniform(10)
 
     for _, col in ipairs(columns) do
         love.graphics.setColor(1, 1, 1)
-        love.graphics.print(col.label, currentX, y + 10)
+        love.graphics.print(col.label, currentX, y + UIScale.scaleHeight(10))
 
-        currentX = currentX + col.width
+        currentX = currentX + UIScale.scaleWidth(col.width)
     end
 end
 
@@ -125,6 +150,9 @@ function StandingsScreen.drawTeamRow(team, position, x, y, alternate)
     local isPlayerTeam = (team == SeasonManager.playerTeam)
 
     -- Background
+    local scaledConferenceWidth = UIScale.scaleWidth(CONFERENCE_WIDTH)
+    local scaledRowHeight = UIScale.scaleHeight(ROW_HEIGHT)
+
     if isPlayerTeam then
         love.graphics.setColor(0.3, 0.4, 0.5)  -- Highlighted for player
     elseif alternate then
@@ -132,18 +160,18 @@ function StandingsScreen.drawTeamRow(team, position, x, y, alternate)
     else
         love.graphics.setColor(0.15, 0.15, 0.2)
     end
-    love.graphics.rectangle("fill", x, y, CONFERENCE_WIDTH, ROW_HEIGHT)
+    love.graphics.rectangle("fill", x, y, scaledConferenceWidth, scaledRowHeight)
 
     -- Font selection (bold for player team)
-    local fontSize = isPlayerTeam and 20 or 18
-    love.graphics.setFont(love.graphics.newFont(fontSize))
+    love.graphics.setFont(isPlayerTeam and rowFontBold or rowFont)
 
-    local currentX = x + 10
+    local currentX = x + UIScale.scaleUniform(10)
+    local yOffset = y + UIScale.scaleHeight(8)
 
     -- Position/Seed
     love.graphics.setColor(0.9, 0.9, 1)
-    love.graphics.print(tostring(position), currentX, y + 8)
-    currentX = currentX + columns[1].width
+    love.graphics.print(tostring(position), currentX, yOffset)
+    currentX = currentX + UIScale.scaleWidth(columns[1].width)
 
     -- Team name
     if isPlayerTeam then
@@ -151,49 +179,49 @@ function StandingsScreen.drawTeamRow(team, position, x, y, alternate)
     else
         love.graphics.setColor(0.9, 0.9, 1)
     end
-    love.graphics.print(team.name, currentX, y + 8)
-    currentX = currentX + columns[2].width
+    love.graphics.print(team.name, currentX, yOffset)
+    currentX = currentX + UIScale.scaleWidth(columns[2].width)
 
     -- Record
     love.graphics.setColor(0.8, 0.8, 0.9)
-    love.graphics.print(team:getRecordString(), currentX, y + 8)
-    currentX = currentX + columns[3].width
+    love.graphics.print(team:getRecordString(), currentX, yOffset)
+    currentX = currentX + UIScale.scaleWidth(columns[3].width)
 
     -- Point Differential
     local pointDiff = team:getPointDifferential()
     if pointDiff > 0 then
         love.graphics.setColor(0.3, 0.8, 0.3)
-        love.graphics.print("+" .. tostring(pointDiff), currentX, y + 8)
+        love.graphics.print("+" .. tostring(pointDiff), currentX, yOffset)
     elseif pointDiff < 0 then
         love.graphics.setColor(0.8, 0.3, 0.3)
-        love.graphics.print(tostring(pointDiff), currentX, y + 8)
+        love.graphics.print(tostring(pointDiff), currentX, yOffset)
     else
         love.graphics.setColor(0.7, 0.7, 0.8)
-        love.graphics.print("0", currentX, y + 8)
+        love.graphics.print("0", currentX, yOffset)
     end
-    currentX = currentX + columns[4].width
+    currentX = currentX + UIScale.scaleWidth(columns[4].width)
 
     -- Playoff indicator
     if position <= 6 then
         if position <= 2 then
             -- Gold star for top 2 seeds (bye week)
             love.graphics.setColor(1, 0.8, 0.2)
-            love.graphics.print("★ BYE", currentX, y + 8)
+            love.graphics.print("★ BYE", currentX, yOffset)
         else
             -- Silver star for seeds 3-6
             love.graphics.setColor(0.7, 0.7, 0.8)
-            love.graphics.print("★ WC", currentX, y + 8)
+            love.graphics.print("★ WC", currentX, yOffset)
         end
     else
         -- No playoff spot
         love.graphics.setColor(0.4, 0.4, 0.5)
-        love.graphics.print("---", currentX, y + 8)
+        love.graphics.print("---", currentX, yOffset)
     end
 
     -- Row border
     love.graphics.setColor(0.3, 0.3, 0.35)
-    love.graphics.setLineWidth(1)
-    love.graphics.line(x, y + ROW_HEIGHT, x + CONFERENCE_WIDTH, y + ROW_HEIGHT)
+    love.graphics.setLineWidth(UIScale.scaleUniform(1))
+    love.graphics.line(x, y + scaledRowHeight, x + scaledConferenceWidth, y + scaledRowHeight)
 end
 
 --- LÖVE Callback: Mouse Pressed
