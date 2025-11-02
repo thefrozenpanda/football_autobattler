@@ -15,12 +15,17 @@
 local SeasonEndScreen = {}
 
 local SeasonManager = require("season_manager")
+local flux = require("lib.flux")
 
 -- State
 SeasonEndScreen.outcome = "missed_playoffs"  -- "champion", "playoffs", "missed_playoffs"
 SeasonEndScreen.finalRecord = ""
 SeasonEndScreen.returnToMenuRequested = false
 SeasonEndScreen.newSeasonRequested = false
+
+-- Animation state
+local titleAnimState = {scale = 1.0, glow = 0}
+local pulseCount = 0
 
 -- UI configuration
 local SCREEN_WIDTH = 1600
@@ -73,6 +78,28 @@ function SeasonEndScreen.load()
     else
         SeasonEndScreen.outcome = "missed_playoffs"
     end
+
+    -- Start trophy pulse animation for champions (5 pulses)
+    if SeasonEndScreen.outcome == "champion" then
+        titleAnimState = {scale = 1.0, glow = 0}
+        pulseCount = 0
+
+        local function pulse()
+            if pulseCount >= 5 then
+                return  -- Stop after 5 pulses
+            end
+
+            pulseCount = pulseCount + 1
+            flux.to(titleAnimState, 1.0, {scale = 1.1, glow = 0.3})
+                :ease("sineinout")
+                :oncomplete(function()
+                    flux.to(titleAnimState, 1.0, {scale = 1.0, glow = 0})
+                        :ease("sineinout")
+                        :oncomplete(pulse)  -- Continue pulse
+                end)
+        end
+        pulse()
+    end
 end
 
 --- LÖVE Callback: Update Logic
@@ -93,10 +120,28 @@ function SeasonEndScreen.draw()
     love.graphics.setFont(love.graphics.newFont(56))
 
     if SeasonEndScreen.outcome == "champion" then
-        love.graphics.setColor(1, 0.8, 0.2)
+        love.graphics.push()
+
+        -- Apply glow effect
+        if titleAnimState.glow > 0 then
+            love.graphics.setColor(1, 1, 1, titleAnimState.glow)
+            love.graphics.circle("fill", SCREEN_WIDTH/2, yOffset + 30, 200)
+        end
+
+        -- Apply scale to title
         local titleText = "CHAMPIONS!"
         local titleWidth = love.graphics.getFont():getWidth(titleText)
-        love.graphics.print(titleText, (SCREEN_WIDTH - titleWidth) / 2, yOffset)
+        local titleX = (SCREEN_WIDTH - titleWidth) / 2
+        local titleY = yOffset
+
+        love.graphics.translate(SCREEN_WIDTH/2, yOffset + 30)
+        love.graphics.scale(titleAnimState.scale, titleAnimState.scale)
+        love.graphics.translate(-SCREEN_WIDTH/2, -(yOffset + 30))
+
+        love.graphics.setColor(1, 0.8, 0.2)
+        love.graphics.print(titleText, titleX, titleY)
+
+        love.graphics.pop()
 
         yOffset = yOffset + 100
 

@@ -1,9 +1,13 @@
 -- coach_selection.lua
 local Coach = require("coach")
+local flux = require("lib.flux")
 
 local coachSelection = {}
 
 coachSelection.selectedCoachId = nil
+coachSelection.coachSelected = false
+coachSelection.cancelSelection = false
+
 local titleFont
 local nameFont
 local descFont
@@ -15,12 +19,32 @@ local CARD_HEIGHT = 400
 local CARD_PADDING = 40
 local CARD_START_X = 80
 
+-- Animation state
+local cardPositions = {}
+local cardScales = {}
+
 function coachSelection.load()
     titleFont = love.graphics.newFont(36)
     nameFont = love.graphics.newFont(24)
     descFont = love.graphics.newFont(14)
     selectedIndex = 0
     coachSelection.selectedCoachId = nil
+    coachSelection.coachSelected = false
+    coachSelection.cancelSelection = false
+
+    -- Initialize card animations
+    cardPositions = {}
+    cardScales = {}
+    for i = 1, #Coach.types do
+        -- Start cards off-screen above
+        cardPositions[i] = {y = -500}
+        cardScales[i] = {scale = 1.0}
+
+        -- Animate each card sliding down with stagger
+        flux.to(cardPositions[i], 0.6, {y = 200})
+            :delay((i - 1) * 0.1)  -- Stagger by 0.1s per card
+            :ease("backout")  -- Bouncy effect
+    end
 end
 
 function coachSelection.update(dt)
@@ -43,9 +67,10 @@ function coachSelection.draw()
     -- Draw coach cards
     for i, coach in ipairs(Coach.types) do
         local x = CARD_START_X + (i - 1) * (CARD_WIDTH + CARD_PADDING)
-        local y = 200
+        local y = cardPositions[i] and cardPositions[i].y or 200
+        local scale = cardScales[i] and cardScales[i].scale or 1.0
 
-        coachSelection.drawCoachCard(coach, x, y, i == selectedIndex)
+        coachSelection.drawCoachCard(coach, x, y, i == selectedIndex, scale)
     end
 
     -- Draw instructions
@@ -54,7 +79,15 @@ function coachSelection.draw()
     love.graphics.printf("Use Arrow Keys or Mouse - Enter or Click to Select", 0, 820, 1600, "center")
 end
 
-function coachSelection.drawCoachCard(coach, x, y, isSelected)
+function coachSelection.drawCoachCard(coach, x, y, isSelected, scale)
+    scale = scale or 1.0
+
+    -- Apply scale transform
+    love.graphics.push()
+    love.graphics.translate(x + CARD_WIDTH/2, y + CARD_HEIGHT/2)
+    love.graphics.scale(scale, scale)
+    love.graphics.translate(-(x + CARD_WIDTH/2), -(y + CARD_HEIGHT/2))
+
     -- Background
     love.graphics.setColor(0.15, 0.2, 0.25)
     love.graphics.rectangle("fill", x, y, CARD_WIDTH, CARD_HEIGHT, 10, 10)
@@ -119,6 +152,8 @@ function coachSelection.drawCoachCard(coach, x, y, isSelected)
         end
     end
     love.graphics.printf(defenseText, x + 10, y + 255, CARD_WIDTH - 20, "left")
+
+    love.graphics.pop()
 end
 
 function coachSelection.keypressed(key)
@@ -159,17 +194,31 @@ function coachSelection.mousepressed(x, y, button)
 end
 
 function coachSelection.mousemoved(x, y)
+    local oldIndex = selectedIndex
     selectedIndex = 0  -- Reset selection
 
     -- Check if hovering over a coach card
     for i = 1, #Coach.types do
         local cardX = CARD_START_X + (i - 1) * (CARD_WIDTH + CARD_PADDING)
-        local cardY = 200
+        local cardY = cardPositions[i] and cardPositions[i].y or 200
 
         if x >= cardX and x <= cardX + CARD_WIDTH and
            y >= cardY and y <= cardY + CARD_HEIGHT then
             selectedIndex = i
             break
+        end
+    end
+
+    -- Animate scale changes
+    if oldIndex ~= selectedIndex then
+        -- Scale down previous card
+        if oldIndex > 0 and cardScales[oldIndex] then
+            flux.to(cardScales[oldIndex], 0.2, {scale = 1.0}):ease("quadout")
+        end
+
+        -- Scale up new card
+        if selectedIndex > 0 and cardScales[selectedIndex] then
+            flux.to(cardScales[selectedIndex], 0.2, {scale = 1.05}):ease("quadout")
         end
     end
 end

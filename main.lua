@@ -42,6 +42,10 @@ local optionsMenu = require("options_menu")
 local SettingsManager = require("settings_manager")
 local UIScale = require("ui_scale")
 
+-- Animation and utility libraries
+local flux = require("lib.flux")
+local lume = require("lib.lume")
+
 -- Game State Management
 -- Possible states: "menu", "coach_selection", "team_naming", "season_menu", "game", "simulating", "season_end", "options"
 local gameState = "menu"
@@ -69,6 +73,9 @@ end
 --- Called every frame. Updates the current game state and handles state transitions.
 --- @param dt number Delta time in seconds since last frame
 function love.update(dt)
+    -- Update animation library
+    flux.update(dt)
+
     -- Menu State
     if gameState == "menu" then
         menu.update(dt)
