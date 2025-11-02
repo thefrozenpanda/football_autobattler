@@ -14,6 +14,7 @@ local menu = {}
 -- Dependencies
 local SeasonManager = require("season_manager")
 local UIScale = require("ui_scale")
+local flux = require("lib.flux")
 
 -- Public State
 menu.startGameRequested = false     -- Flag set when player clicks "Start Game"
@@ -29,6 +30,9 @@ local menuOptions = {"Start New Season", "Continue Season", "Options", "Exit Gam
 local buttonWidth = 300
 local buttonHeight = 60
 local buttonY = {400, 510, 620, 730}   -- Y positions for each button
+
+-- Animation state
+local menuOpacity = 1.0
 
 --- Initializes the menu
 --- Creates fonts and resets menu state. Called when entering menu from other states.
@@ -46,6 +50,12 @@ function menu.load()
     menu.startGameRequested = false
     menu.continueSeasonRequested = false
     menu.optionsRequested = false
+
+    -- Fade in animation
+    menuOpacity = 0
+    flux.to({[1] = menuOpacity}, 0.5, {[1] = 1}):ease("quadout"):onupdate(function(t)
+        menuOpacity = t[1]
+    end)
 end
 
 --- Updates menu logic
@@ -61,14 +71,20 @@ function menu.draw()
     -- Clear screen with dark blue background
     love.graphics.clear(0.1, 0.15, 0.25, 1)
 
+    -- Apply fade animation
+    love.graphics.push()
+    love.graphics.setColor(1, 1, 1, menuOpacity)
+
     -- Scale button dimensions
     local scaledButtonWidth = UIScale.scaleWidth(buttonWidth)
     local scaledButtonHeight = UIScale.scaleHeight(buttonHeight)
 
     -- Draw game title
     love.graphics.setFont(titleFont)
-    love.graphics.setColor(1, 1, 1)
+    love.graphics.setColor(1, 1, 1, menuOpacity)
     love.graphics.printf("The Gridiron Bazaar", 0, UIScale.scaleY(350), UIScale.getWidth(), "center")
+
+    -- Draw subtitle (if you have one in the future)
 
     -- Check if save exists
     local hasSave = SeasonManager.saveExists()
@@ -84,32 +100,32 @@ function menu.draw()
 
         -- Draw button background (highlighted if selected)
         if isDisabled then
-            love.graphics.setColor(0.15, 0.15, 0.2, 0.4)  -- Very dark/grayed out
+            love.graphics.setColor(0.15, 0.15, 0.2, 0.4 * menuOpacity)  -- Very dark/grayed out
         elseif i == selectedOption then
-            love.graphics.setColor(0.3, 0.5, 0.7, 0.8)  -- Bright blue when selected
+            love.graphics.setColor(0.3, 0.5, 0.7, 0.8 * menuOpacity)  -- Bright blue when selected
         else
-            love.graphics.setColor(0.2, 0.3, 0.4, 0.6)  -- Dark gray when not selected
+            love.graphics.setColor(0.2, 0.3, 0.4, 0.6 * menuOpacity)  -- Dark gray when not selected
         end
         love.graphics.rectangle("fill", x, y, scaledButtonWidth, scaledButtonHeight, 10, 10)
 
         -- Draw button border (thicker if selected)
         if isDisabled then
-            love.graphics.setColor(0.3, 0.3, 0.35)
+            love.graphics.setColor(0.3, 0.3, 0.35, menuOpacity)
             love.graphics.setLineWidth(UIScale.scaleUniform(2))
         elseif i == selectedOption then
-            love.graphics.setColor(0.5, 0.7, 1.0)
+            love.graphics.setColor(0.5, 0.7, 1.0, menuOpacity)
             love.graphics.setLineWidth(UIScale.scaleUniform(3))
         else
-            love.graphics.setColor(0.4, 0.5, 0.6)
+            love.graphics.setColor(0.4, 0.5, 0.6, menuOpacity)
             love.graphics.setLineWidth(UIScale.scaleUniform(2))
         end
         love.graphics.rectangle("line", x, y, scaledButtonWidth, scaledButtonHeight, 10, 10)
 
         -- Draw button text
         if isDisabled then
-            love.graphics.setColor(0.4, 0.4, 0.45)  -- Grayed out text
+            love.graphics.setColor(0.4, 0.4, 0.45, menuOpacity)  -- Grayed out text
         else
-            love.graphics.setColor(1, 1, 1)
+            love.graphics.setColor(1, 1, 1, menuOpacity)
         end
         love.graphics.printf(option, x, y + UIScale.scaleHeight(15), scaledButtonWidth, "center")
 
@@ -119,13 +135,13 @@ function menu.draw()
             if hasSave then
                 local saveInfo = SeasonManager.getSaveInfo()
                 if saveInfo then
-                    love.graphics.setColor(0.8, 0.8, 0.8)
+                    love.graphics.setColor(0.8, 0.8, 0.8, menuOpacity)
                     local infoText = string.format("%s (%d-%d) - Week %d",
                         saveInfo.teamName, saveInfo.wins, saveInfo.losses, saveInfo.week)
                     love.graphics.printf(infoText, x, y + scaledButtonHeight + UIScale.scaleHeight(5), scaledButtonWidth, "center")
                 end
             else
-                love.graphics.setColor(0.5, 0.5, 0.5)
+                love.graphics.setColor(0.5, 0.5, 0.5, menuOpacity)
                 love.graphics.printf("No Current Save", x, y + scaledButtonHeight + UIScale.scaleHeight(5), scaledButtonWidth, "center")
             end
             love.graphics.setFont(menuFont)  -- Reset font
@@ -134,9 +150,11 @@ function menu.draw()
 
     -- Draw instructions and copyright
     love.graphics.setFont(copyrightFont)
-    love.graphics.setColor(0.6, 0.6, 0.6)
+    love.graphics.setColor(0.6, 0.6, 0.6, menuOpacity)
     love.graphics.printf("Use Arrow Keys or Mouse to Navigate - Enter or Click to Select", 0, UIScale.scaleY(820), UIScale.getWidth(), "center")
     love.graphics.printf("© 2025 The Gridiron Bazaar", 0, UIScale.scaleY(860), UIScale.getWidth(), "center")
+
+    love.graphics.pop()
 end
 
 --- Handles keyboard input for menu navigation

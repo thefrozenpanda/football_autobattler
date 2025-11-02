@@ -1,4 +1,6 @@
 -- card.lua
+local lume = require("lib.lume")
+
 local Card = {}
 Card.__index = Card
 

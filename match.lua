@@ -5,6 +5,7 @@ local Card = require("card")
 local CardManager = require("card_manager")
 local FieldState = require("field_state")
 local UIScale = require("ui_scale")
+local flux = require("lib.flux")
 
 local match = {}
 
@@ -42,6 +43,9 @@ local pauseButtonY = {450, 560, 670}
 local pauseMenuOptions = {"Resume", "Options", "Quit"}
 local selectedPauseOption = 0
 match.optionsRequested = false  -- Flag set when player clicks "Options" from pause menu
+
+-- Pause menu animation
+local pauseMenuOffset = {y = 0}
 
 -- Winner popup constants
 local winnerButtonWidth = 300
@@ -501,6 +505,10 @@ function match.drawPauseMenu()
     local screenWidth = UIScale.getWidth()
     local screenHeight = UIScale.getHeight()
 
+    -- Apply slide animation
+    love.graphics.push()
+    love.graphics.translate(0, pauseMenuOffset.y)
+
     love.graphics.setColor(0, 0, 0, 0.7)
     love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
 
@@ -535,6 +543,8 @@ function match.drawPauseMenu()
         love.graphics.setColor(1, 1, 1)
         love.graphics.printf(option, x, y + UIScale.scaleHeight(15), scaledButtonWidth, "center")
     end
+
+    love.graphics.pop()
 end
 
 function match.drawWinnerPopup()
@@ -657,6 +667,10 @@ end
 function match.pauseGame()
     paused = true
     selectedPauseOption = 0
+
+    -- Animate pause menu sliding down from top
+    pauseMenuOffset.y = -UIScale.getHeight()
+    flux.to(pauseMenuOffset, 0.3, {y = 0}):ease("quadout")
 end
 
 function match.resumeGame()

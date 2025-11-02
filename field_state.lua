@@ -1,4 +1,6 @@
 -- field_state.lua
+local lume = require("lib.lume")
+
 local FieldState = {}
 FieldState.__index = FieldState
 
@@ -56,10 +58,10 @@ function FieldState:addYards(yards)
 end
 
 function FieldState:removeYards(yards)
-    -- Remove yards from both counters
-    self.totalYards = math.max(0, self.totalYards - yards)
-    self.downYards = math.max(0, self.downYards - yards)
-    self.fieldPosition = math.max(20, self.fieldPosition - yards)  -- Can't go back past own 20
+    -- Remove yards from both counters (using lume.clamp for cleaner code)
+    self.totalYards = lume.clamp(self.totalYards - yards, 0, math.huge)
+    self.downYards = lume.clamp(self.downYards - yards, 0, math.huge)
+    self.fieldPosition = lume.clamp(self.fieldPosition - yards, 20, 100)  -- Can't go back past own 20
 end
 
 function FieldState:achieveFirstDown()
