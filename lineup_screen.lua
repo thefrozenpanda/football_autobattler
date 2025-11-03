@@ -331,19 +331,19 @@ function LineupScreen.drawTooltip(card)
     love.graphics.setColor(0.9, 0.9, 1)
 
     if card.cardType == Card.TYPE.YARD_GENERATOR then
-        love.graphics.print(string.format("Yards: %.1f", card.yardsPerAction), tooltipX + padding, contentY)
+        love.graphics.print(string.format("Yards: %.1f-%.1f", card.yardsPerActionMin, card.yardsPerActionMax), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
         love.graphics.print(string.format("Cooldown: %.2fs", card.cooldown), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
 
     elseif card.cardType == Card.TYPE.BOOSTER then
-        love.graphics.print(string.format("Boost: +%d%%", card.boostAmount), tooltipX + padding, contentY)
+        love.graphics.print(string.format("Boost: +%d-%d%%", math.floor(card.boostAmountMin), math.ceil(card.boostAmountMax)), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
         love.graphics.print(string.format("Cooldown: %.2fs", card.cooldown), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
 
     elseif card.cardType == Card.TYPE.DEFENDER then
-        love.graphics.print(string.format("Effect: %s", card.effectType), tooltipX + padding, contentY)
+        love.graphics.print(string.format("Effect: %s (%.1f-%.1f)", card.effectType, card.effectStrengthMin, card.effectStrengthMax), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
         love.graphics.print(string.format("Cooldown: %.2fs", card.cooldown), tooltipX + padding, contentY)
         contentY = contentY + lineHeight

@@ -20,7 +20,11 @@ function PhaseManager:new(playerCoachId, aiCoachId)
 
         -- Scores
         playerScore = 0,
-        aiScore = 0
+        aiScore = 0,
+
+        -- Event tracking for popups
+        lastEvent = nil,  -- "touchdown" or "turnover"
+        lastEventTeam = nil  -- "player" or "ai"
     }
     setmetatable(p, PhaseManager)
 
@@ -208,14 +212,25 @@ function PhaseManager:checkPhaseEnd()
         -- Touchdown scored
         if self.currentPhase == "player_offense" then
             self.playerScore = self.playerScore + 7
+            self.lastEvent = "touchdown"
+            self.lastEventTeam = "player"
         else
             self.aiScore = self.aiScore + 7
+            self.lastEvent = "touchdown"
+            self.lastEventTeam = "ai"
         end
         self:switchPhase(true)  -- true = touchdown
         return true
 
     elseif self.field:isTurnover() then
         -- Turnover on downs
+        if self.currentPhase == "player_offense" then
+            self.lastEvent = "turnover"
+            self.lastEventTeam = "player"
+        else
+            self.lastEvent = "turnover"
+            self.lastEventTeam = "ai"
+        end
         self:switchPhase(false)  -- false = turnover
         return true
     end

@@ -27,16 +27,22 @@ function Card:new(position, cardType, stats)
         cardType = cardType,
         number = stats.number or Card.generateNumber(position),  -- Jersey number
 
-        -- Yard generator stats
-        yardsPerAction = stats.yardsPerAction or 0,
+        -- Yard generator stats (with ranges)
+        yardsPerActionMin = stats.yardsPerActionMin or stats.yardsPerAction or 0,
+        yardsPerActionMax = stats.yardsPerActionMax or stats.yardsPerAction or 0,
+        yardsPerAction = stats.yardsPerAction or 0,  -- Kept for compatibility
         baseYardsPerAction = stats.yardsPerAction or 0,  -- Original value before upgrades
 
-        -- Booster stats
+        -- Booster stats (with ranges)
+        boostAmountMin = stats.boostAmountMin or stats.boostAmount or 0,
+        boostAmountMax = stats.boostAmountMax or stats.boostAmount or 0,
         boostAmount = stats.boostAmount or 0,       -- Percentage boost (e.g., 20 = 20%)
         boostTargets = stats.boostTargets or {},    -- Which positions to boost (e.g., {"QB", "RB"})
 
-        -- Defensive stats
+        -- Defensive stats (with ranges)
         effectType = stats.effectType or nil,       -- SLOW, FREEZE, or REMOVE_YARDS
+        effectStrengthMin = stats.effectStrengthMin or stats.effectStrength or 0,
+        effectStrengthMax = stats.effectStrengthMax or stats.effectStrength or 0,
         effectStrength = stats.effectStrength or 0, -- Strength of effect
         targetPositions = stats.targetPositions or {}, -- Which positions to target
 
@@ -58,6 +64,7 @@ function Card:new(position, cardType, stats)
         -- Visual/state
         justActed = false,
         actHighlightTimer = 0,
+        animOffsetX = 0,  -- Horizontal animation offset
 
         -- Status effects applied to this card
         isSlowed = false,
@@ -134,13 +141,19 @@ function Card:update(dt)
 end
 
 function Card:act()
-    -- Returns the result of this card's action
+    -- Returns the result of this card's action with randomized values within ranges
     if self.cardType == Card.TYPE.YARD_GENERATOR then
-        return {type = "yards", value = self.yardsPerAction}
+        -- Generate random yards within min/max range
+        local yards = math.random() * (self.yardsPerActionMax - self.yardsPerActionMin) + self.yardsPerActionMin
+        return {type = "yards", value = yards}
     elseif self.cardType == Card.TYPE.BOOSTER then
-        return {type = "boost", amount = self.boostAmount, targets = self.boostTargets}
+        -- Generate random boost within min/max range
+        local boost = math.random() * (self.boostAmountMax - self.boostAmountMin) + self.boostAmountMin
+        return {type = "boost", amount = boost, targets = self.boostTargets}
     elseif self.cardType == Card.TYPE.DEFENDER then
-        return {type = "defend", effect = self.effectType, strength = self.effectStrength, targets = self.targetPositions}
+        -- Generate random effect strength within min/max range
+        local strength = math.random() * (self.effectStrengthMax - self.effectStrengthMin) + self.effectStrengthMin
+        return {type = "defend", effect = self.effectType, strength = strength, targets = self.targetPositions}
     end
     return nil
 end
