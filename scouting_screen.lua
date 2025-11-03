@@ -13,6 +13,7 @@ local ScoutingScreen = {}
 
 local SeasonManager = require("season_manager")
 local Card = require("card")
+local UIScale = require("ui_scale")
 
 -- State
 ScoutingScreen.opponent = nil
@@ -21,7 +22,7 @@ ScoutingScreen.hoveredCard = nil
 ScoutingScreen.startMatchRequested = false
 ScoutingScreen.contentHeight = 700
 
--- UI configuration
+-- UI configuration (base values for 1600x900)
 local CARD_WIDTH = 120
 local CARD_HEIGHT = 80
 local CARD_SPACING = 15
@@ -29,8 +30,33 @@ local SECTION_Y_OFFSET = 50
 local START_BUTTON_WIDTH = 250
 local START_BUTTON_HEIGHT = 60
 
+-- Fonts
+local titleFont
+local matchupFont
+local recordFont
+local sectionFont
+local cardPositionFont
+local cardNumberFont
+local buttonFont
+local tooltipHeaderFont
+local tooltipTextFont
+
 --- Initializes the scouting screen
 function ScoutingScreen.load()
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(32))
+    matchupFont = love.graphics.newFont(UIScale.scaleFontSize(24))
+    recordFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    sectionFont = love.graphics.newFont(UIScale.scaleFontSize(26))
+    cardPositionFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    cardNumberFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    buttonFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    tooltipHeaderFont = love.graphics.newFont(UIScale.scaleFontSize(22))
+    tooltipTextFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+
     ScoutingScreen.hoveredCard = nil
     ScoutingScreen.startMatchRequested = false
 
@@ -49,7 +75,7 @@ end
 function ScoutingScreen.update(dt)
     -- Update hovered card
     local mx, my = love.mouse.getPosition()
-    my = my - 100  -- Adjust for header
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
 
     ScoutingScreen.hoveredCard = ScoutingScreen.getCardAtPosition(mx, my)
 end
@@ -58,25 +84,26 @@ end
 function ScoutingScreen.draw()
     if not ScoutingScreen.opponent then
         -- No upcoming match
-        love.graphics.setFont(love.graphics.newFont(28))
+        love.graphics.setFont(buttonFont)
         love.graphics.setColor(0.8, 0.8, 0.9)
         local noMatchText = "No upcoming match. Season may be complete."
-        local textWidth = love.graphics.getFont():getWidth(noMatchText)
-        love.graphics.print(noMatchText, (1600 - textWidth) / 2, 300)
+        local textWidth = buttonFont:getWidth(noMatchText)
+        love.graphics.print(noMatchText, UIScale.centerX(textWidth), UIScale.scaleY(300))
         return
     end
 
-    local yOffset = 20
+    local yOffset = UIScale.scaleY(20)
+    local startX = UIScale.scaleX(50)
 
     -- Title
-    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Next Match Scouting Report", 50, yOffset)
+    love.graphics.print("Next Match Scouting Report", startX, yOffset)
 
-    yOffset = yOffset + 50
+    yOffset = yOffset + UIScale.scaleHeight(50)
 
     -- Matchup info
-    love.graphics.setFont(love.graphics.newFont(24))
+    love.graphics.setFont(matchupFont)
     love.graphics.setColor(0.8, 0.9, 1)
 
     local matchupText = ""
@@ -85,44 +112,46 @@ function ScoutingScreen.draw()
     else
         matchupText = string.format("%s @ %s (Away)", SeasonManager.playerTeam.name, ScoutingScreen.opponent.name)
     end
-    love.graphics.print(matchupText, 50, yOffset)
+    love.graphics.print(matchupText, startX, yOffset)
 
-    yOffset = yOffset + 40
+    yOffset = yOffset + UIScale.scaleHeight(40)
 
     -- Opponent record
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(recordFont)
     love.graphics.setColor(0.7, 0.7, 0.8)
     local recordText = string.format("Opponent Record: %s", ScoutingScreen.opponent:getRecordString())
-    love.graphics.print(recordText, 50, yOffset)
+    love.graphics.print(recordText, startX, yOffset)
 
-    yOffset = yOffset + 50
+    yOffset = yOffset + UIScale.scaleHeight(50)
 
     -- Offensive cards
-    love.graphics.setFont(love.graphics.newFont(26))
+    love.graphics.setFont(sectionFont)
     love.graphics.setColor(0.3, 0.8, 0.3)
-    love.graphics.print("Opponent Offense", 50, yOffset)
+    love.graphics.print("Opponent Offense", startX, yOffset)
 
-    yOffset = yOffset + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
     ScoutingScreen.drawCardRow(ScoutingScreen.opponent.offensiveCards, yOffset)
 
-    yOffset = yOffset + CARD_HEIGHT + 60
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60)
 
     -- Defensive cards
-    love.graphics.setFont(love.graphics.newFont(26))
+    love.graphics.setFont(sectionFont)
     love.graphics.setColor(0.8, 0.3, 0.3)
-    love.graphics.print("Opponent Defense", 50, yOffset)
+    love.graphics.print("Opponent Defense", startX, yOffset)
 
-    yOffset = yOffset + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
     ScoutingScreen.drawCardRow(ScoutingScreen.opponent.defensiveCards, yOffset)
 
     -- Start Match button
-    local buttonX = (1600 - START_BUTTON_WIDTH) / 2
-    local buttonY = ScoutingScreen.contentHeight - START_BUTTON_HEIGHT - 30
+    local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
+    local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
+    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonY = UIScale.scaleHeight(ScoutingScreen.contentHeight - START_BUTTON_HEIGHT - 30)
 
     local mx, my = love.mouse.getPosition()
-    my = my - 100  -- Adjust for header
-    local hoveringButton = mx >= buttonX and mx <= buttonX + START_BUTTON_WIDTH and
-                          my >= buttonY and my <= buttonY + START_BUTTON_HEIGHT
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
+    local hoveringButton = mx >= buttonX and mx <= buttonX + scaledButtonWidth and
+                          my >= buttonY and my <= buttonY + scaledButtonHeight
 
     -- Button
     if hoveringButton then
@@ -130,17 +159,17 @@ function ScoutingScreen.draw()
     else
         love.graphics.setColor(0.2, 0.5, 0.2)
     end
-    love.graphics.rectangle("fill", buttonX, buttonY, START_BUTTON_WIDTH, START_BUTTON_HEIGHT)
+    love.graphics.rectangle("fill", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
 
     love.graphics.setColor(0, 0, 0)
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", buttonX, buttonY, START_BUTTON_WIDTH, START_BUTTON_HEIGHT)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
 
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(buttonFont)
     love.graphics.setColor(1, 1, 1)
     local buttonText = "Start Match"
-    local buttonTextWidth = love.graphics.getFont():getWidth(buttonText)
-    love.graphics.print(buttonText, buttonX + (START_BUTTON_WIDTH - buttonTextWidth) / 2, buttonY + 15)
+    local buttonTextWidth = buttonFont:getWidth(buttonText)
+    love.graphics.print(buttonText, buttonX + (scaledButtonWidth - buttonTextWidth) / 2, buttonY + UIScale.scaleHeight(15))
 
     -- Draw tooltip if hovering
     if ScoutingScreen.hoveredCard then
@@ -153,10 +182,14 @@ end
 --- @param y number Y position
 function ScoutingScreen.drawCardRow(cards, y)
     local mx, my = love.mouse.getPosition()
-    my = my - 100  -- Adjust for header
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
+
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardSpacing = UIScale.scaleUniform(CARD_SPACING)
+    local startX = UIScale.scaleX(50)
 
     for i, card in ipairs(cards) do
-        local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
         ScoutingScreen.drawCard(card, x, y, mx, my)
     end
 end
@@ -168,8 +201,11 @@ end
 --- @param mx number Mouse X position
 --- @param my number Mouse Y position
 function ScoutingScreen.drawCard(card, x, y, mx, my)
-    local hovering = mx >= x and mx <= x + CARD_WIDTH and
-                    my >= y and my <= y + CARD_HEIGHT
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+
+    local hovering = mx >= x and mx <= x + scaledCardWidth and
+                    my >= y and my <= y + scaledCardHeight
 
     -- Background
     if hovering then
@@ -177,7 +213,7 @@ function ScoutingScreen.drawCard(card, x, y, mx, my)
     else
         love.graphics.setColor(0.2, 0.2, 0.25)
     end
-    love.graphics.rectangle("fill", x, y, CARD_WIDTH, CARD_HEIGHT)
+    love.graphics.rectangle("fill", x, y, scaledCardWidth, scaledCardHeight)
 
     -- Border
     if card.cardType == Card.TYPE.YARD_GENERATOR then
@@ -187,17 +223,17 @@ function ScoutingScreen.drawCard(card, x, y, mx, my)
     elseif card.cardType == Card.TYPE.DEFENDER then
         love.graphics.setColor(0.8, 0.3, 0.3)
     end
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", x, y, CARD_WIDTH, CARD_HEIGHT)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.rectangle("line", x, y, scaledCardWidth, scaledCardHeight)
 
     -- Position and number
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(cardPositionFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(card.position, x + 10, y + 10)
+    love.graphics.print(card.position, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(10))
 
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(cardNumberFont)
     local numText = string.format("#%d", card.number)
-    love.graphics.print(numText, x + 10, y + 35)
+    love.graphics.print(numText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(35))
 end
 
 --- Gets the card at the given mouse position
@@ -209,22 +245,26 @@ function ScoutingScreen.getCardAtPosition(mx, my)
         return nil
     end
 
-    local yOffset = 20 + 50 + 40 + 50 + SECTION_Y_OFFSET
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+    local scaledCardSpacing = UIScale.scaleUniform(CARD_SPACING)
+    local startX = UIScale.scaleX(50)
+    local yOffset = UIScale.scaleY(20 + 50 + 40 + 50) + UIScale.scaleHeight(SECTION_Y_OFFSET)
 
     -- Check offensive cards
     for i, card in ipairs(ScoutingScreen.opponent.offensiveCards) do
-        local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
-        if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
+        if mx >= x and mx <= x + scaledCardWidth and my >= yOffset and my <= yOffset + scaledCardHeight then
             return card
         end
     end
 
-    yOffset = yOffset + CARD_HEIGHT + 60 + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60 + SECTION_Y_OFFSET)
 
     -- Check defensive cards
     for i, card in ipairs(ScoutingScreen.opponent.defensiveCards) do
-        local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
-        if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
+        if mx >= x and mx <= x + scaledCardWidth and my >= yOffset and my <= yOffset + scaledCardHeight then
             return card
         end
     end
@@ -237,10 +277,10 @@ end
 function ScoutingScreen.drawTooltip(card)
     local mx, my = love.mouse.getPosition()
 
-    local tooltipWidth = 300
+    local tooltipWidth = UIScale.scaleWidth(300)
     local tooltipHeight = 0
-    local padding = 15
-    local lineHeight = 25
+    local padding = UIScale.scaleUniform(15)
+    local lineHeight = UIScale.scaleHeight(25)
 
     -- Calculate tooltip height
     local lines = 5
@@ -255,18 +295,18 @@ function ScoutingScreen.drawTooltip(card)
     tooltipHeight = (lines * lineHeight) + (padding * 2)
 
     -- Position tooltip
-    local tooltipX = mx + 15
+    local tooltipX = mx + UIScale.scaleUniform(15)
     local tooltipY = my - tooltipHeight / 2
 
-    if tooltipX + tooltipWidth > 1600 then
-        tooltipX = mx - tooltipWidth - 15
+    if tooltipX + tooltipWidth > UIScale.getWidth() then
+        tooltipX = mx - tooltipWidth - UIScale.scaleUniform(15)
     end
 
     if tooltipY < 0 then
         tooltipY = 0
     end
-    if tooltipY + tooltipHeight > 900 then
-        tooltipY = 900 - tooltipHeight
+    if tooltipY + tooltipHeight > UIScale.getHeight() then
+        tooltipY = UIScale.getHeight() - tooltipHeight
     end
 
     -- Background
@@ -275,12 +315,12 @@ function ScoutingScreen.drawTooltip(card)
 
     -- Border
     love.graphics.setColor(0.5, 0.5, 0.6)
-    love.graphics.setLineWidth(2)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
     love.graphics.rectangle("line", tooltipX, tooltipY, tooltipWidth, tooltipHeight)
 
     -- Content
     local contentY = tooltipY + padding
-    love.graphics.setFont(love.graphics.newFont(22))
+    love.graphics.setFont(tooltipHeaderFont)
 
     -- Position and number
     love.graphics.setColor(1, 1, 1)
@@ -289,7 +329,7 @@ function ScoutingScreen.drawTooltip(card)
     contentY = contentY + lineHeight
 
     -- Type
-    love.graphics.setFont(love.graphics.newFont(18))
+    love.graphics.setFont(tooltipTextFont)
     love.graphics.setColor(0.8, 0.8, 0.9)
     local typeText = ""
     if card.cardType == Card.TYPE.YARD_GENERATOR then
@@ -300,7 +340,7 @@ function ScoutingScreen.drawTooltip(card)
         typeText = "Defender"
     end
     love.graphics.print(typeText, tooltipX + padding, contentY)
-    contentY = contentY + lineHeight + 5
+    contentY = contentY + lineHeight + UIScale.scaleHeight(5)
 
     -- Stats
     love.graphics.setColor(0.9, 0.9, 1)
@@ -337,11 +377,13 @@ function ScoutingScreen.mousepressed(x, y, button)
     end
 
     -- Check Start Match button
-    local buttonX = (1600 - START_BUTTON_WIDTH) / 2
-    local buttonY = ScoutingScreen.contentHeight - START_BUTTON_HEIGHT - 30
+    local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
+    local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
+    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonY = UIScale.scaleHeight(ScoutingScreen.contentHeight - START_BUTTON_HEIGHT - 30)
 
-    if x >= buttonX and x <= buttonX + START_BUTTON_WIDTH and
-       y >= buttonY and y <= buttonY + START_BUTTON_HEIGHT then
+    if x >= buttonX and x <= buttonX + scaledButtonWidth and
+       y >= buttonY and y <= buttonY + scaledButtonHeight then
         ScoutingScreen.startMatchRequested = true
     end
 end

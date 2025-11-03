@@ -216,6 +216,11 @@ function love.update(dt)
                     matchData.isHome and aiScore or playerScore
                 )
 
+                -- Award cash for playing the game
+                local playerWon = (matchData.isHome and playerScore > aiScore) or (not matchData.isHome and aiScore > playerScore)
+                local cashReward = playerWon and 100 or 50  -- 100 for win, 50 for loss
+                SeasonManager.playerTeam:awardCash(cashReward)
+
                 -- Store MVP data
                 SeasonManager.lastMatchResult.mvpOffense = match.getMVPOffense()
                 SeasonManager.lastMatchResult.mvpDefense = match.getMVPDefense()

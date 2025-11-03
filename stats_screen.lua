@@ -13,6 +13,7 @@ local StatsScreen = {}
 
 local SeasonManager = require("season_manager")
 local Card = require("card")
+local UIScale = require("ui_scale")
 
 -- State
 StatsScreen.allCards = {}  -- Combined offensive + defensive cards
@@ -22,12 +23,12 @@ StatsScreen.scrollOffset = 0
 StatsScreen.maxScroll = 0
 StatsScreen.contentHeight = 700
 
--- UI configuration
+-- UI configuration (base values for 1600x900)
 local ROW_HEIGHT = 35
 local HEADER_HEIGHT = 40
 local START_Y = 20
 
--- Column definitions (Type column removed, widths expanded to fit headers + sort indicator)
+-- Column definitions (base values for 1600x900)
 local columns = {
     {id = "position", label = "Pos", x = 50, width = 100},
     {id = "number", label = "#", x = 150, width = 80},
@@ -39,8 +40,21 @@ local columns = {
     {id = "yardsReduced", label = "Yds Removed", x = 770, width = 150}
 }
 
+-- Fonts
+local titleFont
+local headerFont
+local rowFont
+
 --- Initializes the stats screen
 function StatsScreen.load()
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(32))
+    headerFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    rowFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+
     StatsScreen.allCards = {}
     StatsScreen.sortColumn = "position"
     StatsScreen.sortAscending = true
@@ -107,7 +121,9 @@ end
 
 --- Calculates the maximum scroll amount
 function StatsScreen.calculateMaxScroll()
-    local contentHeight = HEADER_HEIGHT + (#StatsScreen.allCards * ROW_HEIGHT) + 100
+    local scaledHeaderHeight = UIScale.scaleHeight(HEADER_HEIGHT)
+    local scaledRowHeight = UIScale.scaleHeight(ROW_HEIGHT)
+    local contentHeight = scaledHeaderHeight + (#StatsScreen.allCards * scaledRowHeight) + UIScale.scaleHeight(100)
     StatsScreen.maxScroll = math.max(0, contentHeight - StatsScreen.contentHeight)
 end
 
@@ -123,20 +139,21 @@ function StatsScreen.draw()
     love.graphics.translate(0, -StatsScreen.scrollOffset)
 
     -- Title
-    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("Season Statistics", 50, START_Y)
+    love.graphics.print("Season Statistics", UIScale.scaleX(50), UIScale.scaleY(START_Y))
 
-    local yOffset = START_Y + 50
+    local yOffset = UIScale.scaleY(START_Y + 50)
 
     -- Draw table header
     StatsScreen.drawTableHeader(yOffset)
-    yOffset = yOffset + HEADER_HEIGHT
+    yOffset = yOffset + UIScale.scaleHeight(HEADER_HEIGHT)
 
     -- Draw table rows
+    local scaledRowHeight = UIScale.scaleHeight(ROW_HEIGHT)
     for i, card in ipairs(StatsScreen.allCards) do
         StatsScreen.drawTableRow(card, yOffset, i % 2 == 0)
-        yOffset = yOffset + ROW_HEIGHT
+        yOffset = yOffset + scaledRowHeight
     end
 
     love.graphics.pop()
@@ -146,55 +163,67 @@ end
 --- @param y number Y position
 function StatsScreen.drawTableHeader(y)
     local mx, my = love.mouse.getPosition()
-    my = my - 100  -- Adjust for header
+    my = my - UIScale.scaleY(100)  -- Adjust for header
+
+    local scaledHeaderHeight = UIScale.scaleHeight(HEADER_HEIGHT)
+
+    -- Calculate header background dimensions
+    local firstColX = UIScale.scaleX(columns[1].x)
+    local lastCol = columns[#columns]
+    local headerWidth = UIScale.scaleX(lastCol.x + lastCol.width) - firstColX
 
     -- Header background
     love.graphics.setColor(0.2, 0.25, 0.3)
-    love.graphics.rectangle("fill", columns[1].x, y, columns[#columns].x + columns[#columns].width - columns[1].x, HEADER_HEIGHT)
+    love.graphics.rectangle("fill", firstColX, y, headerWidth, scaledHeaderHeight)
 
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(headerFont)
 
     for _, col in ipairs(columns) do
-        local hovering = mx >= col.x and mx <= col.x + col.width and
-                        my >= y and my <= y + HEADER_HEIGHT
+        local scaledX = UIScale.scaleX(col.x)
+        local scaledWidth = UIScale.scaleWidth(col.width)
+
+        local hovering = mx >= scaledX and mx <= scaledX + scaledWidth and
+                        my >= y and my <= y + scaledHeaderHeight
 
         -- Highlight if hovering
         if hovering then
             love.graphics.setColor(0.3, 0.4, 0.5)
-            love.graphics.rectangle("fill", col.x, y, col.width, HEADER_HEIGHT)
+            love.graphics.rectangle("fill", scaledX, y, scaledWidth, scaledHeaderHeight)
         end
 
         -- Column text
         love.graphics.setColor(1, 1, 1)
-        love.graphics.print(col.label, col.x + 10, y + 10)
+        love.graphics.print(col.label, scaledX + UIScale.scaleUniform(10), y + UIScale.scaleHeight(10))
 
         -- Sort indicator (triangle)
         if StatsScreen.sortColumn == col.id then
             love.graphics.setColor(0.8, 0.8, 1)
-            local arrowX = col.x + col.width - 15
-            local arrowY = y + HEADER_HEIGHT / 2
+            local arrowX = scaledX + scaledWidth - UIScale.scaleUniform(15)
+            local arrowY = y + scaledHeaderHeight / 2
+            local arrowSize = UIScale.scaleUniform(5)
+            local arrowOffset = UIScale.scaleUniform(3)
 
             if StatsScreen.sortAscending then
                 -- Ascending: upward triangle ▲
                 love.graphics.polygon("fill",
-                    arrowX, arrowY - 5,      -- top point
-                    arrowX - 5, arrowY + 3,  -- bottom left
-                    arrowX + 5, arrowY + 3   -- bottom right
+                    arrowX, arrowY - arrowSize,      -- top point
+                    arrowX - arrowSize, arrowY + arrowOffset,  -- bottom left
+                    arrowX + arrowSize, arrowY + arrowOffset   -- bottom right
                 )
             else
                 -- Descending: downward triangle ▼
                 love.graphics.polygon("fill",
-                    arrowX, arrowY + 5,      -- bottom point
-                    arrowX - 5, arrowY - 3,  -- top left
-                    arrowX + 5, arrowY - 3   -- top right
+                    arrowX, arrowY + arrowSize,      -- bottom point
+                    arrowX - arrowSize, arrowY - arrowOffset,  -- top left
+                    arrowX + arrowSize, arrowY - arrowOffset   -- top right
                 )
             end
         end
 
         -- Border
         love.graphics.setColor(0.4, 0.4, 0.5)
-        love.graphics.setLineWidth(1)
-        love.graphics.line(col.x + col.width, y, col.x + col.width, y + HEADER_HEIGHT)
+        love.graphics.setLineWidth(UIScale.scaleUniform(1))
+        love.graphics.line(scaledX + scaledWidth, y, scaledX + scaledWidth, y + scaledHeaderHeight)
     end
 end
 
@@ -203,15 +232,21 @@ end
 --- @param y number Y position
 --- @param alternate boolean Whether this is an alternate row
 function StatsScreen.drawTableRow(card, y, alternate)
+    -- Calculate dimensions
+    local firstColX = UIScale.scaleX(columns[1].x)
+    local lastCol = columns[#columns]
+    local rowWidth = UIScale.scaleX(lastCol.x + lastCol.width) - firstColX
+    local scaledRowHeight = UIScale.scaleHeight(ROW_HEIGHT)
+
     -- Background
     if alternate then
         love.graphics.setColor(0.18, 0.18, 0.22)
     else
         love.graphics.setColor(0.15, 0.15, 0.2)
     end
-    love.graphics.rectangle("fill", columns[1].x, y, columns[#columns].x + columns[#columns].width - columns[1].x, ROW_HEIGHT)
+    love.graphics.rectangle("fill", firstColX, y, rowWidth, scaledRowHeight)
 
-    love.graphics.setFont(love.graphics.newFont(18))
+    love.graphics.setFont(rowFont)
     love.graphics.setColor(0.9, 0.9, 1)
 
     for _, col in ipairs(columns) do
@@ -235,13 +270,13 @@ function StatsScreen.drawTableRow(card, y, alternate)
             value = string.format("%.0f", card.yardsReduced or 0)
         end
 
-        love.graphics.print(value, col.x + 10, y + 8)
+        love.graphics.print(value, UIScale.scaleX(col.x) + UIScale.scaleUniform(10), y + UIScale.scaleHeight(8))
     end
 
     -- Row border
     love.graphics.setColor(0.3, 0.3, 0.35)
-    love.graphics.setLineWidth(1)
-    love.graphics.line(columns[1].x, y + ROW_HEIGHT, columns[#columns].x + columns[#columns].width, y + ROW_HEIGHT)
+    love.graphics.setLineWidth(UIScale.scaleUniform(1))
+    love.graphics.line(firstColX, y + scaledRowHeight, firstColX + rowWidth, y + scaledRowHeight)
 end
 
 --- LÖVE Callback: Mouse Pressed
@@ -254,11 +289,15 @@ function StatsScreen.mousepressed(x, y, button)
     end
 
     -- Check if clicking on header to sort
-    local headerY = START_Y + 50 - StatsScreen.scrollOffset
+    local headerY = UIScale.scaleY(START_Y + 50) - StatsScreen.scrollOffset
+    local scaledHeaderHeight = UIScale.scaleHeight(HEADER_HEIGHT)
 
-    if y >= headerY and y <= headerY + HEADER_HEIGHT then
+    if y >= headerY and y <= headerY + scaledHeaderHeight then
         for _, col in ipairs(columns) do
-            if x >= col.x and x <= col.x + col.width then
+            local scaledX = UIScale.scaleX(col.x)
+            local scaledWidth = UIScale.scaleWidth(col.width)
+
+            if x >= scaledX and x <= scaledX + scaledWidth then
                 -- Toggle sort
                 if StatsScreen.sortColumn == col.id then
                     StatsScreen.sortAscending = not StatsScreen.sortAscending
@@ -277,7 +316,8 @@ end
 --- Handles mouse wheel scrolling
 --- @param y number Scroll amount
 function StatsScreen.wheelmoved(y)
-    StatsScreen.scrollOffset = StatsScreen.scrollOffset - (y * 30)
+    local scrollSpeed = UIScale.scaleUniform(30)
+    StatsScreen.scrollOffset = StatsScreen.scrollOffset - (y * scrollSpeed)
     StatsScreen.scrollOffset = math.max(0, math.min(StatsScreen.scrollOffset, StatsScreen.maxScroll))
 end
 

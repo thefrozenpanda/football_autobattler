@@ -12,6 +12,7 @@ local LineupScreen = {}
 
 local SeasonManager = require("season_manager")
 local Card = require("card")
+local UIScale = require("ui_scale")
 
 -- State
 LineupScreen.hoveredCard = nil  -- Card being hovered for tooltip
@@ -19,15 +20,38 @@ LineupScreen.selectedCard = nil  -- Card selected for swapping
 LineupScreen.selectedCardLocation = nil  -- {section, index} where card is located
 LineupScreen.contentHeight = 700
 
--- UI configuration
+-- UI configuration (base values for 1600x900)
 local CARD_WIDTH = 120
 local CARD_HEIGHT = 80
 local CARD_SPACING = 15
 local SECTION_Y_OFFSET = 50
 local CARDS_PER_ROW = 11
 
+-- Fonts
+local sectionFont
+local benchMessageFont
+local cardPositionFont
+local cardNumberFont
+local upgradeFont
+local swapIconFont
+local tooltipHeaderFont
+local tooltipTextFont
+
 --- Initializes the lineup screen
 function LineupScreen.load()
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts
+    sectionFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    benchMessageFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    cardPositionFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    cardNumberFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    upgradeFont = love.graphics.newFont(UIScale.scaleFontSize(16))
+    swapIconFont = love.graphics.newFont(UIScale.scaleFontSize(24))
+    tooltipHeaderFont = love.graphics.newFont(UIScale.scaleFontSize(22))
+    tooltipTextFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+
     LineupScreen.hoveredCard = nil
     LineupScreen.selectedCard = nil
     LineupScreen.selectedCardLocation = nil
@@ -38,7 +62,7 @@ end
 function LineupScreen.update(dt)
     -- Update hovered card
     local mx, my = love.mouse.getPosition()
-    my = my - 100  -- Adjust for header
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
 
     local card, section, index = LineupScreen.getCardAtPosition(mx, my)
     LineupScreen.hoveredCard = card
@@ -50,41 +74,42 @@ function LineupScreen.draw()
         return
     end
 
-    local yOffset = 20
+    local yOffset = UIScale.scaleY(20)
+    local startX = UIScale.scaleX(50)
 
     -- Offensive starters
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(sectionFont)
     love.graphics.setColor(0.3, 0.8, 0.3)
-    love.graphics.print("Offensive Starters (11)", 50, yOffset)
+    love.graphics.print("Offensive Starters (11)", startX, yOffset)
 
-    yOffset = yOffset + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
     LineupScreen.drawCardRow(SeasonManager.playerTeam.offensiveCards, yOffset, "offense")
 
-    yOffset = yOffset + CARD_HEIGHT + 60
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60)
 
     -- Defensive starters
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(sectionFont)
     love.graphics.setColor(0.8, 0.3, 0.3)
-    love.graphics.print("Defensive Starters (11)", 50, yOffset)
+    love.graphics.print("Defensive Starters (11)", startX, yOffset)
 
-    yOffset = yOffset + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
     LineupScreen.drawCardRow(SeasonManager.playerTeam.defensiveCards, yOffset, "defense")
 
-    yOffset = yOffset + CARD_HEIGHT + 60
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60)
 
     -- Bench
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(sectionFont)
     love.graphics.setColor(0.7, 0.7, 0.8)
     local benchCount = #SeasonManager.playerTeam.benchCards
-    love.graphics.print(string.format("Bench (%d / 6)", benchCount), 50, yOffset)
+    love.graphics.print(string.format("Bench (%d / 6)", benchCount), startX, yOffset)
 
-    yOffset = yOffset + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
     if benchCount > 0 then
         LineupScreen.drawCardRow(SeasonManager.playerTeam.benchCards, yOffset, "bench")
     else
-        love.graphics.setFont(love.graphics.newFont(20))
+        love.graphics.setFont(benchMessageFont)
         love.graphics.setColor(0.5, 0.5, 0.6)
-        love.graphics.print("No bench cards yet. Purchase cards during training to fill your bench.", 50, yOffset)
+        love.graphics.print("No bench cards yet. Purchase cards during training to fill your bench.", startX, yOffset)
     end
 
     -- Draw tooltip if hovering
@@ -99,10 +124,14 @@ end
 --- @param section string Section identifier ("offense", "defense", "bench")
 function LineupScreen.drawCardRow(cards, y, section)
     local mx, my = love.mouse.getPosition()
-    my = my - 100  -- Adjust for header
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
+
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardSpacing = UIScale.scaleUniform(CARD_SPACING)
+    local startX = UIScale.scaleX(50)
 
     for i, card in ipairs(cards) do
-        local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
         LineupScreen.drawCard(card, x, y, mx, my, section, i)
     end
 end
@@ -116,8 +145,11 @@ end
 --- @param section string Section identifier (optional)
 --- @param index number Card index in section (optional)
 function LineupScreen.drawCard(card, x, y, mx, my, section, index)
-    local hovering = mx >= x and mx <= x + CARD_WIDTH and
-                    my >= y and my <= y + CARD_HEIGHT
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+
+    local hovering = mx >= x and mx <= x + scaledCardWidth and
+                    my >= y and my <= y + scaledCardHeight
 
     local isSelected = (LineupScreen.selectedCard == card)
     local canSwapWith = false
@@ -139,7 +171,7 @@ function LineupScreen.drawCard(card, x, y, mx, my, section, index)
     else
         love.graphics.setColor(0.2, 0.2, 0.25)
     end
-    love.graphics.rectangle("fill", x, y, CARD_WIDTH, CARD_HEIGHT)
+    love.graphics.rectangle("fill", x, y, scaledCardWidth, scaledCardHeight)
 
     -- Border
     if card.cardType == Card.TYPE.YARD_GENERATOR then
@@ -149,31 +181,31 @@ function LineupScreen.drawCard(card, x, y, mx, my, section, index)
     elseif card.cardType == Card.TYPE.DEFENDER then
         love.graphics.setColor(0.8, 0.3, 0.3)
     end
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", x, y, CARD_WIDTH, CARD_HEIGHT)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.rectangle("line", x, y, scaledCardWidth, scaledCardHeight)
 
     -- Position and number
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(cardPositionFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(card.position, x + 10, y + 10)
+    love.graphics.print(card.position, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(10))
 
-    love.graphics.setFont(love.graphics.newFont(28))
+    love.graphics.setFont(cardNumberFont)
     local numText = string.format("#%d", card.number)
-    love.graphics.print(numText, x + 10, y + 35)
+    love.graphics.print(numText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(35))
 
     -- Upgrade indicator
     if card.upgradeCount > 0 then
-        love.graphics.setFont(love.graphics.newFont(16))
+        love.graphics.setFont(upgradeFont)
         love.graphics.setColor(1, 0.8, 0.2)
         local upgradeText = string.format("+%d", card.upgradeCount)
-        love.graphics.print(upgradeText, x + CARD_WIDTH - 35, y + 5)
+        love.graphics.print(upgradeText, x + scaledCardWidth - UIScale.scaleUniform(35), y + UIScale.scaleHeight(5))
     end
 
     -- Swap indicator for swappable cards
     if canSwapWith then
-        love.graphics.setFont(love.graphics.newFont(24))
+        love.graphics.setFont(swapIconFont)
         love.graphics.setColor(0.5, 0.8, 1)
-        love.graphics.print("⇄", x + CARD_WIDTH - 28, y + CARD_HEIGHT - 30)
+        love.graphics.print("⇄", x + scaledCardWidth - UIScale.scaleUniform(28), y + scaledCardHeight - UIScale.scaleHeight(30))
     end
 end
 
@@ -188,32 +220,36 @@ function LineupScreen.getCardAtPosition(mx, my)
         return nil, nil, nil
     end
 
-    local yOffset = 20 + SECTION_Y_OFFSET
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+    local scaledCardSpacing = UIScale.scaleUniform(CARD_SPACING)
+    local startX = UIScale.scaleX(50)
+    local yOffset = UIScale.scaleY(20) + UIScale.scaleHeight(SECTION_Y_OFFSET)
 
     -- Check offensive cards
     for i, card in ipairs(SeasonManager.playerTeam.offensiveCards) do
-        local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
-        if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
+        if mx >= x and mx <= x + scaledCardWidth and my >= yOffset and my <= yOffset + scaledCardHeight then
             return card, "offense", i
         end
     end
 
-    yOffset = yOffset + CARD_HEIGHT + 60 + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60 + SECTION_Y_OFFSET)
 
     -- Check defensive cards
     for i, card in ipairs(SeasonManager.playerTeam.defensiveCards) do
-        local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
-        if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
+        if mx >= x and mx <= x + scaledCardWidth and my >= yOffset and my <= yOffset + scaledCardHeight then
             return card, "defense", i
         end
     end
 
-    yOffset = yOffset + CARD_HEIGHT + 60 + SECTION_Y_OFFSET
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60 + SECTION_Y_OFFSET)
 
     -- Check bench cards
     for i, card in ipairs(SeasonManager.playerTeam.benchCards) do
-        local x = 50 + ((i - 1) * (CARD_WIDTH + CARD_SPACING))
-        if mx >= x and mx <= x + CARD_WIDTH and my >= yOffset and my <= yOffset + CARD_HEIGHT then
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
+        if mx >= x and mx <= x + scaledCardWidth and my >= yOffset and my <= yOffset + scaledCardHeight then
             return card, "bench", i
         end
     end
@@ -226,10 +262,10 @@ end
 function LineupScreen.drawTooltip(card)
     local mx, my = love.mouse.getPosition()
 
-    local tooltipWidth = 350
+    local tooltipWidth = UIScale.scaleWidth(350)
     local tooltipHeight = 0
-    local padding = 15
-    local lineHeight = 25
+    local padding = UIScale.scaleUniform(15)
+    local lineHeight = UIScale.scaleHeight(25)
 
     -- Calculate tooltip height based on content
     local lines = 6  -- Base lines
@@ -244,18 +280,18 @@ function LineupScreen.drawTooltip(card)
     tooltipHeight = (lines * lineHeight) + (padding * 2)
 
     -- Position tooltip to the right of mouse, or left if too close to edge
-    local tooltipX = mx + 15
+    local tooltipX = mx + UIScale.scaleUniform(15)
     local tooltipY = my - tooltipHeight / 2
 
-    if tooltipX + tooltipWidth > 1600 then
-        tooltipX = mx - tooltipWidth - 15
+    if tooltipX + tooltipWidth > UIScale.getWidth() then
+        tooltipX = mx - tooltipWidth - UIScale.scaleUniform(15)
     end
 
     if tooltipY < 0 then
         tooltipY = 0
     end
-    if tooltipY + tooltipHeight > 900 then
-        tooltipY = 900 - tooltipHeight
+    if tooltipY + tooltipHeight > UIScale.getHeight() then
+        tooltipY = UIScale.getHeight() - tooltipHeight
     end
 
     -- Background
@@ -264,12 +300,12 @@ function LineupScreen.drawTooltip(card)
 
     -- Border
     love.graphics.setColor(0.5, 0.5, 0.6)
-    love.graphics.setLineWidth(2)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
     love.graphics.rectangle("line", tooltipX, tooltipY, tooltipWidth, tooltipHeight)
 
     -- Content
     local contentY = tooltipY + padding
-    love.graphics.setFont(love.graphics.newFont(22))
+    love.graphics.setFont(tooltipHeaderFont)
 
     -- Position and number
     love.graphics.setColor(1, 1, 1)
@@ -278,7 +314,7 @@ function LineupScreen.drawTooltip(card)
     contentY = contentY + lineHeight
 
     -- Type
-    love.graphics.setFont(love.graphics.newFont(18))
+    love.graphics.setFont(tooltipTextFont)
     love.graphics.setColor(0.8, 0.8, 0.9)
     local typeText = ""
     if card.cardType == Card.TYPE.YARD_GENERATOR then
@@ -289,7 +325,7 @@ function LineupScreen.drawTooltip(card)
         typeText = "Defender"
     end
     love.graphics.print(typeText, tooltipX + padding, contentY)
-    contentY = contentY + lineHeight + 5
+    contentY = contentY + lineHeight + UIScale.scaleHeight(5)
 
     -- Stats
     love.graphics.setColor(0.9, 0.9, 1)
@@ -387,7 +423,10 @@ function LineupScreen.mousepressed(x, y, button)
         return
     end
 
-    local card, section, index = LineupScreen.getCardAtPosition(x, y)
+    -- Adjust for header
+    local adjustedY = y - UIScale.scaleHeight(100)
+
+    local card, section, index = LineupScreen.getCardAtPosition(x, adjustedY)
 
     if not card then
         -- Clicked empty space - deselect

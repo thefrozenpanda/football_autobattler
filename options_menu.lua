@@ -79,21 +79,27 @@ function options.load(context)
         end
     end
 
-    -- Create dropdowns
-    local dropdownWidth = UIScale.scaleWidth(400)
-    local dropdownX = UIScale.centerX(dropdownWidth)
+    -- Create dropdowns (positioned horizontally side-by-side)
+    local dropdownWidth = UIScale.scaleWidth(350)
+    local dropdownSpacing = UIScale.scaleWidth(40)
+    local totalWidth = dropdownWidth * 2 + dropdownSpacing
+    local startX = UIScale.centerX(totalWidth)
+
+    local resolutionX = startX
+    local displayModeX = startX + dropdownWidth + dropdownSpacing
+    local dropdownY = UIScale.scaleY(320)
 
     resolutionDropdown = Dropdown.new(
-        dropdownX,
-        UIScale.scaleY(300),
+        resolutionX,
+        dropdownY,
         dropdownWidth,
         resolutionOptions,
         currentResValue
     )
 
     displayModeDropdown = Dropdown.new(
-        dropdownX,
-        UIScale.scaleY(400),
+        displayModeX,
+        dropdownY,
         dropdownWidth,
         displayModes,
         pendingSettings.displayMode
@@ -116,13 +122,28 @@ function options.draw()
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf("Options", 0, UIScale.scaleY(100), UIScale.getWidth(), "center")
 
-    -- Draw labels
+    -- Draw labels above dropdowns
     love.graphics.setFont(labelFont)
     love.graphics.setColor(0.9, 0.9, 0.9)
 
-    local labelX = UIScale.centerX(UIScale.scaleWidth(400))
-    love.graphics.print("Resolution:", labelX, UIScale.scaleY(265))
-    love.graphics.print("Display Mode:", labelX, UIScale.scaleY(365))
+    -- Calculate dropdown positions (same as in load function)
+    local dropdownWidth = UIScale.scaleWidth(350)
+    local dropdownSpacing = UIScale.scaleWidth(40)
+    local totalWidth = dropdownWidth * 2 + dropdownSpacing
+    local startX = UIScale.centerX(totalWidth)
+
+    local resolutionX = startX
+    local displayModeX = startX + dropdownWidth + dropdownSpacing
+    local labelY = UIScale.scaleY(280)
+
+    -- Center labels above each dropdown
+    local resLabel = "Resolution:"
+    local resLabelWidth = labelFont:getWidth(resLabel)
+    love.graphics.print(resLabel, resolutionX + (dropdownWidth - resLabelWidth) / 2, labelY)
+
+    local dispLabel = "Display Mode:"
+    local dispLabelWidth = labelFont:getWidth(dispLabel)
+    love.graphics.print(dispLabel, displayModeX + (dropdownWidth - dispLabelWidth) / 2, labelY)
 
     -- Draw dropdowns
     resolutionDropdown:draw()

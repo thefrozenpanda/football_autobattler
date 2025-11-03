@@ -15,16 +15,26 @@ local TrainingScreen = {}
 local SeasonManager = require("season_manager")
 local Card = require("card")
 local Coach = require("coach")
+local UIScale = require("ui_scale")
 
 -- State
 TrainingScreen.upgradeOptions = {}  -- 3 random upgrade options
 TrainingScreen.contentHeight = 700  -- Available height for content
 
--- UI configuration
+-- UI configuration (base values for 1600x900)
 local OPTION_WIDTH = 450
 local OPTION_HEIGHT = 220
 local OPTION_SPACING = 50
 local START_Y = 100
+
+-- Fonts
+local titleFont
+local headerFont
+local cardFont
+local statsFont
+local costFont
+local buttonFont
+local instructFont
 
 --- Upgrade option types
 local UPGRADE_TYPE = {
@@ -40,6 +50,18 @@ local UPGRADE_TYPE = {
 --- Initializes the training screen
 --- Generates 3 random upgrade options
 function TrainingScreen.load()
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(32))
+    headerFont = love.graphics.newFont(UIScale.scaleFontSize(24))
+    cardFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    statsFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+    costFont = love.graphics.newFont(UIScale.scaleFontSize(22))
+    buttonFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    instructFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+
     TrainingScreen.upgradeOptions = {}
     TrainingScreen.generateUpgradeOptions()
 end
@@ -162,32 +184,34 @@ end
 --- LÖVE Callback: Draw UI
 function TrainingScreen.draw()
     -- Title
-    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
     local titleText = "Training Week - Choose Upgrades"
-    local titleWidth = love.graphics.getFont():getWidth(titleText)
-    love.graphics.print(titleText, (1600 - titleWidth) / 2, 20)
+    local titleWidth = titleFont:getWidth(titleText)
+    love.graphics.print(titleText, (UIScale.getWidth() - titleWidth) / 2, UIScale.scaleY(20))
 
     -- Draw upgrade options
-    local totalWidth = (#TrainingScreen.upgradeOptions * OPTION_WIDTH) + ((#TrainingScreen.upgradeOptions - 1) * OPTION_SPACING)
-    local startX = (1600 - totalWidth) / 2
+    local scaledOptionWidth = UIScale.scaleWidth(OPTION_WIDTH)
+    local scaledOptionSpacing = UIScale.scaleUniform(OPTION_SPACING)
+    local totalWidth = (#TrainingScreen.upgradeOptions * scaledOptionWidth) + ((#TrainingScreen.upgradeOptions - 1) * scaledOptionSpacing)
+    local startX = (UIScale.getWidth() - totalWidth) / 2
 
     local mx, my = love.mouse.getPosition()
-    my = my - 100  -- Adjust for header
+    my = my - UIScale.scaleY(100)  -- Adjust for header
 
+    local scaledStartY = UIScale.scaleY(START_Y)
     for i, option in ipairs(TrainingScreen.upgradeOptions) do
-        local optionX = startX + ((i - 1) * (OPTION_WIDTH + OPTION_SPACING))
-        local optionY = START_Y
+        local optionX = startX + ((i - 1) * (scaledOptionWidth + scaledOptionSpacing))
 
-        TrainingScreen.drawUpgradeOption(option, optionX, optionY, mx, my)
+        TrainingScreen.drawUpgradeOption(option, optionX, scaledStartY, mx, my)
     end
 
     -- Instructions
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(instructFont)
     love.graphics.setColor(0.7, 0.7, 0.8)
     local instructText = "Click on an upgrade to purchase it. You can buy multiple upgrades if you have enough cash."
-    local instructWidth = love.graphics.getFont():getWidth(instructText)
-    love.graphics.print(instructText, (1600 - instructWidth) / 2, START_Y + OPTION_HEIGHT + 50)
+    local instructWidth = instructFont:getWidth(instructText)
+    love.graphics.print(instructText, (UIScale.getWidth() - instructWidth) / 2, scaledStartY + UIScale.scaleHeight(OPTION_HEIGHT) + UIScale.scaleHeight(50))
 end
 
 --- Draws a single upgrade option
@@ -197,8 +221,11 @@ end
 --- @param mx number Mouse X position
 --- @param my number Mouse Y position
 function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
-    local hovering = mx >= x and mx <= x + OPTION_WIDTH and
-                    my >= y and my <= y + OPTION_HEIGHT
+    local scaledOptionWidth = UIScale.scaleWidth(OPTION_WIDTH)
+    local scaledOptionHeight = UIScale.scaleHeight(OPTION_HEIGHT)
+
+    local hovering = mx >= x and mx <= x + scaledOptionWidth and
+                    my >= y and my <= y + scaledOptionHeight
 
     local canAfford = SeasonManager.playerTeam and SeasonManager.playerTeam.cash >= option.cost
 
@@ -208,7 +235,7 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
     else
         love.graphics.setColor(0.2, 0.2, 0.25)
     end
-    love.graphics.rectangle("fill", x, y, OPTION_WIDTH, OPTION_HEIGHT)
+    love.graphics.rectangle("fill", x, y, scaledOptionWidth, scaledOptionHeight)
 
     -- Border
     if canAfford then
@@ -216,14 +243,15 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
     else
         love.graphics.setColor(0.3, 0.3, 0.35)
     end
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", x, y, OPTION_WIDTH, OPTION_HEIGHT)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", x, y, scaledOptionWidth, scaledOptionHeight)
 
     -- Content
-    local contentY = y + 15
+    local contentY = y + UIScale.scaleHeight(15)
+    local padding = UIScale.scaleUniform(15)
 
     -- Upgrade type header
-    love.graphics.setFont(love.graphics.newFont(24))
+    love.graphics.setFont(headerFont)
     love.graphics.setColor(0.8, 0.9, 1)
 
     local headerText = ""
@@ -243,79 +271,79 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
         headerText = "New Bench Card"
     end
 
-    love.graphics.print(headerText, x + 15, contentY)
-    contentY = contentY + 35
+    love.graphics.print(headerText, x + padding, contentY)
+    contentY = contentY + UIScale.scaleHeight(35)
 
     -- Card info
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(cardFont)
     love.graphics.setColor(1, 1, 1)
 
     local cardText = string.format("#%d %s", option.card.number, option.card.position)
-    love.graphics.print(cardText, x + 15, contentY)
-    contentY = contentY + 30
+    love.graphics.print(cardText, x + padding, contentY)
+    contentY = contentY + UIScale.scaleHeight(30)
 
     -- Current stats
-    love.graphics.setFont(love.graphics.newFont(18))
+    love.graphics.setFont(statsFont)
     love.graphics.setColor(0.8, 0.8, 0.9)
 
     if option.type == UPGRADE_TYPE.YARDS then
         local currentYards = string.format("Current: %.1f yards", option.card.yardsPerAction)
-        love.graphics.print(currentYards, x + 15, contentY)
-        contentY = contentY + 25
+        love.graphics.print(currentYards, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
 
         love.graphics.setColor(0.3, 0.8, 0.3)
         local newYards = string.format("New: %.1f yards (+0.5)", option.card.yardsPerAction + 0.5)
-        love.graphics.print(newYards, x + 15, contentY)
+        love.graphics.print(newYards, x + padding, contentY)
 
     elseif option.type == UPGRADE_TYPE.COOLDOWN then
         local currentCooldown = string.format("Current: %.2fs cooldown", option.card.cooldown)
-        love.graphics.print(currentCooldown, x + 15, contentY)
-        contentY = contentY + 25
+        love.graphics.print(currentCooldown, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
 
         love.graphics.setColor(0.3, 0.8, 0.3)
         local newCooldown = string.format("New: %.2fs (-10%%)", option.card.cooldown * 0.9)
-        love.graphics.print(newCooldown, x + 15, contentY)
+        love.graphics.print(newCooldown, x + padding, contentY)
 
     elseif option.type == UPGRADE_TYPE.BOOST then
         local currentBoost = string.format("Current: +%d%% boost", option.card.boostAmount)
-        love.graphics.print(currentBoost, x + 15, contentY)
-        contentY = contentY + 25
+        love.graphics.print(currentBoost, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
 
         love.graphics.setColor(0.3, 0.8, 0.3)
         local newBoost = string.format("New: +%d%% boost (+5%%)", option.card.boostAmount + 5)
-        love.graphics.print(newBoost, x + 15, contentY)
+        love.graphics.print(newBoost, x + padding, contentY)
 
     elseif option.type == UPGRADE_TYPE.DURATION then
         local currentDuration = string.format("Current: %.1fs duration", option.card.effectStrength)
-        love.graphics.print(currentDuration, x + 15, contentY)
-        contentY = contentY + 25
+        love.graphics.print(currentDuration, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
 
         love.graphics.setColor(0.3, 0.8, 0.3)
         local newDuration = string.format("New: %.1fs (+0.5s)", option.card.effectStrength + 0.5)
-        love.graphics.print(newDuration, x + 15, contentY)
+        love.graphics.print(newDuration, x + padding, contentY)
 
     elseif option.type == UPGRADE_TYPE.BONUS_YARDS then
         local currentChance = option.card.bonusYardsUpgrades * 33
         local currentText = string.format("Current: %d%% bonus chance", currentChance)
-        love.graphics.print(currentText, x + 15, contentY)
-        contentY = contentY + 25
+        love.graphics.print(currentText, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
 
         love.graphics.setColor(0.3, 0.8, 0.3)
         local newChance = (option.card.bonusYardsUpgrades + 1) * 33
         local newText = string.format("New: %d%% (+2 yds)", newChance)
-        love.graphics.print(newText, x + 15, contentY)
+        love.graphics.print(newText, x + padding, contentY)
 
     elseif option.type == UPGRADE_TYPE.IMMUNITY then
         love.graphics.setColor(1, 0.8, 0.2)
-        love.graphics.print("PERMANENT IMMUNITY", x + 15, contentY)
-        contentY = contentY + 25
+        love.graphics.print("PERMANENT IMMUNITY", x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
 
         love.graphics.setColor(0.8, 0.8, 0.9)
-        love.graphics.print("Never slowed or frozen", x + 15, contentY)
-        contentY = contentY + 20
+        love.graphics.print("Never slowed or frozen", x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(20)
 
         love.graphics.setColor(0.8, 0.3, 0.3)
-        love.graphics.print("Costs 2 upgrade slots!", x + 15, contentY)
+        love.graphics.print("Costs 2 upgrade slots!", x + padding, contentY)
 
     elseif option.type == UPGRADE_TYPE.BENCH_CARD then
         local cardInfo = ""
@@ -326,20 +354,20 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
         elseif option.card.cardType == Card.TYPE.DEFENDER then
             cardInfo = string.format("%s / %.2fs", option.card.effectType, option.card.cooldown)
         end
-        love.graphics.print(cardInfo, x + 15, contentY)
+        love.graphics.print(cardInfo, x + padding, contentY)
     end
 
     -- Upgrade count (for existing cards)
     if option.type ~= UPGRADE_TYPE.BENCH_CARD then
-        contentY = contentY + 30
+        contentY = contentY + UIScale.scaleHeight(30)
         love.graphics.setColor(0.7, 0.7, 0.8)
         local upgradeText = string.format("Upgrades: %d / 3", option.card.upgradeCount)
-        love.graphics.print(upgradeText, x + 15, contentY)
+        love.graphics.print(upgradeText, x + padding, contentY)
     end
 
     -- Cost
-    contentY = y + OPTION_HEIGHT - 50
-    love.graphics.setFont(love.graphics.newFont(22))
+    contentY = y + scaledOptionHeight - UIScale.scaleHeight(50)
+    love.graphics.setFont(costFont)
 
     if canAfford then
         love.graphics.setColor(0.3, 0.8, 0.3)
@@ -348,7 +376,7 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
     end
 
     local costText = string.format("Cost: $%d", option.cost)
-    love.graphics.print(costText, x + 15, contentY)
+    love.graphics.print(costText, x + padding, contentY)
 
     -- Purchase button
     if canAfford then
@@ -357,18 +385,18 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
         love.graphics.setColor(0.3, 0.3, 0.3)
     end
 
-    local btnWidth = 120
-    local btnHeight = 35
-    local btnX = x + OPTION_WIDTH - btnWidth - 15
-    local btnY = contentY - 5
+    local btnWidth = UIScale.scaleWidth(120)
+    local btnHeight = UIScale.scaleHeight(35)
+    local btnX = x + scaledOptionWidth - btnWidth - padding
+    local btnY = contentY - UIScale.scaleHeight(5)
 
     love.graphics.rectangle("fill", btnX, btnY, btnWidth, btnHeight)
 
     love.graphics.setColor(0, 0, 0)
-    love.graphics.setLineWidth(2)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
     love.graphics.rectangle("line", btnX, btnY, btnWidth, btnHeight)
 
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(buttonFont)
     if canAfford then
         love.graphics.setColor(1, 1, 1)
     else
@@ -376,8 +404,8 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
     end
 
     local buyText = "Purchase"
-    local buyWidth = love.graphics.getFont():getWidth(buyText)
-    love.graphics.print(buyText, btnX + (btnWidth - buyWidth) / 2, btnY + 5)
+    local buyWidth = buttonFont:getWidth(buyText)
+    love.graphics.print(buyText, btnX + (btnWidth - buyWidth) / 2, btnY + UIScale.scaleHeight(5))
 end
 
 --- LÖVE Callback: Mouse Pressed
@@ -390,16 +418,19 @@ function TrainingScreen.mousepressed(x, y, button)
     end
 
     -- Calculate positions
-    local totalWidth = (#TrainingScreen.upgradeOptions * OPTION_WIDTH) + ((#TrainingScreen.upgradeOptions - 1) * OPTION_SPACING)
-    local startX = (1600 - totalWidth) / 2
+    local scaledOptionWidth = UIScale.scaleWidth(OPTION_WIDTH)
+    local scaledOptionHeight = UIScale.scaleHeight(OPTION_HEIGHT)
+    local scaledOptionSpacing = UIScale.scaleUniform(OPTION_SPACING)
+    local totalWidth = (#TrainingScreen.upgradeOptions * scaledOptionWidth) + ((#TrainingScreen.upgradeOptions - 1) * scaledOptionSpacing)
+    local startX = (UIScale.getWidth() - totalWidth) / 2
 
     -- Check each option
+    local scaledStartY = UIScale.scaleY(START_Y)
     for i, option in ipairs(TrainingScreen.upgradeOptions) do
-        local optionX = startX + ((i - 1) * (OPTION_WIDTH + OPTION_SPACING))
-        local optionY = START_Y
+        local optionX = startX + ((i - 1) * (scaledOptionWidth + scaledOptionSpacing))
 
-        if x >= optionX and x <= optionX + OPTION_WIDTH and
-           y >= optionY and y <= optionY + OPTION_HEIGHT then
+        if x >= optionX and x <= optionX + scaledOptionWidth and
+           y >= scaledStartY and y <= scaledStartY + scaledOptionHeight then
             TrainingScreen.purchaseUpgrade(option, i)
             return
         end
