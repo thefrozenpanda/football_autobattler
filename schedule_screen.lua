@@ -218,14 +218,16 @@ function ScheduleScreen.draw()
     ScheduleScreen.drawScrollBar()
 end
 
---- Draws visual scroll bar on the right side
+--- Draws visual scroll bar immediately to the right of the schedule table
 function ScheduleScreen.drawScrollBar()
     if ScheduleScreen.maxScroll <= 0 then
         return  -- No need for scroll bar if content fits
     end
 
     local barWidth = UIScale.scaleUniform(10)
-    local barX = UIScale.getWidth() - barWidth - UIScale.scaleUniform(10)
+    -- Position immediately to the right of the schedule table
+    local tableEndX = UIScale.scaleX(START_X + GAME_WIDTH)
+    local barX = tableEndX + UIScale.scaleUniform(15)  -- 15px padding from table
     local barY = UIScale.scaleHeight(100)  -- Below header
     local barHeight = UIScale.scaleHeight(ScheduleScreen.contentHeight)
 

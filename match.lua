@@ -19,6 +19,8 @@ local cardPositionFont
 local cardStatsFont
 local cardNumberFont
 local cardUpgradeFont
+local tooltipHeaderFont
+local tooltipTextFont
 local matchTime = 60  -- Regulation time: 60 seconds
 local overtimeTime = 15  -- Overtime period: 15 seconds
 local timeLeft = matchTime
@@ -56,6 +58,15 @@ local winnerButtonWidth = 300
 local winnerButtonHeight = 60
 local winnerButtonY = 700
 local winnerButtonHovered = false
+
+-- TD/Turnover popup state
+local popupActive = false
+local popupText = ""
+local popupColor = {1, 1, 1}
+local popupTimer = 0
+local popupDuration = 2.3  -- 0.3s fade in + 1.5s display + 0.5s fade out
+local popupAlpha = 0
+local popupFont
 
 -- Card dimensions (calculated dynamically to fit 3x10 grid with 5px spacing)
 -- Grid area: ~300px wide x ~700px tall
@@ -161,6 +172,9 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     cardStatsFont = love.graphics.newFont(UIScale.scaleFontSize(11))
     cardNumberFont = love.graphics.newFont(UIScale.scaleFontSize(20))
     cardUpgradeFont = love.graphics.newFont(UIScale.scaleFontSize(13))
+    tooltipHeaderFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+    tooltipTextFont = love.graphics.newFont(UIScale.scaleFontSize(16))
+    popupFont = love.graphics.newFont(UIScale.scaleFontSize(36))
     phaseManager = PhaseManager:new(playerCoachId, aiCoachId)
     timeLeft = matchTime
     paused = false
@@ -178,13 +192,30 @@ end
 
 function match.update(dt)
     if paused or matchEnded then
+        flux.update(dt)  -- Update animations even when paused
         return
     end
 
+    flux.update(dt)  -- Update Flux animations
+    match.updatePopup(dt)  -- Update TD/Turnover popup
     timeLeft = math.max(0, timeLeft - dt)
 
     phaseManager:update(dt)
     phaseManager:checkPhaseEnd()
+
+    -- Check for TD/Turnover events and trigger popup
+    if phaseManager.lastEvent then
+        if phaseManager.lastEvent == "touchdown" then
+            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+            match.showPopup(string.format("%s TOUCHDOWN!", teamName), "touchdown")
+        elseif phaseManager.lastEvent == "turnover" then
+            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+            match.showPopup(string.format("%s TURNOVER!", teamName), "turnover")
+        end
+        -- Clear the event
+        phaseManager.lastEvent = nil
+        phaseManager.lastEventTeam = nil
+    end
 
     -- In overtime, end game immediately if anyone scores
     if inOvertime and phaseManager.playerScore ~= phaseManager.aiScore then
@@ -338,6 +369,18 @@ function match.draw()
     match.drawTeamCards(playerCards, "left", playerLabel, playerFormation)
     match.drawTeamCards(aiCards, "right", aiLabel, aiFormation)
 
+    -- Draw tooltip for hovered card (before pause menu and winner popup)
+    if not paused and not matchEnded then
+        local mx, my = love.mouse.getPosition()
+        local hoveredCard = match.getCardAtPosition(mx, my)
+        if hoveredCard then
+            match.drawTooltip(hoveredCard)
+        end
+    end
+
+    -- Draw TD/Turnover popup (before pause menu and winner popup so they can overlay it)
+    match.drawPopup()
+
     if paused then
         match.drawPauseMenu()
     end
@@ -431,12 +474,25 @@ function match.drawCard(card, x, y)
     local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
     local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
 
+    -- Apply animation offset (horizontal bounce toward center)
+    x = x + (card.animOffsetX or 0)
+
     -- Determine colors
     local borderColor = {0.3, 0.5, 0.7}
     local bgColor = {0.15, 0.2, 0.25}
 
     if card.justActed then
         borderColor = {1.0, 0.8, 0.3}
+        -- Trigger bounce animation if not already animating
+        if card.animOffsetX == 0 then
+            -- Determine direction: cards on left side bounce right, cards on right side bounce left
+            local screenCenter = UIScale.getWidth() / 2
+            local bounceAmount = (x < screenCenter) and UIScale.scaleUniform(15) or -UIScale.scaleUniform(15)
+            card.animOffsetX = 0
+            flux.to(card, 0.15, {animOffsetX = bounceAmount}):ease("quadout"):oncomplete(function()
+                flux.to(card, 0.15, {animOffsetX = 0}):ease("quadin")
+            end)
+        end
     end
 
     -- Status effect indicators
@@ -516,6 +572,216 @@ function match.drawCard(card, x, y)
     love.graphics.setColor(0.5, 0.5, 0.5)
     love.graphics.setLineWidth(UIScale.scaleUniform(1))
     love.graphics.rectangle("line", progressBarX, progressBarY, progressBarWidth, scaledProgressBarHeight)
+end
+
+--- Gets the card at the given mouse position
+--- @param mx number Mouse X position
+--- @param my number Mouse Y position
+--- @return table|nil The card at the position, or nil
+function match.getCardAtPosition(mx, my)
+    local playerCards = phaseManager:getActivePlayerCards()
+    local aiCards = phaseManager:getActiveAICards()
+
+    local playerIsOffense = (phaseManager.currentPhase == "player_offense")
+    local playerFormation = playerIsOffense and OFFENSIVE_FORMATION or DEFENSIVE_FORMATION_MIRRORED
+    local aiFormation = playerIsOffense and DEFENSIVE_FORMATION or OFFENSIVE_FORMATION_MIRRORED
+
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+
+    -- Check player cards
+    local playerStartX = UIScale.scaleX(150)
+    local playerStartY = UIScale.scaleY(180)
+    for i, card in ipairs(playerCards) do
+        if playerFormation[i] then
+            local pos = playerFormation[i]
+            local x = playerStartX + UIScale.scaleX(pos.x)
+            local y = playerStartY + UIScale.scaleY(pos.y)
+            if mx >= x and mx <= x + scaledCardWidth and my >= y and my <= y + scaledCardHeight then
+                return card
+            end
+        end
+    end
+
+    -- Check AI cards
+    local aiStartX = UIScale.getWidth() - UIScale.scaleWidth(500)
+    local aiStartY = UIScale.scaleY(180)
+    for i, card in ipairs(aiCards) do
+        if aiFormation[i] then
+            local pos = aiFormation[i]
+            local x = aiStartX + UIScale.scaleX(pos.x)
+            local y = aiStartY + UIScale.scaleY(pos.y)
+            if mx >= x and mx <= x + scaledCardWidth and my >= y and my <= y + scaledCardHeight then
+                return card
+            end
+        end
+    end
+
+    return nil
+end
+
+--- Draws a tooltip for a card
+--- @param card table The card to show tooltip for
+function match.drawTooltip(card)
+    local mx, my = love.mouse.getPosition()
+
+    local tooltipWidth = UIScale.scaleWidth(300)
+    local tooltipHeight = 0
+    local padding = UIScale.scaleUniform(15)
+    local lineHeight = UIScale.scaleHeight(25)
+
+    -- Calculate tooltip height based on content
+    local lines = 5  -- Base lines (position, type, stat, cooldown)
+    tooltipHeight = (lines * lineHeight) + (padding * 2)
+
+    -- Position tooltip to the right of mouse, or left if too close to edge
+    local tooltipX = mx + UIScale.scaleUniform(15)
+    local tooltipY = my - tooltipHeight / 2
+
+    if tooltipX + tooltipWidth > UIScale.getWidth() then
+        tooltipX = mx - tooltipWidth - UIScale.scaleUniform(15)
+    end
+
+    if tooltipY < 0 then
+        tooltipY = 0
+    end
+    if tooltipY + tooltipHeight > UIScale.getHeight() then
+        tooltipY = UIScale.getHeight() - tooltipHeight
+    end
+
+    -- Background
+    love.graphics.setColor(0.1, 0.1, 0.15, 0.95)
+    love.graphics.rectangle("fill", tooltipX, tooltipY, tooltipWidth, tooltipHeight)
+
+    -- Border
+    love.graphics.setColor(0.5, 0.5, 0.6)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.rectangle("line", tooltipX, tooltipY, tooltipWidth, tooltipHeight)
+
+    -- Content
+    local contentY = tooltipY + padding
+    love.graphics.setFont(tooltipHeaderFont)
+
+    -- Position and number
+    love.graphics.setColor(1, 1, 1)
+    local headerText = string.format("%s #%d", card.position, card.number)
+    love.graphics.print(headerText, tooltipX + padding, contentY)
+    contentY = contentY + lineHeight
+
+    -- Type
+    love.graphics.setFont(tooltipTextFont)
+    love.graphics.setColor(0.8, 0.8, 0.9)
+    local typeText = ""
+    if card.cardType == Card.TYPE.YARD_GENERATOR then
+        typeText = "Yard Generator"
+    elseif card.cardType == Card.TYPE.BOOSTER then
+        typeText = "Booster"
+    elseif card.cardType == Card.TYPE.DEFENDER then
+        typeText = "Defender"
+    end
+    love.graphics.print(typeText, tooltipX + padding, contentY)
+    contentY = contentY + lineHeight + UIScale.scaleHeight(5)
+
+    -- Stats
+    love.graphics.setColor(0.9, 0.9, 1)
+
+    if card.cardType == Card.TYPE.YARD_GENERATOR then
+        love.graphics.print(string.format("Yards: %.1f-%.1f", card.yardsPerActionMin, card.yardsPerActionMax), tooltipX + padding, contentY)
+        contentY = contentY + lineHeight
+        love.graphics.print(string.format("Cooldown: %.2fs", card.cooldown), tooltipX + padding, contentY)
+
+    elseif card.cardType == Card.TYPE.BOOSTER then
+        love.graphics.print(string.format("Boost: +%d-%d%%", math.floor(card.boostAmountMin), math.ceil(card.boostAmountMax)), tooltipX + padding, contentY)
+        contentY = contentY + lineHeight
+        love.graphics.print(string.format("Cooldown: %.2fs", card.cooldown), tooltipX + padding, contentY)
+
+    elseif card.cardType == Card.TYPE.DEFENDER then
+        love.graphics.print(string.format("Effect: %s (%.1f-%.1f)", card.effectType, card.effectStrengthMin, card.effectStrengthMax), tooltipX + padding, contentY)
+        contentY = contentY + lineHeight
+        love.graphics.print(string.format("Cooldown: %.2fs", card.cooldown), tooltipX + padding, contentY)
+    end
+end
+
+--- Triggers a TD or Turnover popup
+--- @param text string The text to display
+--- @param type string "touchdown" or "turnover"
+function match.showPopup(text, type)
+    popupActive = true
+    popupText = text
+    popupTimer = 0
+    popupAlpha = 0
+
+    if type == "touchdown" then
+        popupColor = {1, 0.9, 0.3}  -- Soft yellow
+    elseif type == "turnover" then
+        popupColor = {1, 0.4, 0.4}  -- Soft red
+    end
+end
+
+--- Updates the popup timer and alpha
+--- @param dt number Delta time
+function match.updatePopup(dt)
+    if not popupActive then
+        return
+    end
+
+    popupTimer = popupTimer + dt
+
+    -- Calculate alpha based on timer
+    if popupTimer < 0.3 then
+        -- Fade in (0.0 - 0.3s)
+        popupAlpha = popupTimer / 0.3
+    elseif popupTimer < 1.8 then
+        -- Full display (0.3 - 1.8s)
+        popupAlpha = 1.0
+    elseif popupTimer < 2.3 then
+        -- Fade out (1.8 - 2.3s)
+        popupAlpha = 1.0 - ((popupTimer - 1.8) / 0.5)
+    else
+        -- Done
+        popupActive = false
+        popupAlpha = 0
+    end
+end
+
+--- Draws the TD/Turnover popup
+function match.drawPopup()
+    if not popupActive or popupAlpha <= 0 then
+        return
+    end
+
+    local screenWidth = UIScale.getWidth()
+    local screenHeight = UIScale.getHeight()
+
+    love.graphics.setFont(popupFont)
+
+    -- Text dimensions
+    local textWidth = popupFont:getWidth(popupText)
+    local textHeight = popupFont:getHeight()
+
+    -- Center position
+    local x = (screenWidth - textWidth) / 2
+    local y = (screenHeight - textHeight) / 2
+
+    -- Background box with padding
+    local padding = UIScale.scaleUniform(20)
+    local boxX = x - padding
+    local boxY = y - padding
+    local boxWidth = textWidth + (padding * 2)
+    local boxHeight = textHeight + (padding * 2)
+
+    -- Draw semi-transparent background
+    love.graphics.setColor(0.1, 0.1, 0.15, 0.9 * popupAlpha)
+    love.graphics.rectangle("fill", boxX, boxY, boxWidth, boxHeight, UIScale.scaleUniform(10), UIScale.scaleUniform(10))
+
+    -- Draw border (soft colored border)
+    love.graphics.setColor(popupColor[1], popupColor[2], popupColor[3], popupAlpha)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", boxX, boxY, boxWidth, boxHeight, UIScale.scaleUniform(10), UIScale.scaleUniform(10))
+
+    -- Draw text
+    love.graphics.setColor(popupColor[1], popupColor[2], popupColor[3], popupAlpha)
+    love.graphics.print(popupText, x, y)
 end
 
 function match.drawPauseMenu()

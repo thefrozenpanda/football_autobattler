@@ -162,14 +162,17 @@ function StatsScreen.draw()
     StatsScreen.drawScrollBar()
 end
 
---- Draws visual scroll bar on the right side
+--- Draws visual scroll bar immediately to the right of the stats table
 function StatsScreen.drawScrollBar()
     if StatsScreen.maxScroll <= 0 then
         return  -- No need for scroll bar if content fits
     end
 
     local barWidth = UIScale.scaleUniform(10)
-    local barX = UIScale.getWidth() - barWidth - UIScale.scaleUniform(10)
+    -- Position immediately to the right of the stats table
+    local lastCol = columns[#columns]
+    local tableEndX = UIScale.scaleX(lastCol.x + lastCol.width)
+    local barX = tableEndX + UIScale.scaleUniform(15)  -- 15px padding from table
     local barY = UIScale.scaleHeight(100)  -- Below header
     local barHeight = UIScale.scaleHeight(StatsScreen.contentHeight)
 
