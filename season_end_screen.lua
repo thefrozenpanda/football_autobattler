@@ -278,14 +278,15 @@ function SeasonEndScreen.mousepressed(x, y, button)
 
     local yOffset = UIScale.scaleY(150)
 
-    -- Calculate button Y position (same logic as draw)
+    -- Calculate button Y position (matching draw() logic exactly)
     if SeasonEndScreen.outcome == "champion" then
-        yOffset = yOffset + UIScale.scaleHeight(100) + UIScale.scaleHeight(100)
+        yOffset = yOffset + UIScale.scaleHeight(100)  -- After title
     else
-        yOffset = yOffset + UIScale.scaleHeight(100) + UIScale.scaleHeight(50) + UIScale.scaleHeight(50)
+        yOffset = yOffset + UIScale.scaleHeight(100) + UIScale.scaleHeight(50)  -- After title + message
     end
 
-    yOffset = yOffset + UIScale.scaleHeight(100) + UIScale.scaleHeight(150)
+    yOffset = yOffset + UIScale.scaleHeight(100)  -- After record space
+    yOffset = yOffset + UIScale.scaleHeight(150)  -- Final offset to buttons
 
     local scaledButtonWidth = UIScale.scaleWidth(BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(BUTTON_HEIGHT)

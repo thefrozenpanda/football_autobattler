@@ -82,13 +82,22 @@ end
 
 --- LÖVE Callback: Draw UI
 function ScoutingScreen.draw()
-    if not ScoutingScreen.opponent then
-        -- No upcoming match
+    -- Check for bye week
+    local hasByeWeek = SeasonManager.playerHasByeWeek()
+
+    if not ScoutingScreen.opponent and not hasByeWeek then
+        -- No upcoming match and no bye week
         love.graphics.setFont(buttonFont)
         love.graphics.setColor(0.8, 0.8, 0.9)
         local noMatchText = "No upcoming match. Season may be complete."
         local textWidth = buttonFont:getWidth(noMatchText)
         love.graphics.print(noMatchText, UIScale.centerX(textWidth), UIScale.scaleY(300))
+        return
+    end
+
+    -- Handle bye week display
+    if hasByeWeek then
+        ScoutingScreen.drawByeWeek()
         return
     end
 
@@ -397,6 +406,70 @@ function ScoutingScreen.drawTooltip(card)
     end
 end
 
+--- Draws the bye week screen with "Simulate Week" button
+function ScoutingScreen.drawByeWeek()
+    local yOffset = UIScale.scaleY(150)
+    local startX = UIScale.scaleX(50)
+
+    -- Title
+    love.graphics.setFont(titleFont)
+    love.graphics.setColor(1, 0.9, 0.3)
+    local titleText = "WILDCARD ROUND - BYE WEEK"
+    local titleWidth = titleFont:getWidth(titleText)
+    love.graphics.print(titleText, UIScale.centerX(titleWidth), yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(80)
+
+    -- Message
+    love.graphics.setFont(matchupFont)
+    love.graphics.setColor(0.9, 0.9, 1)
+    local msg1 = "Congratulations! Your team has earned a first-round bye."
+    local msg1Width = matchupFont:getWidth(msg1)
+    love.graphics.print(msg1, UIScale.centerX(msg1Width), yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(40)
+
+    local msg2 = "You will automatically advance to the Divisional Round."
+    local msg2Width = matchupFont:getWidth(msg2)
+    love.graphics.print(msg2, UIScale.centerX(msg2Width), yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(60)
+
+    local msg3 = "Click below to simulate the 4 Wildcard Round games."
+    local msg3Width = matchupFont:getWidth(msg3)
+    love.graphics.setColor(0.8, 0.8, 0.9)
+    love.graphics.print(msg3, UIScale.centerX(msg3Width), yOffset)
+
+    -- Simulate Week button
+    local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
+    local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
+    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonY = UIScale.scaleHeight(ScoutingScreen.contentHeight - START_BUTTON_HEIGHT - 30)
+
+    local mx, my = love.mouse.getPosition()
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
+    local hoveringButton = mx >= buttonX and mx <= buttonX + scaledButtonWidth and
+                          my >= buttonY and my <= buttonY + scaledButtonHeight
+
+    -- Button
+    if hoveringButton then
+        love.graphics.setColor(0.4, 0.6, 0.8)
+    else
+        love.graphics.setColor(0.3, 0.5, 0.7)
+    end
+    love.graphics.rectangle("fill", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    love.graphics.setColor(0.6, 0.8, 1)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    love.graphics.setFont(buttonFont)
+    love.graphics.setColor(1, 1, 1)
+    local buttonText = "Simulate Week"
+    local buttonTextWidth = buttonFont:getWidth(buttonText)
+    love.graphics.print(buttonText, buttonX + (scaledButtonWidth - buttonTextWidth) / 2, buttonY + UIScale.scaleHeight(15))
+end
+
 --- LÖVE Callback: Mouse Pressed
 --- @param x number Mouse X position
 --- @param y number Mouse Y position
@@ -406,7 +479,6 @@ function ScoutingScreen.mousepressed(x, y, button)
         return
     end
 
-    -- Check Start Match button
     local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
     local buttonX = UIScale.centerX(scaledButtonWidth)
@@ -414,7 +486,15 @@ function ScoutingScreen.mousepressed(x, y, button)
 
     if x >= buttonX and x <= buttonX + scaledButtonWidth and
        y >= buttonY and y <= buttonY + scaledButtonHeight then
-        ScoutingScreen.startMatchRequested = true
+        -- Check if bye week - simulate wildcard if so
+        if SeasonManager.playerHasByeWeek() then
+            SeasonManager.simulateWildcardRound()
+            -- Reload to show divisional matchup
+            ScoutingScreen.load()
+        else
+            -- Normal match start
+            ScoutingScreen.startMatchRequested = true
+        end
     end
 end
 
