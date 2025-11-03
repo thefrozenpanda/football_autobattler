@@ -417,13 +417,6 @@ end
 function love.wheelmoved(x, y)
     if gameState == "season_menu" then
         -- Forward to season menu which will delegate to current screen
-        local currentScreen = seasonMenu.currentScreen
-        if currentScreen == "schedule" then
-            local scheduleScreen = require("schedule_screen")
-            scheduleScreen.wheelmoved(y)
-        elseif currentScreen == "stats" then
-            local statsScreen = require("stats_screen")
-            statsScreen.wheelmoved(y)
-        end
+        seasonMenu.wheelmoved(x, y)
     end
 end
