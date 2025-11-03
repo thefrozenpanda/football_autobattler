@@ -63,7 +63,7 @@ function Team:new(name, conference, coachId, isPlayer)
         -- Value: "W", "L", or nil (not played yet)
         headToHead = {},
 
-        -- Training budget (for player team only)
+        -- Training budget (for all teams)
         cash = 0,
 
         -- Roster (cards will be populated from coach)
@@ -126,22 +126,16 @@ function Team:beatTeam(opponentName)
     end
 end
 
---- Awards cash to the team (player only)
+--- Awards cash to the team (all teams)
 --- @param amount number Cash to award
 function Team:awardCash(amount)
-    if self.isPlayer then
-        self.cash = self.cash + amount
-    end
+    self.cash = self.cash + amount
 end
 
---- Deducts cash from the team (player only)
+--- Deducts cash from the team (all teams)
 --- @param amount number Cash to deduct
 --- @return boolean True if sufficient cash, false otherwise
 function Team:spendCash(amount)
-    if not self.isPlayer then
-        return false
-    end
-
     if self.cash >= amount then
         self.cash = self.cash - amount
         return true
@@ -192,6 +186,7 @@ function Team.generateLeague()
         team.offensiveCards = Coach.createCardSet(randomCoach.offensiveCards)
         team.defensiveCards = Coach.createCardSet(randomCoach.defensiveCards)
         team.benchCards = {}  -- AI teams start with empty bench
+        team.cash = 100  -- AI teams start with same cash as player
 
         table.insert(teams, team)
     end
@@ -205,6 +200,7 @@ function Team.generateLeague()
         team.offensiveCards = Coach.createCardSet(randomCoach.offensiveCards)
         team.defensiveCards = Coach.createCardSet(randomCoach.defensiveCards)
         team.benchCards = {}  -- AI teams start with empty bench
+        team.cash = 100  -- AI teams start with same cash as player
 
         table.insert(teams, team)
     end

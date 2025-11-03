@@ -28,6 +28,7 @@ Coach.types = {
         signature = "Air Raid",
         signatureDesc = "+10% yards for all yard generators",
         color = {0.9, 0.3, 0.2}, -- Red
+        difficulty = "elite", -- Elite coach with strategic upgrades
 
         -- Offensive lineup (11 players) - Passing focused
         offensiveCards = {
@@ -67,6 +68,7 @@ Coach.types = {
         signature = "Blitz Package",
         signatureDesc = "5% chance to remove 2 yards on defensive action",
         color = {0.2, 0.4, 0.9}, -- Blue
+        difficulty = "elite", -- Elite coach with strategic upgrades
 
         -- Offensive lineup (11 players) - Conservative offense
         offensiveCards = {
@@ -106,6 +108,7 @@ Coach.types = {
         signature = "Short Field",
         signatureDesc = "Start 15% closer to endzone (68 yards vs 80)",
         color = {0.3, 0.8, 0.3}, -- Green
+        difficulty = "average", -- Average coach with semi-random upgrades
 
         -- Offensive lineup (11 players) - Balanced
         offensiveCards = {
@@ -145,6 +148,7 @@ Coach.types = {
         signature = "Pound the Rock",
         signatureDesc = "RBs gain +2 extra yards per action",
         color = {0.6, 0.4, 0.2}, -- Brown
+        difficulty = "weak", -- Weak coach with random upgrades
 
         -- Offensive lineup (11 players) - Run-heavy
         offensiveCards = {
@@ -205,6 +209,34 @@ function Coach.createCardSet(cardDefs)
         table.insert(cards, card)
     end
     return cards
+end
+
+-- Get star rating for coach difficulty
+-- @param difficulty string "elite", "average", or "weak"
+-- @return number Number of stars (1-5)
+function Coach.getStarRating(difficulty)
+    if difficulty == "elite" then
+        return 5
+    elseif difficulty == "average" then
+        return 3
+    elseif difficulty == "weak" then
+        return 1
+    end
+    return 3 -- Default to average
+end
+
+-- Get difficulty string for display
+-- @param difficulty string "elite", "average", or "weak"
+-- @return string Display name
+function Coach.getDifficultyName(difficulty)
+    if difficulty == "elite" then
+        return "Elite"
+    elseif difficulty == "average" then
+        return "Average"
+    elseif difficulty == "weak" then
+        return "Weak"
+    end
+    return "Average" -- Default
 end
 
 return Coach

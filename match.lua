@@ -838,6 +838,7 @@ function match.simulateAIMatch(teamA, teamB)
     -- Run regulation time
     while simTime > 0 do
         simPhaseManager:update(timeStep)
+        simPhaseManager:checkPhaseEnd()  -- Critical: Check for phase transitions and scoring
         simTime = simTime - timeStep
     end
 
@@ -849,6 +850,7 @@ function match.simulateAIMatch(teamA, teamB)
 
         while simTime > 0 do
             simPhaseManager:update(timeStep)
+            simPhaseManager:checkPhaseEnd()  -- Critical: Check for phase transitions and scoring
             simTime = simTime - timeStep
         end
 
