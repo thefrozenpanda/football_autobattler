@@ -16,18 +16,26 @@ local UIScale = require("ui_scale")
 -- State
 ScheduleScreen.scrollOffset = 0
 ScheduleScreen.maxScroll = 0
-ScheduleScreen.contentHeight = 700
+ScheduleScreen.contentHeight = 550  -- Restricted to stay above footer
 ScheduleScreen.showBracket = false  -- Toggle between schedule and bracket view
+ScheduleScreen.selectedTeam = nil   -- Currently selected team for schedule view
+ScheduleScreen.dropdownOpen = false  -- Is the dropdown menu open?
+ScheduleScreen.dropdownTeams = {}    -- Sorted list of teams for dropdown
 
 -- UI configuration (base values for 1600x900)
 local GAME_ROW_HEIGHT = 45
-local GAME_WIDTH = 700
+local GAME_WIDTH = 900  -- Increased width to fit all text
 local START_X = 50
 local START_Y = 20
 local TOGGLE_BUTTON_X = 900
 local TOGGLE_BUTTON_Y = 20
 local TOGGLE_BUTTON_WIDTH = 200
 local TOGGLE_BUTTON_HEIGHT = 40
+local DROPDOWN_X = 350  -- Position next to title
+local DROPDOWN_Y = 20
+local DROPDOWN_WIDTH = 300
+local DROPDOWN_HEIGHT = 35
+local DROPDOWN_ITEM_HEIGHT = 30
 
 -- Fonts
 local titleFont
@@ -40,6 +48,7 @@ local resultFont
 local notPlayedFont
 local conferenceHeaderFont
 local bracketTeamFont
+local dropdownFont
 
 --- Initializes the schedule screen
 function ScheduleScreen.load()
@@ -57,9 +66,49 @@ function ScheduleScreen.load()
     notPlayedFont = love.graphics.newFont(UIScale.scaleFontSize(18))
     conferenceHeaderFont = love.graphics.newFont(UIScale.scaleFontSize(24))
     bracketTeamFont = love.graphics.newFont(UIScale.scaleFontSize(16))
+    dropdownFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+
+    -- Initialize selected team to player's team
+    ScheduleScreen.selectedTeam = SeasonManager.playerTeam
+    ScheduleScreen.dropdownOpen = false
+
+    -- Build sorted team list: player first, then AI teams alphabetically
+    ScheduleScreen.buildDropdownTeams()
 
     ScheduleScreen.scrollOffset = 0
     ScheduleScreen.calculateMaxScroll()
+end
+
+--- Builds the sorted dropdown team list
+function ScheduleScreen.buildDropdownTeams()
+    ScheduleScreen.dropdownTeams = {}
+
+    if not SeasonManager.teams then
+        return
+    end
+
+    -- Add player's team first
+    if SeasonManager.playerTeam then
+        table.insert(ScheduleScreen.dropdownTeams, SeasonManager.playerTeam)
+    end
+
+    -- Collect AI teams
+    local aiTeams = {}
+    for _, team in ipairs(SeasonManager.teams) do
+        if not team.isPlayer then
+            table.insert(aiTeams, team)
+        end
+    end
+
+    -- Sort AI teams alphabetically by name
+    table.sort(aiTeams, function(a, b)
+        return a.name < b.name
+    end)
+
+    -- Add sorted AI teams to dropdown list
+    for _, team in ipairs(aiTeams) do
+        table.insert(ScheduleScreen.dropdownTeams, team)
+    end
 end
 
 --- Calculates the maximum scroll amount
@@ -102,6 +151,9 @@ function ScheduleScreen.draw()
         return
     end
 
+    -- Draw team selection dropdown (always visible, not scrolling)
+    ScheduleScreen.drawDropdown()
+
     -- Draw toggle button if in playoffs (not scrolling)
     if SeasonManager.inPlayoffs then
         local mx, my = love.mouse.getPosition()
@@ -139,10 +191,17 @@ function ScheduleScreen.draw()
     local yOffset = UIScale.scaleY(START_Y)
     local startX = UIScale.scaleX(START_X)
 
-    -- Title
+    -- Title with selected team name
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
-    local title = ScheduleScreen.showBracket and "Playoff Bracket" or "Season Schedule"
+    local title
+    if ScheduleScreen.showBracket then
+        title = "Playoff Bracket"
+    elseif ScheduleScreen.selectedTeam then
+        title = string.format("%s's Schedule", ScheduleScreen.selectedTeam.name)
+    else
+        title = "Season Schedule"
+    end
     love.graphics.print(title, startX, yOffset)
     yOffset = yOffset + UIScale.scaleHeight(50)
 
@@ -160,23 +219,24 @@ end
 --- @param yOffset number Starting Y position
 function ScheduleScreen.drawSchedule(yOffset)
     local startX = UIScale.scaleX(START_X)
+    local viewingTeam = ScheduleScreen.selectedTeam or SeasonManager.playerTeam
 
     -- Regular season games (17 weeks)
     for week = 1, 17 do
         local weekSchedule = SeasonManager.schedule[week]
 
         if weekSchedule then
-            -- Find player's match
-            local playerMatch = nil
+            -- Find selected team's match
+            local teamMatch = nil
             for _, match in ipairs(weekSchedule) do
-                if match.homeTeam == SeasonManager.playerTeam or match.awayTeam == SeasonManager.playerTeam then
-                    playerMatch = match
+                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
+                    teamMatch = match
                     break
                 end
             end
 
-            if playerMatch then
-                yOffset = ScheduleScreen.drawGameRow(playerMatch, week, yOffset, false)
+            if teamMatch then
+                yOffset = ScheduleScreen.drawGameRow(teamMatch, week, yOffset, false, nil, viewingTeam)
             end
         end
     end
@@ -194,8 +254,8 @@ function ScheduleScreen.drawSchedule(yOffset)
         -- Wild Card
         if SeasonManager.playoffBracket.wildcard then
             for _, match in ipairs(SeasonManager.playoffBracket.wildcard) do
-                if match.homeTeam == SeasonManager.playerTeam or match.awayTeam == SeasonManager.playerTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 18, yOffset, true, "Wild Card")
+                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
+                    yOffset = ScheduleScreen.drawGameRow(match, 18, yOffset, true, "Wild Card", viewingTeam)
                 end
             end
         end
@@ -203,8 +263,8 @@ function ScheduleScreen.drawSchedule(yOffset)
         -- Divisional
         if SeasonManager.playoffBracket.divisional and #SeasonManager.playoffBracket.divisional > 0 then
             for _, match in ipairs(SeasonManager.playoffBracket.divisional) do
-                if match.homeTeam == SeasonManager.playerTeam or match.awayTeam == SeasonManager.playerTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 19, yOffset, true, "Divisional")
+                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
+                    yOffset = ScheduleScreen.drawGameRow(match, 19, yOffset, true, "Divisional", viewingTeam)
                 end
             end
         end
@@ -212,8 +272,8 @@ function ScheduleScreen.drawSchedule(yOffset)
         -- Conference
         if SeasonManager.playoffBracket.conference and #SeasonManager.playoffBracket.conference > 0 then
             for _, match in ipairs(SeasonManager.playoffBracket.conference) do
-                if match.homeTeam == SeasonManager.playerTeam or match.awayTeam == SeasonManager.playerTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 20, yOffset, true, "Conference")
+                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
+                    yOffset = ScheduleScreen.drawGameRow(match, 20, yOffset, true, "Conference", viewingTeam)
                 end
             end
         end
@@ -221,8 +281,8 @@ function ScheduleScreen.drawSchedule(yOffset)
         -- Championship
         if SeasonManager.playoffBracket.championship and #SeasonManager.playoffBracket.championship > 0 then
             for _, match in ipairs(SeasonManager.playoffBracket.championship) do
-                if match.homeTeam == SeasonManager.playerTeam or match.awayTeam == SeasonManager.playerTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 21, yOffset, true, "Championship")
+                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
+                    yOffset = ScheduleScreen.drawGameRow(match, 21, yOffset, true, "Championship", viewingTeam)
                 end
             end
         end
@@ -235,10 +295,12 @@ end
 --- @param y number Y position
 --- @param isPlayoff boolean Whether this is a playoff game
 --- @param playoffRound string|nil Playoff round name
+--- @param viewingTeam table|nil The team whose schedule is being viewed
 --- @return number New Y position
-function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound)
-    local isPlayerHome = (match.homeTeam == SeasonManager.playerTeam)
-    local opponent = isPlayerHome and match.awayTeam or match.homeTeam
+function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound, viewingTeam)
+    viewingTeam = viewingTeam or SeasonManager.playerTeam
+    local isTeamHome = (match.homeTeam == viewingTeam)
+    local opponent = isTeamHome and match.awayTeam or match.homeTeam
     local hasPlayed = match.played or week < SeasonManager.currentWeek
 
     local startX = UIScale.scaleX(START_X)
@@ -280,30 +342,30 @@ function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound)
     love.graphics.setColor(1, 1, 1)
 
     local matchupText = ""
-    if isPlayerHome then
-        matchupText = string.format("%s vs %s", SeasonManager.playerTeam.name, opponent.name)
+    if isTeamHome then
+        matchupText = string.format("%s vs %s", viewingTeam.name, opponent.name)
     else
-        matchupText = string.format("%s @ %s", SeasonManager.playerTeam.name, opponent.name)
+        matchupText = string.format("%s @ %s", viewingTeam.name, opponent.name)
     end
 
     love.graphics.print(matchupText, startX + UIScale.scaleUniform(150), y + UIScale.scaleHeight(10))
 
     -- Result
     if hasPlayed then
-        local playerScore = isPlayerHome and match.homeScore or match.awayScore
-        local opponentScore = isPlayerHome and match.awayScore or match.homeScore
-        local playerWon = playerScore > opponentScore
+        local teamScore = isTeamHome and match.homeScore or match.awayScore
+        local opponentScore = isTeamHome and match.awayScore or match.homeScore
+        local teamWon = teamScore > opponentScore
 
         -- Show score inline: "24 - 17 (W)" or "17 - 24 (L)"
         love.graphics.setFont(scoreFont)
         love.graphics.setColor(1, 1, 1)
-        local scoreText = string.format("%d - %d ", playerScore, opponentScore)
+        local scoreText = string.format("%d - %d ", teamScore, opponentScore)
         love.graphics.print(scoreText, startX + scaledGameWidth - UIScale.scaleUniform(150), y + UIScale.scaleHeight(12))
 
         -- W/L indicator
         love.graphics.setFont(resultFont)
         local scoreWidth = scoreFont:getWidth(scoreText)
-        if playerWon then
+        if teamWon then
             love.graphics.setColor(0.3, 0.8, 0.3)
             love.graphics.print("(W)", startX + scaledGameWidth - UIScale.scaleUniform(150) + scoreWidth, y + UIScale.scaleHeight(12))
         else
@@ -516,6 +578,110 @@ function ScheduleScreen.drawBracketMatch(match, x, y, round)
     end
 end
 
+--- Draws the team selection dropdown menu
+function ScheduleScreen.drawDropdown()
+    local scaledDropdownX = UIScale.scaleX(DROPDOWN_X)
+    local scaledDropdownY = UIScale.scaleY(DROPDOWN_Y)
+    local scaledDropdownWidth = UIScale.scaleWidth(DROPDOWN_WIDTH)
+    local scaledDropdownHeight = UIScale.scaleHeight(DROPDOWN_HEIGHT)
+    local scaledItemHeight = UIScale.scaleHeight(DROPDOWN_ITEM_HEIGHT)
+
+    local mx, my = love.mouse.getPosition()
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
+
+    -- Draw main dropdown button
+    local hovering = mx >= scaledDropdownX and mx <= scaledDropdownX + scaledDropdownWidth and
+                     my >= scaledDropdownY and my <= scaledDropdownY + scaledDropdownHeight
+
+    if hovering or ScheduleScreen.dropdownOpen then
+        love.graphics.setColor(0.25, 0.25, 0.3)
+    else
+        love.graphics.setColor(0.2, 0.2, 0.25)
+    end
+    love.graphics.rectangle("fill", scaledDropdownX, scaledDropdownY, scaledDropdownWidth, scaledDropdownHeight)
+
+    love.graphics.setColor(0.5, 0.5, 0.6)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.rectangle("line", scaledDropdownX, scaledDropdownY, scaledDropdownWidth, scaledDropdownHeight)
+
+    -- Draw selected team name
+    love.graphics.setFont(dropdownFont)
+    love.graphics.setColor(1, 1, 1)
+    local displayName = ScheduleScreen.selectedTeam and ScheduleScreen.selectedTeam.name or "Select Team"
+    if string.len(displayName) > 25 then
+        displayName = string.sub(displayName, 1, 22) .. "..."
+    end
+    love.graphics.print(displayName, scaledDropdownX + UIScale.scaleUniform(10), scaledDropdownY + UIScale.scaleHeight(8))
+
+    -- Draw dropdown arrow
+    local arrowX = scaledDropdownX + scaledDropdownWidth - UIScale.scaleUniform(25)
+    local arrowY = scaledDropdownY + scaledDropdownHeight / 2
+    love.graphics.setColor(0.7, 0.7, 0.8)
+    if ScheduleScreen.dropdownOpen then
+        -- Up arrow
+        love.graphics.polygon("fill",
+            arrowX, arrowY + UIScale.scaleHeight(5),
+            arrowX + UIScale.scaleWidth(10), arrowY + UIScale.scaleHeight(5),
+            arrowX + UIScale.scaleWidth(5), arrowY - UIScale.scaleHeight(5)
+        )
+    else
+        -- Down arrow
+        love.graphics.polygon("fill",
+            arrowX, arrowY - UIScale.scaleHeight(5),
+            arrowX + UIScale.scaleWidth(10), arrowY - UIScale.scaleHeight(5),
+            arrowX + UIScale.scaleWidth(5), arrowY + UIScale.scaleHeight(5)
+        )
+    end
+
+    -- Draw dropdown menu if open
+    if ScheduleScreen.dropdownOpen then
+        local menuY = scaledDropdownY + scaledDropdownHeight
+        local maxMenuHeight = UIScale.scaleHeight(400)
+        local menuHeight = math.min(#ScheduleScreen.dropdownTeams * scaledItemHeight, maxMenuHeight)
+
+        -- Menu background
+        love.graphics.setColor(0.18, 0.18, 0.22)
+        love.graphics.rectangle("fill", scaledDropdownX, menuY, scaledDropdownWidth, menuHeight)
+
+        love.graphics.setColor(0.5, 0.5, 0.6)
+        love.graphics.setLineWidth(UIScale.scaleUniform(2))
+        love.graphics.rectangle("line", scaledDropdownX, menuY, scaledDropdownWidth, menuHeight)
+
+        -- Draw team items
+        love.graphics.setFont(dropdownFont)
+        for i, team in ipairs(ScheduleScreen.dropdownTeams) do
+            local itemY = menuY + ((i - 1) * scaledItemHeight)
+
+            -- Check if item is visible within menu bounds
+            if itemY >= menuY and itemY < menuY + menuHeight then
+                -- Highlight hovered item
+                if mx >= scaledDropdownX and mx <= scaledDropdownX + scaledDropdownWidth and
+                   my >= itemY and my <= itemY + scaledItemHeight then
+                    love.graphics.setColor(0.3, 0.3, 0.4)
+                    love.graphics.rectangle("fill", scaledDropdownX, itemY, scaledDropdownWidth, scaledItemHeight)
+                end
+
+                -- Highlight selected team
+                if team == ScheduleScreen.selectedTeam then
+                    love.graphics.setColor(0.4, 0.6, 0.8, 0.3)
+                    love.graphics.rectangle("fill", scaledDropdownX, itemY, scaledDropdownWidth, scaledItemHeight)
+                end
+
+                -- Draw team name
+                love.graphics.setColor(1, 1, 1)
+                local teamName = team.name
+                if team.isPlayer then
+                    teamName = teamName .. " (You)"
+                end
+                if string.len(teamName) > 28 then
+                    teamName = string.sub(teamName, 1, 25) .. "..."
+                end
+                love.graphics.print(teamName, scaledDropdownX + UIScale.scaleUniform(10), itemY + UIScale.scaleHeight(5))
+            end
+        end
+    end
+end
+
 --- LÖVE Callback: Mouse Pressed
 --- @param x number Mouse X position
 --- @param y number Mouse Y position
@@ -523,6 +689,45 @@ end
 function ScheduleScreen.mousepressed(x, y, button)
     if button ~= 1 then
         return
+    end
+
+    local my = y
+
+    -- Check dropdown clicks
+    local scaledDropdownX = UIScale.scaleX(DROPDOWN_X)
+    local scaledDropdownY = UIScale.scaleY(DROPDOWN_Y)
+    local scaledDropdownWidth = UIScale.scaleWidth(DROPDOWN_WIDTH)
+    local scaledDropdownHeight = UIScale.scaleHeight(DROPDOWN_HEIGHT)
+    local scaledItemHeight = UIScale.scaleHeight(DROPDOWN_ITEM_HEIGHT)
+
+    -- Check dropdown button click
+    if x >= scaledDropdownX and x <= scaledDropdownX + scaledDropdownWidth and
+       my >= scaledDropdownY and my <= scaledDropdownY + scaledDropdownHeight then
+        ScheduleScreen.dropdownOpen = not ScheduleScreen.dropdownOpen
+        return
+    end
+
+    -- Check dropdown menu item clicks
+    if ScheduleScreen.dropdownOpen then
+        local menuY = scaledDropdownY + scaledDropdownHeight
+        local maxMenuHeight = UIScale.scaleHeight(400)
+        local menuHeight = math.min(#ScheduleScreen.dropdownTeams * scaledItemHeight, maxMenuHeight)
+
+        if x >= scaledDropdownX and x <= scaledDropdownX + scaledDropdownWidth and
+           my >= menuY and my <= menuY + menuHeight then
+            -- Find which team was clicked
+            local itemIndex = math.floor((my - menuY) / scaledItemHeight) + 1
+            if itemIndex >= 1 and itemIndex <= #ScheduleScreen.dropdownTeams then
+                ScheduleScreen.selectedTeam = ScheduleScreen.dropdownTeams[itemIndex]
+                ScheduleScreen.dropdownOpen = false
+                ScheduleScreen.scrollOffset = 0  -- Reset scroll when switching teams
+                ScheduleScreen.calculateMaxScroll()
+                return
+            end
+        else
+            -- Clicked outside dropdown, close it
+            ScheduleScreen.dropdownOpen = false
+        end
     end
 
     -- Check toggle button click
@@ -533,7 +738,7 @@ function ScheduleScreen.mousepressed(x, y, button)
         local scaledToggleHeight = UIScale.scaleHeight(TOGGLE_BUTTON_HEIGHT)
 
         if x >= scaledToggleX and x <= scaledToggleX + scaledToggleWidth and
-           y >= scaledToggleY and y <= scaledToggleY + scaledToggleHeight then
+           my >= scaledToggleY and my <= scaledToggleY + scaledToggleHeight then
             ScheduleScreen.showBracket = not ScheduleScreen.showBracket
         end
     end
