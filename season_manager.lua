@@ -219,6 +219,15 @@ function SeasonManager.simulateWeek()
             -- Simulate full match (run actual match logic in background)
             local homeScore, awayScore = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
             SeasonManager.recordMatchResult(matchData.homeTeam, matchData.awayTeam, homeScore, awayScore)
+
+            -- Award cash to AI teams (same as player: 100 for win, 50 for loss)
+            if homeScore > awayScore then
+                matchData.homeTeam:awardCash(100)  -- Winner
+                matchData.awayTeam:awardCash(50)   -- Loser
+            else
+                matchData.awayTeam:awardCash(100)  -- Winner
+                matchData.homeTeam:awardCash(50)   -- Loser
+            end
         end
     end
 end
@@ -227,6 +236,14 @@ end
 --- If regular season complete, generates playoff bracket
 function SeasonManager.nextWeek()
     SeasonManager.currentWeek = SeasonManager.currentWeek + 1
+
+    -- Process AI training for the new week (before preparation phase)
+    local AITraining = require("ai_training")
+    for _, team in ipairs(SeasonManager.teams) do
+        if not team.isPlayer then
+            AITraining.processWeeklyUpgrades(team, SeasonManager.currentWeek)
+        end
+    end
 
     -- Check if regular season is complete
     if SeasonManager.currentWeek > 17 and not SeasonManager.inPlayoffs then

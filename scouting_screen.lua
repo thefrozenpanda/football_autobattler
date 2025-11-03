@@ -122,6 +122,36 @@ function ScoutingScreen.draw()
     local recordText = string.format("Opponent Record: %s", ScoutingScreen.opponent:getRecordString())
     love.graphics.print(recordText, startX, yOffset)
 
+    yOffset = yOffset + UIScale.scaleHeight(30)
+
+    -- Coach difficulty rating with stars
+    local Coach = require("coach")
+    local coachData = Coach.getById(ScoutingScreen.opponent.coachId)
+    if coachData and coachData.difficulty then
+        local stars = Coach.getStarRating(coachData.difficulty)
+        local difficultyName = Coach.getDifficultyName(coachData.difficulty)
+
+        love.graphics.setColor(0.9, 0.8, 0.5)
+        love.graphics.print(string.format("Coach: %s ", coachData.name), startX, yOffset)
+
+        -- Draw stars
+        local starX = startX + recordFont:getWidth(string.format("Coach: %s ", coachData.name))
+        for i = 1, 5 do
+            if i <= stars then
+                love.graphics.setColor(1, 0.84, 0)  -- Gold for filled stars
+                love.graphics.print("★", starX, yOffset)
+            else
+                love.graphics.setColor(0.3, 0.3, 0.3)  -- Dark gray for empty stars
+                love.graphics.print("☆", starX, yOffset)
+            end
+            starX = starX + recordFont:getWidth("★ ")
+        end
+
+        -- Difficulty label
+        love.graphics.setColor(0.6, 0.6, 0.7)
+        love.graphics.print(string.format(" (%s)", difficultyName), starX, yOffset)
+    end
+
     yOffset = yOffset + UIScale.scaleHeight(50)
 
     -- Offensive cards
