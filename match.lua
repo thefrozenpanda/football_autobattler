@@ -15,6 +15,10 @@ local font
 local titleFont
 local smallFont
 local menuFont
+local cardPositionFont
+local cardStatsFont
+local cardNumberFont
+local cardUpgradeFont
 local matchTime = 60  -- Regulation time: 60 seconds
 local overtimeTime = 15  -- Overtime period: 15 seconds
 local timeLeft = matchTime
@@ -138,6 +142,9 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     debugLogger:log("Player Coach: " .. playerCoachId)
     debugLogger:log("AI Coach: " .. aiCoachId)
 
+    -- Update UI scale
+    UIScale.update()
+
     -- Store team and coach names
     local Coach = require("coach")
     playerTeamName = playerTeam or "Player"
@@ -145,10 +152,15 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     playerCoachName = Coach.getById(playerCoachId).name
     aiCoachName = Coach.getById(aiCoachId).name
 
-    font = love.graphics.newFont(20)
-    titleFont = love.graphics.newFont(48)
-    smallFont = love.graphics.newFont(14)
-    menuFont = love.graphics.newFont(28)
+    -- Initialize scaled fonts
+    font = love.graphics.newFont(UIScale.scaleFontSize(20))
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(48))
+    smallFont = love.graphics.newFont(UIScale.scaleFontSize(14))
+    menuFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    cardPositionFont = love.graphics.newFont(UIScale.scaleFontSize(12))
+    cardStatsFont = love.graphics.newFont(UIScale.scaleFontSize(11))
+    cardNumberFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    cardUpgradeFont = love.graphics.newFont(UIScale.scaleFontSize(13))
     phaseManager = PhaseManager:new(playerCoachId, aiCoachId)
     timeLeft = matchTime
     paused = false
@@ -336,12 +348,13 @@ function match.draw()
 end
 
 function match.drawUI()
+    local screenWidth = UIScale.getWidth()
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1)
 
     -- Phase indicator
     local phaseName = phaseManager:getCurrentPhaseName()
-    love.graphics.printf("Phase: " .. phaseName, 0, 15, 1600, "center")
+    love.graphics.printf("Phase: " .. phaseName, 0, UIScale.scaleY(15), screenWidth, "center")
 
     -- Yards display
     local totalYards = math.floor(phaseManager.field.totalYards)
@@ -352,24 +365,24 @@ function match.drawUI()
     love.graphics.printf(
         string.format("Yards: %d/%d | Down: %d  | %d yards to 1st",
         totalYards, yardsNeeded, phaseManager.field.currentDown, yardsToFirst),
-        0, 45, 1600, "center"
+        0, UIScale.scaleY(45), screenWidth, "center"
     )
 
     -- Down timer
     love.graphics.printf(
         string.format("Down Timer: %.1fs", phaseManager.field.downTimer),
-        0, 75, 1600, "center"
+        0, UIScale.scaleY(75), screenWidth, "center"
     )
 
     -- Team names and coaches
     love.graphics.printf(
         string.format("%s  vs  %s", playerTeamName, aiTeamName),
-        0, 105, 1600, "center"
+        0, UIScale.scaleY(105), screenWidth, "center"
     )
     love.graphics.setFont(smallFont)
     love.graphics.printf(
         string.format("(%s)  vs  (%s)", playerCoachName, aiCoachName),
-        0, 128, 1600, "center"
+        0, UIScale.scaleY(128), screenWidth, "center"
     )
     love.graphics.setFont(font)
 
@@ -378,7 +391,7 @@ function match.drawUI()
     local aiScore = phaseManager.aiScore
     love.graphics.printf(
         string.format("Score: %d - %d", playerScore, aiScore),
-        0, 150, 1600, "center"
+        0, UIScale.scaleY(150), screenWidth, "center"
     )
 
     -- Game time with overtime indicator
@@ -386,35 +399,38 @@ function match.drawUI()
     if inOvertime then
         local overtimeName = match.getOvertimeName(overtimePeriod)
         love.graphics.setColor(1, 0.8, 0)  -- Yellow/gold color for overtime
-        love.graphics.printf(overtimeName, 0, 180, 1600, "center")
+        love.graphics.printf(overtimeName, 0, UIScale.scaleY(180), screenWidth, "center")
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf(timeDisplay, 0, 210, 1600, "center")
+        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(210), screenWidth, "center")
     else
-        love.graphics.printf(timeDisplay, 0, 180, 1600, "center")
+        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(180), screenWidth, "center")
     end
 end
 
 function match.drawTeamCards(cards, side, teamName, formation)
-    local startX = (side == "left") and 150 or (1600 - 500)
-    local startY = 180
+    local startX = (side == "left") and UIScale.scaleX(150) or (UIScale.getWidth() - UIScale.scaleWidth(500))
+    local startY = UIScale.scaleY(180)
 
     -- Draw team label
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf(teamName, startX - 50, startY - 30, 400, "center")
+    love.graphics.printf(teamName, startX - UIScale.scaleWidth(50), startY - UIScale.scaleHeight(30), UIScale.scaleWidth(400), "center")
 
-    -- Draw cards using formation
+    -- Draw cards using formation (scale formation positions)
     for i, card in ipairs(cards) do
         if formation[i] then
             local pos = formation[i]
-            local x = startX + pos.x
-            local y = startY + pos.y
+            local x = startX + UIScale.scaleX(pos.x)
+            local y = startY + UIScale.scaleY(pos.y)
             match.drawCard(card, x, y)
         end
     end
 end
 
 function match.drawCard(card, x, y)
+    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+
     -- Determine colors
     local borderColor = {0.3, 0.5, 0.7}
     local bgColor = {0.15, 0.2, 0.25}
@@ -432,73 +448,74 @@ function match.drawCard(card, x, y)
 
     -- Draw card background
     love.graphics.setColor(bgColor)
-    love.graphics.rectangle("fill", x, y, CARD_WIDTH, CARD_HEIGHT, 5, 5)
+    love.graphics.rectangle("fill", x, y, scaledCardWidth, scaledCardHeight, UIScale.scaleUniform(5), UIScale.scaleUniform(5))
 
     -- Draw card border
     love.graphics.setColor(borderColor)
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", x, y, CARD_WIDTH, CARD_HEIGHT, 5, 5)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.rectangle("line", x, y, scaledCardWidth, scaledCardHeight, UIScale.scaleUniform(5), UIScale.scaleUniform(5))
 
     -- Draw position name
-    love.graphics.setFont(love.graphics.newFont(12))
+    love.graphics.setFont(cardPositionFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf(card.position, x, y + 3, CARD_WIDTH, "center")
+    love.graphics.printf(card.position, x, y + UIScale.scaleHeight(3), scaledCardWidth, "center")
 
     -- Draw stats based on card type
     local Card = require("card")
     if card.cardType == Card.TYPE.YARD_GENERATOR then
-        love.graphics.setFont(love.graphics.newFont(11))
+        love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
             string.format("%.1f yd", card.yardsPerAction),
-            x, y + 16, CARD_WIDTH, "center"
+            x, y + UIScale.scaleHeight(16), scaledCardWidth, "center"
         )
     elseif card.cardType == Card.TYPE.BOOSTER then
-        love.graphics.setFont(love.graphics.newFont(11))
+        love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
             string.format("+%d%%", card.boostAmount),
-            x, y + 16, CARD_WIDTH, "center"
+            x, y + UIScale.scaleHeight(16), scaledCardWidth, "center"
         )
     elseif card.cardType == Card.TYPE.DEFENDER then
-        love.graphics.setFont(love.graphics.newFont(11))
+        love.graphics.setFont(cardStatsFont)
         local effectName = card.effectType == Card.EFFECT.SLOW and "SLW" or
                           card.effectType == Card.EFFECT.FREEZE and "FRZ" or "REM"
-        love.graphics.printf(effectName, x, y + 16, CARD_WIDTH, "center")
+        love.graphics.printf(effectName, x, y + UIScale.scaleHeight(16), scaledCardWidth, "center")
     end
 
     -- Draw jersey number (center of card)
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(cardNumberFont)
     love.graphics.setColor(1, 1, 1, 0.8)
     love.graphics.printf(
         string.format("#%d", card.number),
-        x, y + 32, CARD_WIDTH, "center"
+        x, y + UIScale.scaleHeight(32), scaledCardWidth, "center"
     )
 
     -- Draw upgrade count (top-right corner)
     if card.upgradeCount and card.upgradeCount > 0 then
-        love.graphics.setFont(love.graphics.newFont(13))
+        love.graphics.setFont(cardUpgradeFont)
         love.graphics.setColor(1, 0.8, 0.2)
         local upgradeText = string.format("+%d", card.upgradeCount)
-        love.graphics.print(upgradeText, x + CARD_WIDTH - 20, y + 3)
+        love.graphics.print(upgradeText, x + scaledCardWidth - UIScale.scaleWidth(20), y + UIScale.scaleHeight(3))
     end
 
     -- Draw progress bar
-    local progressBarY = y + CARD_HEIGHT - PROGRESS_BAR_HEIGHT - 3
-    local progressBarWidth = CARD_WIDTH - 10
-    local progressBarX = x + 5
+    local scaledProgressBarHeight = UIScale.scaleHeight(PROGRESS_BAR_HEIGHT)
+    local progressBarY = y + scaledCardHeight - scaledProgressBarHeight - UIScale.scaleHeight(3)
+    local progressBarWidth = scaledCardWidth - UIScale.scaleWidth(10)
+    local progressBarX = x + UIScale.scaleWidth(5)
 
     -- Progress bar background
     love.graphics.setColor(0.2, 0.2, 0.2)
-    love.graphics.rectangle("fill", progressBarX, progressBarY, progressBarWidth, PROGRESS_BAR_HEIGHT)
+    love.graphics.rectangle("fill", progressBarX, progressBarY, progressBarWidth, scaledProgressBarHeight)
 
     -- Progress bar fill
     local progress = card:getProgress()
     love.graphics.setColor(0.3, 0.7, 0.3)
-    love.graphics.rectangle("fill", progressBarX, progressBarY, progressBarWidth * progress, PROGRESS_BAR_HEIGHT)
+    love.graphics.rectangle("fill", progressBarX, progressBarY, progressBarWidth * progress, scaledProgressBarHeight)
 
     -- Progress bar border
     love.graphics.setColor(0.5, 0.5, 0.5)
-    love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", progressBarX, progressBarY, progressBarWidth, PROGRESS_BAR_HEIGHT)
+    love.graphics.setLineWidth(UIScale.scaleUniform(1))
+    love.graphics.rectangle("line", progressBarX, progressBarY, progressBarWidth, scaledProgressBarHeight)
 end
 
 function match.drawPauseMenu()
@@ -548,61 +565,64 @@ function match.drawPauseMenu()
 end
 
 function match.drawWinnerPopup()
+    local screenWidth = UIScale.getWidth()
+    local screenHeight = UIScale.getHeight()
+
     -- Semi-transparent overlay
     love.graphics.setColor(0, 0, 0, 0.85)
-    love.graphics.rectangle("fill", 0, 0, 1600, 900)
+    love.graphics.rectangle("fill", 0, 0, screenWidth, screenHeight)
 
     -- Popup background
-    local popupWidth = 700
-    local popupHeight = 550
-    local popupX = (1600 - popupWidth) / 2
-    local popupY = (900 - popupHeight) / 2
+    local scaledPopupWidth = UIScale.scaleWidth(700)
+    local scaledPopupHeight = UIScale.scaleHeight(550)
+    local popupX = UIScale.centerX(scaledPopupWidth)
+    local popupY = UIScale.centerY(scaledPopupHeight)
 
     love.graphics.setColor(0.15, 0.2, 0.25)
-    love.graphics.rectangle("fill", popupX, popupY, popupWidth, popupHeight, 15, 15)
+    love.graphics.rectangle("fill", popupX, popupY, scaledPopupWidth, scaledPopupHeight, UIScale.scaleUniform(15), UIScale.scaleUniform(15))
     love.graphics.setColor(0.4, 0.5, 0.6)
-    love.graphics.setLineWidth(3)
-    love.graphics.rectangle("line", popupX, popupY, popupWidth, popupHeight, 15, 15)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", popupX, popupY, scaledPopupWidth, scaledPopupHeight, UIScale.scaleUniform(15), UIScale.scaleUniform(15))
 
     -- Winner title
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 0.8, 0.2)
-    love.graphics.printf(winnerData.winnerName .. " WINS!", 0, popupY + 30, 1600, "center")
+    love.graphics.printf(winnerData.winnerName .. " WINS!", 0, popupY + UIScale.scaleHeight(30), screenWidth, "center")
 
     -- Coach name
     love.graphics.setFont(menuFont)
     love.graphics.setColor(0.8, 0.8, 0.8)
-    love.graphics.printf(winnerData.winnerCoachName, 0, popupY + 90, 1600, "center")
+    love.graphics.printf(winnerData.winnerCoachName, 0, popupY + UIScale.scaleHeight(90), screenWidth, "center")
 
     -- Final score
     love.graphics.setFont(font)
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf(
         string.format("Final Score:  Player %d - %d AI", winnerData.playerScore, winnerData.aiScore),
-        0, popupY + 135, 1600, "center"
+        0, popupY + UIScale.scaleHeight(135), screenWidth, "center"
     )
 
     -- MVP Section
     love.graphics.setFont(menuFont)
     love.graphics.setColor(0.9, 0.6, 0.3)
-    love.graphics.printf("Players of the Game", 0, popupY + 185, 1600, "center")
+    love.graphics.printf("Players of the Game", 0, popupY + UIScale.scaleHeight(185), screenWidth, "center")
 
     -- Offensive MVP
     love.graphics.setFont(font)
     love.graphics.setColor(0.3, 0.8, 0.3)
-    love.graphics.printf("Offensive Player:", popupX + 50, popupY + 235, popupWidth - 100, "left")
+    love.graphics.printf("Offensive Player:", popupX + UIScale.scaleWidth(50), popupY + UIScale.scaleHeight(235), scaledPopupWidth - UIScale.scaleWidth(100), "left")
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf(
         string.format("%s - %.1f yards, %d TDs",
             winnerData.offensiveMVP.position,
             tonumber(winnerData.offensiveMVP.yards),
             winnerData.offensiveMVP.touchdowns),
-        popupX + 50, popupY + 265, popupWidth - 100, "left"
+        popupX + UIScale.scaleWidth(50), popupY + UIScale.scaleHeight(265), scaledPopupWidth - UIScale.scaleWidth(100), "left"
     )
 
     -- Defensive MVP
     love.graphics.setColor(0.3, 0.6, 0.9)
-    love.graphics.printf("Defensive Player:", popupX + 50, popupY + 315, popupWidth - 100, "left")
+    love.graphics.printf("Defensive Player:", popupX + UIScale.scaleWidth(50), popupY + UIScale.scaleHeight(315), scaledPopupWidth - UIScale.scaleWidth(100), "left")
     love.graphics.setColor(1, 1, 1)
     love.graphics.printf(
         string.format("%s - %d slows, %d freezes, %.1f yards reduced",
@@ -610,32 +630,34 @@ function match.drawWinnerPopup()
             winnerData.defensiveMVP.slows,
             winnerData.defensiveMVP.freezes,
             tonumber(winnerData.defensiveMVP.yardsReduced)),
-        popupX + 50, popupY + 345, popupWidth - 100, "left"
+        popupX + UIScale.scaleWidth(50), popupY + UIScale.scaleHeight(345), scaledPopupWidth - UIScale.scaleWidth(100), "left"
     )
 
     -- Return to Menu button
-    local buttonX = (1600 - winnerButtonWidth) / 2
-    local buttonY = popupY + popupHeight - 90
+    local scaledButtonWidth = UIScale.scaleWidth(winnerButtonWidth)
+    local scaledButtonHeight = UIScale.scaleHeight(winnerButtonHeight)
+    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonY = popupY + scaledPopupHeight - UIScale.scaleHeight(90)
 
     if winnerButtonHovered then
         love.graphics.setColor(0.3, 0.5, 0.7, 0.9)
     else
         love.graphics.setColor(0.2, 0.3, 0.4, 0.7)
     end
-    love.graphics.rectangle("fill", buttonX, buttonY, winnerButtonWidth, winnerButtonHeight, 10, 10)
+    love.graphics.rectangle("fill", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight, UIScale.scaleUniform(10), UIScale.scaleUniform(10))
 
     if winnerButtonHovered then
         love.graphics.setColor(0.5, 0.7, 1.0)
-        love.graphics.setLineWidth(3)
+        love.graphics.setLineWidth(UIScale.scaleUniform(3))
     else
         love.graphics.setColor(0.4, 0.5, 0.6)
-        love.graphics.setLineWidth(2)
+        love.graphics.setLineWidth(UIScale.scaleUniform(2))
     end
-    love.graphics.rectangle("line", buttonX, buttonY, winnerButtonWidth, winnerButtonHeight, 10, 10)
+    love.graphics.rectangle("line", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight, UIScale.scaleUniform(10), UIScale.scaleUniform(10))
 
     love.graphics.setFont(menuFont)
     love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("Return to Menu", buttonX, buttonY + 15, winnerButtonWidth, "center")
+    love.graphics.printf("Return to Menu", buttonX, buttonY + UIScale.scaleHeight(15), scaledButtonWidth, "center")
 end
 
 function match.keypressed(key)
@@ -693,13 +715,15 @@ function match.mousepressed(x, y, button)
     if button == 1 then
         -- Winner popup button
         if matchEnded and winnerData then
-            local popupHeight = 550
-            local popupY = (900 - popupHeight) / 2
-            local buttonX = (1600 - winnerButtonWidth) / 2
-            local buttonY = popupY + popupHeight - 90
+            local scaledPopupHeight = UIScale.scaleHeight(550)
+            local popupY = UIScale.centerY(scaledPopupHeight)
+            local scaledButtonWidth = UIScale.scaleWidth(winnerButtonWidth)
+            local scaledButtonHeight = UIScale.scaleHeight(winnerButtonHeight)
+            local buttonX = UIScale.centerX(scaledButtonWidth)
+            local buttonY = popupY + scaledPopupHeight - UIScale.scaleHeight(90)
 
-            if x >= buttonX and x <= buttonX + winnerButtonWidth and
-               y >= buttonY and y <= buttonY + winnerButtonHeight then
+            if x >= buttonX and x <= buttonX + scaledButtonWidth and
+               y >= buttonY and y <= buttonY + scaledButtonHeight then
                 match.returnToMenu()
                 return
             end
@@ -726,13 +750,15 @@ end
 function match.mousemoved(x, y)
     -- Winner popup button hover
     if matchEnded and winnerData then
-        local popupHeight = 550
-        local popupY = (900 - popupHeight) / 2
-        local buttonX = (1600 - winnerButtonWidth) / 2
-        local buttonY = popupY + popupHeight - 90
+        local scaledPopupHeight = UIScale.scaleHeight(550)
+        local popupY = UIScale.centerY(scaledPopupHeight)
+        local scaledButtonWidth = UIScale.scaleWidth(winnerButtonWidth)
+        local scaledButtonHeight = UIScale.scaleHeight(winnerButtonHeight)
+        local buttonX = UIScale.centerX(scaledButtonWidth)
+        local buttonY = popupY + scaledPopupHeight - UIScale.scaleHeight(90)
 
-        winnerButtonHovered = (x >= buttonX and x <= buttonX + winnerButtonWidth and
-                               y >= buttonY and y <= buttonY + winnerButtonHeight)
+        winnerButtonHovered = (x >= buttonX and x <= buttonX + scaledButtonWidth and
+                               y >= buttonY and y <= buttonY + scaledButtonHeight)
         return
     end
 
