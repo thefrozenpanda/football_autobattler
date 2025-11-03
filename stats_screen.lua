@@ -157,6 +157,39 @@ function StatsScreen.draw()
     end
 
     love.graphics.pop()
+
+    -- Draw scroll bar indicator
+    StatsScreen.drawScrollBar()
+end
+
+--- Draws visual scroll bar on the right side
+function StatsScreen.drawScrollBar()
+    if StatsScreen.maxScroll <= 0 then
+        return  -- No need for scroll bar if content fits
+    end
+
+    local barWidth = UIScale.scaleUniform(10)
+    local barX = UIScale.getWidth() - barWidth - UIScale.scaleUniform(10)
+    local barY = UIScale.scaleHeight(100)  -- Below header
+    local barHeight = UIScale.scaleHeight(StatsScreen.contentHeight)
+
+    -- Background track
+    love.graphics.setColor(0.2, 0.2, 0.25, 0.5)
+    love.graphics.rectangle("fill", barX, barY, barWidth, barHeight)
+
+    -- Calculate thumb position and size
+    local contentHeight = StatsScreen.contentHeight + StatsScreen.maxScroll
+    local thumbHeight = math.max(barHeight * (StatsScreen.contentHeight / contentHeight), UIScale.scaleHeight(30))
+    local thumbY = barY + (StatsScreen.scrollOffset / StatsScreen.maxScroll) * (barHeight - thumbHeight)
+
+    -- Thumb
+    love.graphics.setColor(0.5, 0.6, 0.7, 0.8)
+    love.graphics.rectangle("fill", barX, thumbY, barWidth, thumbHeight, UIScale.scaleUniform(5), UIScale.scaleUniform(5))
+
+    -- Thumb border
+    love.graphics.setColor(0.7, 0.8, 0.9, 0.9)
+    love.graphics.setLineWidth(UIScale.scaleUniform(1))
+    love.graphics.rectangle("line", barX, thumbY, barWidth, thumbHeight, UIScale.scaleUniform(5), UIScale.scaleUniform(5))
 end
 
 --- Draws the table header with column names
