@@ -322,6 +322,76 @@ function SeasonManager.advancePlayoffs()
     SeasonManager.currentPhase = SeasonManager.PHASE.PREPARATION
 end
 
+--- Checks if player has a bye week in current playoff round
+--- @return boolean True if player has bye week
+function SeasonManager.playerHasByeWeek()
+    if not SeasonManager.inPlayoffs or not SeasonManager.playoffBracket then
+        return false
+    end
+
+    local currentRound = SeasonManager.playoffBracket.currentRound
+
+    -- Only wildcard round has byes (for seeds 1-2)
+    if currentRound ~= "wildcard" then
+        return false
+    end
+
+    -- Check if player is in wildcard matches
+    if SeasonManager.playoffBracket.wildcard then
+        for _, match in ipairs(SeasonManager.playoffBracket.wildcard) do
+            if match.homeTeam == SeasonManager.playerTeam or match.awayTeam == SeasonManager.playerTeam then
+                return false  -- Player is playing in wildcard
+            end
+        end
+    end
+
+    -- Player made playoffs but not in wildcard = has bye week
+    return true
+end
+
+--- Simulates all wildcard playoff games
+function SeasonManager.simulateWildcardRound()
+    if not SeasonManager.playoffBracket or not SeasonManager.playoffBracket.wildcard then
+        return
+    end
+
+    local match = require("match")
+    local ScheduleGenerator = require("schedule_generator")
+    local results = {}
+
+    -- Simulate all 4 wildcard games
+    for _, matchData in ipairs(SeasonManager.playoffBracket.wildcard) do
+        local homeScore, awayScore = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
+        matchData.played = true
+        matchData.homeScore = homeScore
+        matchData.awayScore = awayScore
+
+        -- Record result
+        SeasonManager.recordMatchResult(matchData.homeTeam, matchData.awayTeam, homeScore, awayScore)
+
+        -- Award cash to teams
+        if homeScore > awayScore then
+            matchData.homeTeam:awardCash(100)
+            matchData.awayTeam:awardCash(50)
+        else
+            matchData.awayTeam:awardCash(100)
+            matchData.homeTeam:awardCash(50)
+        end
+
+        table.insert(results, {
+            homeTeam = matchData.homeTeam,
+            awayTeam = matchData.awayTeam,
+            homeScore = homeScore,
+            awayScore = awayScore,
+            conference = matchData.conference
+        })
+    end
+
+    -- Advance bracket to divisional round
+    ScheduleGenerator.advanceBracket(SeasonManager.playoffBracket, results)
+    SeasonManager.advancePlayoffs()
+end
+
 --- Gets the player's playoff match for the current round
 --- @return table|nil Match data or nil if eliminated
 function SeasonManager.getPlayerPlayoffMatch()

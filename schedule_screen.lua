@@ -31,8 +31,8 @@ local TOGGLE_BUTTON_X = 900
 local TOGGLE_BUTTON_Y = 20
 local TOGGLE_BUTTON_WIDTH = 200
 local TOGGLE_BUTTON_HEIGHT = 40
-local DROPDOWN_X = 350  -- Position next to title
-local DROPDOWN_Y = 20
+local DROPDOWN_X = 1000  -- Position to right of schedule table
+local DROPDOWN_Y = 70    -- Aligned with top of schedule
 local DROPDOWN_WIDTH = 300
 local DROPDOWN_HEIGHT = 35
 local DROPDOWN_ITEM_HEIGHT = 30
@@ -213,6 +213,39 @@ function ScheduleScreen.draw()
     end
 
     love.graphics.pop()
+
+    -- Draw scroll bar indicator
+    ScheduleScreen.drawScrollBar()
+end
+
+--- Draws visual scroll bar on the right side
+function ScheduleScreen.drawScrollBar()
+    if ScheduleScreen.maxScroll <= 0 then
+        return  -- No need for scroll bar if content fits
+    end
+
+    local barWidth = UIScale.scaleUniform(10)
+    local barX = UIScale.getWidth() - barWidth - UIScale.scaleUniform(10)
+    local barY = UIScale.scaleHeight(100)  -- Below header
+    local barHeight = UIScale.scaleHeight(ScheduleScreen.contentHeight)
+
+    -- Background track
+    love.graphics.setColor(0.2, 0.2, 0.25, 0.5)
+    love.graphics.rectangle("fill", barX, barY, barWidth, barHeight)
+
+    -- Calculate thumb position and size
+    local contentHeight = ScheduleScreen.contentHeight + ScheduleScreen.maxScroll
+    local thumbHeight = math.max(barHeight * (ScheduleScreen.contentHeight / contentHeight), UIScale.scaleHeight(30))
+    local thumbY = barY + (ScheduleScreen.scrollOffset / ScheduleScreen.maxScroll) * (barHeight - thumbHeight)
+
+    -- Thumb
+    love.graphics.setColor(0.5, 0.6, 0.7, 0.8)
+    love.graphics.rectangle("fill", barX, thumbY, barWidth, thumbHeight, UIScale.scaleUniform(5), UIScale.scaleUniform(5))
+
+    -- Thumb border
+    love.graphics.setColor(0.7, 0.8, 0.9, 0.9)
+    love.graphics.setLineWidth(UIScale.scaleUniform(1))
+    love.graphics.rectangle("line", barX, thumbY, barWidth, thumbHeight, UIScale.scaleUniform(5), UIScale.scaleUniform(5))
 end
 
 --- Draws the regular schedule view
@@ -394,10 +427,11 @@ function ScheduleScreen.drawBracket(yOffset)
     end
 
     local bracket = SeasonManager.playoffBracket
-    local MATCHUP_WIDTH = 200
-    local MATCHUP_HEIGHT = 70
-    local ROUND_SPACING = 250
-    local MATCHUP_SPACING = 100
+    -- Scaled constants for proper fitting
+    local MATCHUP_WIDTH = 240  -- Wider to fit longer team names
+    local MATCHUP_HEIGHT = 65
+    local ROUND_SPACING = 260
+    local MATCHUP_SPACING = 75  -- Tighter spacing
 
     -- Conference A bracket (top)
     local confAStartY = yOffset
@@ -406,8 +440,8 @@ function ScheduleScreen.drawBracket(yOffset)
     love.graphics.print("Conference A", startX, confAStartY)
     confAStartY = confAStartY + UIScale.scaleHeight(35)
 
-    -- Conference B bracket (bottom)
-    local confBStartY = confAStartY + UIScale.scaleHeight(400)
+    -- Conference B bracket (bottom) - closer spacing
+    local confBStartY = confAStartY + UIScale.scaleHeight(250)  -- Reduced from 400
     love.graphics.setColor(0.8, 0.8, 1)
     love.graphics.print("Conference B", startX, confBStartY)
     confBStartY = confBStartY + UIScale.scaleHeight(35)
@@ -494,8 +528,8 @@ end
 --- @param y number Y position
 --- @param round string Current round name
 function ScheduleScreen.drawBracketMatch(match, x, y, round)
-    local MATCHUP_WIDTH = 200
-    local MATCHUP_HEIGHT = 70
+    local MATCHUP_WIDTH = 240  -- Match width from drawBracket
+    local MATCHUP_HEIGHT = 65  -- Match height from drawBracket
     local scaledMatchupWidth = UIScale.scaleWidth(MATCHUP_WIDTH)
     local scaledMatchupHeight = UIScale.scaleHeight(MATCHUP_HEIGHT)
     local hasPlayed = match.played
@@ -543,8 +577,9 @@ function ScheduleScreen.drawBracketMatch(match, x, y, round)
     end
 
     local homeText = match.homeTeam.name
-    if string.len(homeText) > 18 then
-        homeText = string.sub(homeText, 1, 15) .. "..."
+    -- Only truncate if extremely long (wider boxes now)
+    if string.len(homeText) > 28 then
+        homeText = string.sub(homeText, 1, 25) .. "..."
     end
     love.graphics.print(homeText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(10))
 
@@ -554,10 +589,11 @@ function ScheduleScreen.drawBracketMatch(match, x, y, round)
 
     -- Away team
     local awayText = match.awayTeam.name
-    if string.len(awayText) > 18 then
-        awayText = string.sub(awayText, 1, 15) .. "..."
+    -- Only truncate if extremely long (wider boxes now)
+    if string.len(awayText) > 28 then
+        awayText = string.sub(awayText, 1, 25) .. "..."
     end
-    love.graphics.print(awayText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(40))
+    love.graphics.print(awayText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(35))
 
     if hasPlayed then
         love.graphics.print(tostring(match.awayScore), x + scaledMatchupWidth - UIScale.scaleUniform(30), y + UIScale.scaleHeight(40))
