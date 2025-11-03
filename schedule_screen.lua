@@ -11,6 +11,7 @@
 local ScheduleScreen = {}
 
 local SeasonManager = require("season_manager")
+local UIScale = require("ui_scale")
 
 -- State
 ScheduleScreen.scrollOffset = 0
@@ -18,7 +19,7 @@ ScheduleScreen.maxScroll = 0
 ScheduleScreen.contentHeight = 700
 ScheduleScreen.showBracket = false  -- Toggle between schedule and bracket view
 
--- UI configuration
+-- UI configuration (base values for 1600x900)
 local GAME_ROW_HEIGHT = 45
 local GAME_WIDTH = 700
 local START_X = 50
@@ -28,8 +29,35 @@ local TOGGLE_BUTTON_Y = 20
 local TOGGLE_BUTTON_WIDTH = 200
 local TOGGLE_BUTTON_HEIGHT = 40
 
+-- Fonts
+local titleFont
+local toggleButtonFont
+local playoffHeaderFont
+local weekFont
+local matchupFont
+local scoreFont
+local resultFont
+local notPlayedFont
+local conferenceHeaderFont
+local bracketTeamFont
+
 --- Initializes the schedule screen
 function ScheduleScreen.load()
+    -- Update UI scale
+    UIScale.update()
+
+    -- Create fonts
+    titleFont = love.graphics.newFont(UIScale.scaleFontSize(32))
+    toggleButtonFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+    playoffHeaderFont = love.graphics.newFont(UIScale.scaleFontSize(28))
+    weekFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    matchupFont = love.graphics.newFont(UIScale.scaleFontSize(22))
+    scoreFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    resultFont = love.graphics.newFont(UIScale.scaleFontSize(20))
+    notPlayedFont = love.graphics.newFont(UIScale.scaleFontSize(18))
+    conferenceHeaderFont = love.graphics.newFont(UIScale.scaleFontSize(24))
+    bracketTeamFont = love.graphics.newFont(UIScale.scaleFontSize(16))
+
     ScheduleScreen.scrollOffset = 0
     ScheduleScreen.calculateMaxScroll()
 end
@@ -57,8 +85,8 @@ function ScheduleScreen.calculateMaxScroll()
         end
     end
 
-    local contentHeight = totalGames * GAME_ROW_HEIGHT
-    ScheduleScreen.maxScroll = math.max(0, contentHeight - ScheduleScreen.contentHeight)
+    local contentHeight = totalGames * UIScale.scaleHeight(GAME_ROW_HEIGHT)
+    ScheduleScreen.maxScroll = math.max(0, contentHeight - UIScale.scaleHeight(ScheduleScreen.contentHeight))
 end
 
 --- LÖVE Callback: Update Logic
@@ -77,39 +105,46 @@ function ScheduleScreen.draw()
     -- Draw toggle button if in playoffs (not scrolling)
     if SeasonManager.inPlayoffs then
         local mx, my = love.mouse.getPosition()
-        my = my - 100  -- Adjust for header
-        local hovering = mx >= TOGGLE_BUTTON_X and mx <= TOGGLE_BUTTON_X + TOGGLE_BUTTON_WIDTH and
-                        my >= TOGGLE_BUTTON_Y and my <= TOGGLE_BUTTON_Y + TOGGLE_BUTTON_HEIGHT
+        my = my - UIScale.scaleHeight(100)  -- Adjust for header
+
+        local scaledToggleX = UIScale.scaleX(TOGGLE_BUTTON_X)
+        local scaledToggleY = UIScale.scaleY(TOGGLE_BUTTON_Y)
+        local scaledToggleWidth = UIScale.scaleWidth(TOGGLE_BUTTON_WIDTH)
+        local scaledToggleHeight = UIScale.scaleHeight(TOGGLE_BUTTON_HEIGHT)
+
+        local hovering = mx >= scaledToggleX and mx <= scaledToggleX + scaledToggleWidth and
+                        my >= scaledToggleY and my <= scaledToggleY + scaledToggleHeight
 
         if hovering then
             love.graphics.setColor(0.3, 0.3, 0.4)
         else
             love.graphics.setColor(0.2, 0.2, 0.25)
         end
-        love.graphics.rectangle("fill", TOGGLE_BUTTON_X, TOGGLE_BUTTON_Y, TOGGLE_BUTTON_WIDTH, TOGGLE_BUTTON_HEIGHT)
+        love.graphics.rectangle("fill", scaledToggleX, scaledToggleY, scaledToggleWidth, scaledToggleHeight)
 
         love.graphics.setColor(0.5, 0.5, 0.6)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", TOGGLE_BUTTON_X, TOGGLE_BUTTON_Y, TOGGLE_BUTTON_WIDTH, TOGGLE_BUTTON_HEIGHT)
+        love.graphics.setLineWidth(UIScale.scaleUniform(2))
+        love.graphics.rectangle("line", scaledToggleX, scaledToggleY, scaledToggleWidth, scaledToggleHeight)
 
-        love.graphics.setFont(love.graphics.newFont(18))
+        love.graphics.setFont(toggleButtonFont)
         love.graphics.setColor(1, 1, 1)
         local buttonText = ScheduleScreen.showBracket and "Show Schedule" or "Show Bracket"
-        local textWidth = love.graphics.getFont():getWidth(buttonText)
-        love.graphics.print(buttonText, TOGGLE_BUTTON_X + (TOGGLE_BUTTON_WIDTH - textWidth) / 2, TOGGLE_BUTTON_Y + 10)
+        local textWidth = toggleButtonFont:getWidth(buttonText)
+        love.graphics.print(buttonText, scaledToggleX + (scaledToggleWidth - textWidth) / 2, scaledToggleY + UIScale.scaleHeight(10))
     end
 
     love.graphics.push()
     love.graphics.translate(0, -ScheduleScreen.scrollOffset)
 
-    local yOffset = START_Y
+    local yOffset = UIScale.scaleY(START_Y)
+    local startX = UIScale.scaleX(START_X)
 
     -- Title
-    love.graphics.setFont(love.graphics.newFont(32))
+    love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
     local title = ScheduleScreen.showBracket and "Playoff Bracket" or "Season Schedule"
-    love.graphics.print(title, START_X, yOffset)
-    yOffset = yOffset + 50
+    love.graphics.print(title, startX, yOffset)
+    yOffset = yOffset + UIScale.scaleHeight(50)
 
     -- Draw bracket or schedule based on toggle
     if ScheduleScreen.showBracket and SeasonManager.inPlayoffs then
@@ -124,6 +159,8 @@ end
 --- Draws the regular schedule view
 --- @param yOffset number Starting Y position
 function ScheduleScreen.drawSchedule(yOffset)
+    local startX = UIScale.scaleX(START_X)
+
     -- Regular season games (17 weeks)
     for week = 1, 17 do
         local weekSchedule = SeasonManager.schedule[week]
@@ -146,13 +183,13 @@ function ScheduleScreen.drawSchedule(yOffset)
 
     -- Playoff games (only shown in schedule view)
     if SeasonManager.inPlayoffs and SeasonManager.playoffBracket then
-        yOffset = yOffset + 30
+        yOffset = yOffset + UIScale.scaleHeight(30)
 
         -- Section header
-        love.graphics.setFont(love.graphics.newFont(28))
+        love.graphics.setFont(playoffHeaderFont)
         love.graphics.setColor(0.8, 0.8, 1)
-        love.graphics.print("PLAYOFFS", START_X, yOffset)
-        yOffset = yOffset + 40
+        love.graphics.print("PLAYOFFS", startX, yOffset)
+        yOffset = yOffset + UIScale.scaleHeight(40)
 
         -- Wild Card
         if SeasonManager.playoffBracket.wildcard then
@@ -204,26 +241,30 @@ function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound)
     local opponent = isPlayerHome and match.awayTeam or match.homeTeam
     local hasPlayed = match.played or week < SeasonManager.currentWeek
 
+    local startX = UIScale.scaleX(START_X)
+    local scaledGameWidth = UIScale.scaleWidth(GAME_WIDTH)
+    local scaledGameRowHeight = UIScale.scaleHeight(GAME_ROW_HEIGHT)
+
     -- Background
     if hasPlayed then
         love.graphics.setColor(0.2, 0.2, 0.25)
     else
         love.graphics.setColor(0.15, 0.2, 0.25)
     end
-    love.graphics.rectangle("fill", START_X, y, GAME_WIDTH, GAME_ROW_HEIGHT)
+    love.graphics.rectangle("fill", startX, y, scaledGameWidth, scaledGameRowHeight)
 
     -- Border
     if week == SeasonManager.currentWeek and not hasPlayed then
         love.graphics.setColor(0.8, 0.8, 0.3)  -- Highlight current week
-        love.graphics.setLineWidth(3)
+        love.graphics.setLineWidth(UIScale.scaleUniform(3))
     else
         love.graphics.setColor(0.4, 0.4, 0.5)
-        love.graphics.setLineWidth(2)
+        love.graphics.setLineWidth(UIScale.scaleUniform(2))
     end
-    love.graphics.rectangle("line", START_X, y, GAME_WIDTH, GAME_ROW_HEIGHT)
+    love.graphics.rectangle("line", startX, y, scaledGameWidth, scaledGameRowHeight)
 
     -- Week label
-    love.graphics.setFont(love.graphics.newFont(20))
+    love.graphics.setFont(weekFont)
     love.graphics.setColor(0.7, 0.7, 0.8)
 
     local weekText = ""
@@ -232,10 +273,10 @@ function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound)
     else
         weekText = string.format("Week %d", week)
     end
-    love.graphics.print(weekText, START_X + 15, y + 12)
+    love.graphics.print(weekText, startX + UIScale.scaleUniform(15), y + UIScale.scaleHeight(12))
 
     -- Matchup
-    love.graphics.setFont(love.graphics.newFont(22))
+    love.graphics.setFont(matchupFont)
     love.graphics.setColor(1, 1, 1)
 
     local matchupText = ""
@@ -245,7 +286,7 @@ function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound)
         matchupText = string.format("%s @ %s", SeasonManager.playerTeam.name, opponent.name)
     end
 
-    love.graphics.print(matchupText, START_X + 150, y + 10)
+    love.graphics.print(matchupText, startX + UIScale.scaleUniform(150), y + UIScale.scaleHeight(10))
 
     -- Result
     if hasPlayed then
@@ -254,36 +295,39 @@ function ScheduleScreen.drawGameRow(match, week, y, isPlayoff, playoffRound)
         local playerWon = playerScore > opponentScore
 
         -- Show score inline: "24 - 17 (W)" or "17 - 24 (L)"
-        love.graphics.setFont(love.graphics.newFont(20))
+        love.graphics.setFont(scoreFont)
         love.graphics.setColor(1, 1, 1)
         local scoreText = string.format("%d - %d ", playerScore, opponentScore)
-        love.graphics.print(scoreText, START_X + GAME_WIDTH - 150, y + 12)
+        love.graphics.print(scoreText, startX + scaledGameWidth - UIScale.scaleUniform(150), y + UIScale.scaleHeight(12))
 
         -- W/L indicator
-        local scoreWidth = love.graphics.getFont():getWidth(scoreText)
+        love.graphics.setFont(resultFont)
+        local scoreWidth = scoreFont:getWidth(scoreText)
         if playerWon then
             love.graphics.setColor(0.3, 0.8, 0.3)
-            love.graphics.print("(W)", START_X + GAME_WIDTH - 150 + scoreWidth, y + 12)
+            love.graphics.print("(W)", startX + scaledGameWidth - UIScale.scaleUniform(150) + scoreWidth, y + UIScale.scaleHeight(12))
         else
             love.graphics.setColor(0.8, 0.3, 0.3)
-            love.graphics.print("(L)", START_X + GAME_WIDTH - 150 + scoreWidth, y + 12)
+            love.graphics.print("(L)", startX + scaledGameWidth - UIScale.scaleUniform(150) + scoreWidth, y + UIScale.scaleHeight(12))
         end
     else
-        love.graphics.setFont(love.graphics.newFont(18))
+        love.graphics.setFont(notPlayedFont)
         love.graphics.setColor(0.6, 0.6, 0.7)
-        love.graphics.print("Not played", START_X + GAME_WIDTH - 120, y + 14)
+        love.graphics.print("Not played", startX + scaledGameWidth - UIScale.scaleUniform(120), y + UIScale.scaleHeight(14))
     end
 
-    return y + GAME_ROW_HEIGHT
+    return y + scaledGameRowHeight
 end
 
 --- Draws the playoff bracket in a tree format
 --- @param yOffset number Starting Y position
 function ScheduleScreen.drawBracket(yOffset)
+    local startX = UIScale.scaleX(START_X)
+
     if not SeasonManager.playoffBracket then
-        love.graphics.setFont(love.graphics.newFont(24))
+        love.graphics.setFont(conferenceHeaderFont)
         love.graphics.setColor(0.7, 0.7, 0.8)
-        love.graphics.print("Playoffs have not started yet", START_X, yOffset)
+        love.graphics.print("Playoffs have not started yet", startX, yOffset)
         return
     end
 
@@ -295,20 +339,20 @@ function ScheduleScreen.drawBracket(yOffset)
 
     -- Conference A bracket (top)
     local confAStartY = yOffset
-    love.graphics.setFont(love.graphics.newFont(24))
+    love.graphics.setFont(conferenceHeaderFont)
     love.graphics.setColor(0.8, 0.8, 1)
-    love.graphics.print("Conference A", START_X, confAStartY)
-    confAStartY = confAStartY + 35
+    love.graphics.print("Conference A", startX, confAStartY)
+    confAStartY = confAStartY + UIScale.scaleHeight(35)
 
     -- Conference B bracket (bottom)
-    local confBStartY = confAStartY + 400
+    local confBStartY = confAStartY + UIScale.scaleHeight(400)
     love.graphics.setColor(0.8, 0.8, 1)
-    love.graphics.print("Conference B", START_X, confBStartY)
-    confBStartY = confBStartY + 35
+    love.graphics.print("Conference B", startX, confBStartY)
+    confBStartY = confBStartY + UIScale.scaleHeight(35)
 
     -- Draw Wild Card round (if exists)
     if bracket.wildcard and #bracket.wildcard > 0 then
-        local x = START_X
+        local x = startX
         local confAWildcard = {}
         local confBWildcard = {}
 
@@ -323,20 +367,20 @@ function ScheduleScreen.drawBracket(yOffset)
 
         -- Draw Conference A wildcard games
         for i, match in ipairs(confAWildcard) do
-            local y = confAStartY + ((i - 1) * (MATCHUP_HEIGHT + MATCHUP_SPACING))
+            local y = confAStartY + ((i - 1) * UIScale.scaleHeight(MATCHUP_HEIGHT + MATCHUP_SPACING))
             ScheduleScreen.drawBracketMatch(match, x, y, "wildcard")
         end
 
         -- Draw Conference B wildcard games
         for i, match in ipairs(confBWildcard) do
-            local y = confBStartY + ((i - 1) * (MATCHUP_HEIGHT + MATCHUP_SPACING))
+            local y = confBStartY + ((i - 1) * UIScale.scaleHeight(MATCHUP_HEIGHT + MATCHUP_SPACING))
             ScheduleScreen.drawBracketMatch(match, x, y, "wildcard")
         end
     end
 
     -- Draw Divisional round
     if bracket.divisional and #bracket.divisional > 0 then
-        local x = START_X + ROUND_SPACING
+        local x = startX + UIScale.scaleUniform(ROUND_SPACING)
         local confADiv = {}
         local confBDiv = {}
 
@@ -349,26 +393,26 @@ function ScheduleScreen.drawBracket(yOffset)
         end
 
         for i, match in ipairs(confADiv) do
-            local y = confAStartY + 50 + ((i - 1) * (MATCHUP_HEIGHT + MATCHUP_SPACING * 2))
+            local y = confAStartY + UIScale.scaleHeight(50) + ((i - 1) * UIScale.scaleHeight(MATCHUP_HEIGHT + MATCHUP_SPACING * 2))
             ScheduleScreen.drawBracketMatch(match, x, y, "divisional")
         end
 
         for i, match in ipairs(confBDiv) do
-            local y = confBStartY + 50 + ((i - 1) * (MATCHUP_HEIGHT + MATCHUP_SPACING * 2))
+            local y = confBStartY + UIScale.scaleHeight(50) + ((i - 1) * UIScale.scaleHeight(MATCHUP_HEIGHT + MATCHUP_SPACING * 2))
             ScheduleScreen.drawBracketMatch(match, x, y, "divisional")
         end
     end
 
     -- Draw Conference Championship
     if bracket.conference and #bracket.conference > 0 then
-        local x = START_X + (ROUND_SPACING * 2)
+        local x = startX + UIScale.scaleUniform(ROUND_SPACING * 2)
 
         for i, match in ipairs(bracket.conference) do
             local y
             if match.homeTeam.conference == "A" then
-                y = confAStartY + 150
+                y = confAStartY + UIScale.scaleHeight(150)
             else
-                y = confBStartY + 150
+                y = confBStartY + UIScale.scaleHeight(150)
             end
             ScheduleScreen.drawBracketMatch(match, x, y, "conference")
         end
@@ -376,8 +420,8 @@ function ScheduleScreen.drawBracket(yOffset)
 
     -- Draw Championship (center)
     if bracket.championship and #bracket.championship > 0 then
-        local x = START_X + (ROUND_SPACING * 3)
-        local y = (confAStartY + confBStartY) / 2 + 50
+        local x = startX + UIScale.scaleUniform(ROUND_SPACING * 3)
+        local y = (confAStartY + confBStartY) / 2 + UIScale.scaleHeight(50)
         ScheduleScreen.drawBracketMatch(bracket.championship[1], x, y, "championship")
     end
 end
@@ -390,6 +434,8 @@ end
 function ScheduleScreen.drawBracketMatch(match, x, y, round)
     local MATCHUP_WIDTH = 200
     local MATCHUP_HEIGHT = 70
+    local scaledMatchupWidth = UIScale.scaleWidth(MATCHUP_WIDTH)
+    local scaledMatchupHeight = UIScale.scaleHeight(MATCHUP_HEIGHT)
     local hasPlayed = match.played
     local isFutureRound = false
 
@@ -412,20 +458,20 @@ function ScheduleScreen.drawBracketMatch(match, x, y, round)
     else
         love.graphics.setColor(0.2, 0.2, 0.25)
     end
-    love.graphics.rectangle("fill", x, y, MATCHUP_WIDTH, MATCHUP_HEIGHT)
+    love.graphics.rectangle("fill", x, y, scaledMatchupWidth, scaledMatchupHeight)
 
     -- Border
     if hasPlayed and not isFutureRound then
         love.graphics.setColor(0.8, 0.8, 0.3)
-        love.graphics.setLineWidth(3)
+        love.graphics.setLineWidth(UIScale.scaleUniform(3))
     else
         love.graphics.setColor(0.4, 0.4, 0.5)
-        love.graphics.setLineWidth(2)
+        love.graphics.setLineWidth(UIScale.scaleUniform(2))
     end
-    love.graphics.rectangle("line", x, y, MATCHUP_WIDTH, MATCHUP_HEIGHT)
+    love.graphics.rectangle("line", x, y, scaledMatchupWidth, scaledMatchupHeight)
 
     -- Team names and scores
-    love.graphics.setFont(love.graphics.newFont(16))
+    love.graphics.setFont(bracketTeamFont)
 
     -- Home team
     if isFutureRound then
@@ -438,10 +484,10 @@ function ScheduleScreen.drawBracketMatch(match, x, y, round)
     if string.len(homeText) > 18 then
         homeText = string.sub(homeText, 1, 15) .. "..."
     end
-    love.graphics.print(homeText, x + 10, y + 10)
+    love.graphics.print(homeText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(10))
 
     if hasPlayed then
-        love.graphics.print(tostring(match.homeScore), x + MATCHUP_WIDTH - 30, y + 10)
+        love.graphics.print(tostring(match.homeScore), x + scaledMatchupWidth - UIScale.scaleUniform(30), y + UIScale.scaleHeight(10))
     end
 
     -- Away team
@@ -449,10 +495,10 @@ function ScheduleScreen.drawBracketMatch(match, x, y, round)
     if string.len(awayText) > 18 then
         awayText = string.sub(awayText, 1, 15) .. "..."
     end
-    love.graphics.print(awayText, x + 10, y + 40)
+    love.graphics.print(awayText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(40))
 
     if hasPlayed then
-        love.graphics.print(tostring(match.awayScore), x + MATCHUP_WIDTH - 30, y + 40)
+        love.graphics.print(tostring(match.awayScore), x + scaledMatchupWidth - UIScale.scaleUniform(30), y + UIScale.scaleHeight(40))
     end
 
     -- Winner indicator (bold line would be drawn separately as connections)
@@ -460,11 +506,11 @@ function ScheduleScreen.drawBracketMatch(match, x, y, round)
         local winner = match.homeScore > match.awayScore and match.homeTeam or match.awayTeam
         if winner then
             love.graphics.setColor(0.3, 0.8, 0.3)
-            love.graphics.setLineWidth(2)
+            love.graphics.setLineWidth(UIScale.scaleUniform(2))
             if winner == match.homeTeam then
-                love.graphics.rectangle("line", x + 5, y + 5, MATCHUP_WIDTH - 10, 25)
+                love.graphics.rectangle("line", x + UIScale.scaleUniform(5), y + UIScale.scaleHeight(5), scaledMatchupWidth - UIScale.scaleUniform(10), UIScale.scaleHeight(25))
             else
-                love.graphics.rectangle("line", x + 5, y + 35, MATCHUP_WIDTH - 10, 25)
+                love.graphics.rectangle("line", x + UIScale.scaleUniform(5), y + UIScale.scaleHeight(35), scaledMatchupWidth - UIScale.scaleUniform(10), UIScale.scaleHeight(25))
             end
         end
     end
@@ -481,8 +527,13 @@ function ScheduleScreen.mousepressed(x, y, button)
 
     -- Check toggle button click
     if SeasonManager.inPlayoffs then
-        if x >= TOGGLE_BUTTON_X and x <= TOGGLE_BUTTON_X + TOGGLE_BUTTON_WIDTH and
-           y >= TOGGLE_BUTTON_Y and y <= TOGGLE_BUTTON_Y + TOGGLE_BUTTON_HEIGHT then
+        local scaledToggleX = UIScale.scaleX(TOGGLE_BUTTON_X)
+        local scaledToggleY = UIScale.scaleY(TOGGLE_BUTTON_Y)
+        local scaledToggleWidth = UIScale.scaleWidth(TOGGLE_BUTTON_WIDTH)
+        local scaledToggleHeight = UIScale.scaleHeight(TOGGLE_BUTTON_HEIGHT)
+
+        if x >= scaledToggleX and x <= scaledToggleX + scaledToggleWidth and
+           y >= scaledToggleY and y <= scaledToggleY + scaledToggleHeight then
             ScheduleScreen.showBracket = not ScheduleScreen.showBracket
         end
     end
@@ -491,7 +542,7 @@ end
 --- Handles mouse wheel scrolling
 --- @param y number Scroll amount
 function ScheduleScreen.wheelmoved(y)
-    ScheduleScreen.scrollOffset = ScheduleScreen.scrollOffset - (y * 30)
+    ScheduleScreen.scrollOffset = ScheduleScreen.scrollOffset - (y * UIScale.scaleUniform(30))
     ScheduleScreen.scrollOffset = math.max(0, math.min(ScheduleScreen.scrollOffset, ScheduleScreen.maxScroll))
 end
 
