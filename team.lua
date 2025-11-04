@@ -69,7 +69,9 @@ function Team:new(name, conference, coachId, isPlayer)
         -- Roster (cards will be populated from coach)
         offensiveCards = {},
         defensiveCards = {},
-        benchCards = {}
+        benchCards = {},
+        kicker = nil,  -- Special teams kicker
+        punter = nil   -- Special teams punter
     }
 
     setmetatable(t, Team)
@@ -168,6 +170,24 @@ function Team:resetSeason()
     resetCardStats(self.offensiveCards)
     resetCardStats(self.defensiveCards)
     resetCardStats(self.benchCards)
+
+    -- Reset special teams stats
+    if self.kicker then
+        self.kicker.yardsGained = 0
+        self.kicker.touchdownsScored = 0
+        self.kicker.cardsBoosted = 0
+        self.kicker.timesSlowed = 0
+        self.kicker.timesFroze = 0
+        self.kicker.yardsReduced = 0
+    end
+    if self.punter then
+        self.punter.yardsGained = 0
+        self.punter.touchdownsScored = 0
+        self.punter.cardsBoosted = 0
+        self.punter.timesSlowed = 0
+        self.punter.timesFroze = 0
+        self.punter.yardsReduced = 0
+    end
 end
 
 --- Generates all 18 teams for the league
@@ -188,6 +208,15 @@ function Team.generateLeague()
         team.benchCards = {}  -- AI teams start with empty bench
         team.cash = 100  -- AI teams start with same cash as player
 
+        -- Create special teams cards
+        local Card = require("card")
+        if randomCoach.kicker then
+            team.kicker = Card:new(randomCoach.kicker.position, randomCoach.kicker.cardType, randomCoach.kicker.stats)
+        end
+        if randomCoach.punter then
+            team.punter = Card:new(randomCoach.punter.position, randomCoach.punter.cardType, randomCoach.punter.stats)
+        end
+
         table.insert(teams, team)
     end
 
@@ -201,6 +230,15 @@ function Team.generateLeague()
         team.defensiveCards = Coach.createCardSet(randomCoach.defensiveCards)
         team.benchCards = {}  -- AI teams start with empty bench
         team.cash = 100  -- AI teams start with same cash as player
+
+        -- Create special teams cards
+        local Card = require("card")
+        if randomCoach.kicker then
+            team.kicker = Card:new(randomCoach.kicker.position, randomCoach.kicker.cardType, randomCoach.kicker.stats)
+        end
+        if randomCoach.punter then
+            team.punter = Card:new(randomCoach.punter.position, randomCoach.punter.cardType, randomCoach.punter.stats)
+        end
 
         table.insert(teams, team)
     end

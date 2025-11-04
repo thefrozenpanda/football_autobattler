@@ -51,11 +51,20 @@ function SeasonManager.startNewSeason(playerCoachId, playerTeamName)
 
     -- Load player's coach cards
     local Coach = require("coach")
+    local Card = require("card")
     local coachData = Coach.getById(playerCoachId)
     playerTeam.offensiveCards = Coach.createCardSet(coachData.offensiveCards)
     playerTeam.defensiveCards = Coach.createCardSet(coachData.defensiveCards)
     playerTeam.benchCards = {}  -- Start with empty bench
     playerTeam.cash = 100  -- Starting cash for first week training
+
+    -- Create special teams cards
+    if coachData.kicker then
+        playerTeam.kicker = Card:new(coachData.kicker.position, coachData.kicker.cardType, coachData.kicker.stats)
+    end
+    if coachData.punter then
+        playerTeam.punter = Card:new(coachData.punter.position, coachData.punter.cardType, coachData.punter.stats)
+    end
 
     -- Replace a random Conference A team with player team
     for i, team in ipairs(SeasonManager.teams) do

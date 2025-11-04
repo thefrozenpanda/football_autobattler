@@ -140,7 +140,7 @@ local DEFENSIVE_FORMATION_MIRRORED = {
     {x = 0, y = 585}      -- 11. S (A9 mirrored from C9)
 }
 
-function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
+function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam, playerKicker, playerPunter, aiKicker, aiPunter)
     -- Initialize debug logger
     debugLogger = DebugLogger:new()
 
@@ -176,7 +176,7 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     tooltipHeaderFont = love.graphics.newFont(UIScale.scaleFontSize(18))
     tooltipTextFont = love.graphics.newFont(UIScale.scaleFontSize(16))
     popupFont = love.graphics.newFont(UIScale.scaleFontSize(36))
-    phaseManager = PhaseManager:new(playerCoachId, aiCoachId)
+    phaseManager = PhaseManager:new(playerCoachId, aiCoachId, playerKicker, playerPunter, aiKicker, aiPunter)
     timeLeft = matchTime
     paused = false
     selectedPauseOption = 0
@@ -203,10 +203,13 @@ function match.update(dt)
     matchStartTime = matchStartTime + dt  -- Track time since match start
     timeLeft = math.max(0, timeLeft - dt)
 
+    -- Update phaseManager with current time
+    phaseManager.timeLeft = timeLeft
+
     phaseManager:update(dt)
     phaseManager:checkPhaseEnd()
 
-    -- Check for TD/Turnover events and trigger popup (only after 0.5s to prevent false events at match start)
+    -- Check for TD/Turnover/Special Teams events and trigger popup (only after 0.5s to prevent false events at match start)
     if matchStartTime > 0.5 and phaseManager.lastEvent then
         if phaseManager.lastEvent == "touchdown" then
             local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
@@ -214,6 +217,15 @@ function match.update(dt)
         elseif phaseManager.lastEvent == "turnover" then
             local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
             match.showPopup(string.format("%s TURNOVER!", teamName), "turnover")
+        elseif phaseManager.lastEvent == "field_goal_made" then
+            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+            match.showPopup(string.format("%s %dYD FIELD GOAL!", teamName, phaseManager.lastEventYards), "field_goal")
+        elseif phaseManager.lastEvent == "field_goal_missed" then
+            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+            match.showPopup(string.format("%s MISSED %dYD FG!", teamName, phaseManager.lastEventYards), "turnover")
+        elseif phaseManager.lastEvent == "punt" then
+            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+            match.showPopup(string.format("%s %dYD PUNT", teamName, phaseManager.lastEventYards), "punt")
         end
         -- Clear the event
         phaseManager.lastEvent = nil
@@ -499,17 +511,17 @@ function match.drawFieldIndicator()
     -- Draw endzones
     local endzoneWidth = fieldWidth * 0.1
 
-    -- AI endzone (left, at position 0)
-    love.graphics.setColor(aiColor[1], aiColor[2], aiColor[3], 0.3)
+    -- Player endzone (left, at visual position for field pos 100)
+    love.graphics.setColor(playerColor[1], playerColor[2], playerColor[3], 0.3)
     love.graphics.rectangle("fill", fieldX, fieldY, endzoneWidth, fieldHeight)
-    love.graphics.setColor(aiColor)
+    love.graphics.setColor(playerColor)
     love.graphics.setLineWidth(UIScale.scaleUniform(2))
     love.graphics.rectangle("line", fieldX, fieldY, endzoneWidth, fieldHeight)
 
-    -- Player endzone (right, at position 100)
-    love.graphics.setColor(playerColor[1], playerColor[2], playerColor[3], 0.3)
+    -- AI endzone (right, at visual position for field pos 0)
+    love.graphics.setColor(aiColor[1], aiColor[2], aiColor[3], 0.3)
     love.graphics.rectangle("fill", fieldX + fieldWidth - endzoneWidth, fieldY, endzoneWidth, fieldHeight)
-    love.graphics.setColor(playerColor)
+    love.graphics.setColor(aiColor)
     love.graphics.rectangle("line", fieldX + fieldWidth - endzoneWidth, fieldY, endzoneWidth, fieldHeight)
 
     -- Draw field line (between endzones)
@@ -521,9 +533,10 @@ function match.drawFieldIndicator()
     love.graphics.line(lineStartX, lineY, lineEndX, lineY)
 
     -- Draw yard markers (every 5 yards)
+    -- Reversed: 100 on left, 0 on right
     local playableWidth = lineEndX - lineStartX
     for yard = 5, 95, 5 do
-        local markerX = lineStartX + (yard / 100) * playableWidth
+        local markerX = lineStartX + ((100 - yard) / 100) * playableWidth
         local markerHeight = (yard % 10 == 0) and UIScale.scaleHeight(8) or UIScale.scaleHeight(5)
         love.graphics.line(markerX, lineY - markerHeight/2, markerX, lineY + markerHeight/2)
     end
@@ -534,7 +547,8 @@ function match.drawFieldIndicator()
     love.graphics.line(midX, lineY - UIScale.scaleHeight(10), midX, lineY + UIScale.scaleHeight(10))
 
     -- Draw ball position indicator (circle)
-    local ballX = lineStartX + (fieldPosition / 100) * playableWidth
+    -- Reversed: position 100 on left, position 0 on right
+    local ballX = lineStartX + ((100 - fieldPosition) / 100) * playableWidth
     local ballRadius = UIScale.scaleUniform(8)
     local ballColor = playerIsOffense and playerColor or aiColor
 
@@ -546,11 +560,11 @@ function match.drawFieldIndicator()
 
     -- Draw team labels in endzones
     love.graphics.setFont(smallFont)
-    love.graphics.setColor(aiColor)
-    love.graphics.printf("AI", fieldX, fieldY + UIScale.scaleHeight(8), endzoneWidth, "center")
-
     love.graphics.setColor(playerColor)
-    love.graphics.printf("YOU", fieldX + fieldWidth - endzoneWidth, fieldY + UIScale.scaleHeight(8), endzoneWidth, "center")
+    love.graphics.printf("YOU", fieldX, fieldY + UIScale.scaleHeight(8), endzoneWidth, "center")
+
+    love.graphics.setColor(aiColor)
+    love.graphics.printf("AI", fieldX + fieldWidth - endzoneWidth, fieldY + UIScale.scaleHeight(8), endzoneWidth, "center")
 
     -- Reset font and color
     love.graphics.setFont(font)
@@ -822,6 +836,10 @@ function match.showPopup(text, type)
         popupColor = {1, 0.9, 0.3}  -- Soft yellow
     elseif type == "turnover" then
         popupColor = {1, 0.4, 0.4}  -- Soft red
+    elseif type == "field_goal" then
+        popupColor = {0.3, 1, 0.5}  -- Soft green
+    elseif type == "punt" then
+        popupColor = {0.6, 0.8, 1}  -- Soft blue
     end
 end
 
@@ -1201,7 +1219,7 @@ end
 --- @return number, number Home score, away score
 function match.simulateAIMatch(teamA, teamB)
     -- Create a temporary phase manager for simulation
-    local simPhaseManager = PhaseManager:new(teamA.coachId, teamB.coachId)
+    local simPhaseManager = PhaseManager:new(teamA.coachId, teamB.coachId, teamA.kicker, teamA.punter, teamB.kicker, teamB.punter)
 
     local simTime = matchTime
     local simInOvertime = false
@@ -1210,6 +1228,7 @@ function match.simulateAIMatch(teamA, teamB)
 
     -- Run regulation time
     while simTime > 0 do
+        simPhaseManager.timeLeft = simTime  -- Update time for special teams decisions
         simPhaseManager:update(timeStep)
         simPhaseManager:checkPhaseEnd()  -- Critical: Check for phase transitions and scoring
         simTime = simTime - timeStep
@@ -1222,6 +1241,7 @@ function match.simulateAIMatch(teamA, teamB)
         simTime = overtimeTime
 
         while simTime > 0 do
+            simPhaseManager.timeLeft = simTime  -- Update time for special teams decisions
             simPhaseManager:update(timeStep)
             simPhaseManager:checkPhaseEnd()  -- Critical: Check for phase transitions and scoring
             simTime = simTime - timeStep

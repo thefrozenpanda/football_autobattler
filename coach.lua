@@ -19,6 +19,16 @@ local function defender(pos, effect, strengthMin, strengthMax, targets, spd)
     return {position = pos, cardType = Card.TYPE.DEFENDER, stats = {effectType = effect, effectStrengthMin = strengthMin, effectStrengthMax = strengthMax, targetPositions = targets, speed = spd}}
 end
 
+-- Helper function to create kicker
+local function kicker(maxRange, maxRangeAccuracy)
+    return {position = "K", cardType = Card.TYPE.KICKER, stats = {kickerMaxRange = maxRange, kickerMaxRangeAccuracy = maxRangeAccuracy}}
+end
+
+-- Helper function to create punter
+local function punter(minRange, maxRange)
+    return {position = "P", cardType = Card.TYPE.PUNTER, stats = {punterMinRange = minRange, punterMaxRange = maxRange}}
+end
+
 -- Coach type definitions
 Coach.types = {
     {
@@ -58,7 +68,11 @@ Coach.types = {
             defender("CB", Card.EFFECT.FREEZE, 0.4, 1.6, {"WR"}, 5.0),
             defender("S", Card.EFFECT.SLOW, 1.2, 2.8, {"TE", "WR"}, 4.4),
             defender("S", Card.EFFECT.SLOW, 1.2, 2.8, {"TE", "WR"}, 4.4)
-        }
+        },
+
+        -- Special Teams (2 players)
+        kicker = kicker(50, 70),    -- Standard kicker: 50 yard range, 70% max accuracy
+        punter = punter(35, 50)     -- Standard punter: 35-50 yard range
     },
 
     {
@@ -98,7 +112,11 @@ Coach.types = {
             defender("CB", Card.EFFECT.FREEZE, 0.5, 2.0, {"WR"}, 5.2),
             defender("S", Card.EFFECT.SLOW, 1.5, 3.5, {"TE", "WR"}, 4.6),
             defender("S", Card.EFFECT.REMOVE_YARDS, 0.7, 2.3, {}, 4.6)
-        }
+        },
+
+        -- Special Teams (2 players)
+        kicker = kicker(50, 70),    -- Standard kicker: 50 yard range, 70% max accuracy
+        punter = punter(35, 50)     -- Standard punter: 35-50 yard range
     },
 
     {
@@ -138,7 +156,11 @@ Coach.types = {
             defender("CB", Card.EFFECT.FREEZE, 0.5, 1.5, {"WR"}, 5.0),
             defender("S", Card.EFFECT.SLOW, 1.4, 2.6, {"TE", "WR"}, 4.4),
             defender("S", Card.EFFECT.SLOW, 1.4, 2.6, {"TE", "WR"}, 4.4)
-        }
+        },
+
+        -- Special Teams (2 players) - ENHANCED with bonuses
+        kicker = kicker(55, 75),    -- Elite kicker: 55 yard range (+5 bonus), 75% max accuracy (+5% bonus)
+        punter = punter(40, 50)     -- Elite punter: 40-50 yard range (+5 min bonus)
     },
 
     {
@@ -178,7 +200,11 @@ Coach.types = {
             defender("CB", Card.EFFECT.SLOW, 1.5, 2.5, {"WR"}, 4.8),
             defender("S", Card.EFFECT.SLOW, 1.5, 2.5, {"TE"}, 4.2),
             defender("S", Card.EFFECT.REMOVE_YARDS, 0.8, 2.2, {}, 4.2)
-        }
+        },
+
+        -- Special Teams (2 players)
+        kicker = kicker(50, 70),    -- Standard kicker: 50 yard range, 70% max accuracy
+        punter = punter(35, 50)     -- Standard punter: 35-50 yard range
     }
 }
 

@@ -11,7 +11,9 @@ Card.logger = nil
 Card.TYPE = {
     YARD_GENERATOR = "yard_generator",  -- QB, RB, WR (generates yards)
     BOOSTER = "booster",                -- OL, some TEs (boosts other cards)
-    DEFENDER = "defender"                -- All defensive positions
+    DEFENDER = "defender",              -- All defensive positions
+    KICKER = "kicker",                  -- Field goal kicker
+    PUNTER = "punter"                   -- Punter
 }
 
 -- Defensive effect types
@@ -46,6 +48,17 @@ function Card:new(position, cardType, stats)
         effectStrength = stats.effectStrength or 0, -- Strength of effect
         targetPositions = stats.targetPositions or {}, -- Which positions to target
 
+        -- Kicker stats
+        kickerMaxRange = stats.kickerMaxRange or 50,         -- Max FG distance (default 50 yards)
+        kickerMaxRangeAccuracy = stats.kickerMaxRangeAccuracy or 70,  -- Accuracy at max range (default 70%)
+        baseKickerMaxRange = stats.kickerMaxRange or 50,     -- Original before upgrades
+        baseKickerMaxRangeAccuracy = stats.kickerMaxRangeAccuracy or 70,  -- Original before upgrades
+
+        -- Punter stats
+        punterMinRange = stats.punterMinRange or 35,         -- Min punt distance (default 35 yards)
+        punterMaxRange = stats.punterMaxRange or 50,         -- Max punt distance (default 50 yards)
+        basePunterMaxRange = stats.punterMaxRange or 50,     -- Original before upgrades
+
         -- Common stats
         speed = stats.speed or 1.5,
         cooldown = stats.speed or 1.5,  -- Cooldown in seconds between actions
@@ -59,6 +72,9 @@ function Card:new(position, cardType, stats)
         boostUpgrades = 0,          -- Number of booster % upgrades applied
         durationUpgrades = 0,       -- Number of defender duration upgrades applied
         bonusYardsUpgrades = 0,     -- Number of bonus yards upgrades applied
+        kickerRangeUpgrades = 0,    -- Number of kicker max range upgrades
+        kickerAccuracyUpgrades = 0, -- Number of kicker accuracy upgrades
+        punterRangeUpgrades = 0,    -- Number of punter max range upgrades
         hasImmunity = false,        -- Whether card has freeze/slow immunity
 
         -- Visual/state
@@ -386,6 +402,78 @@ function Card.getImmunityUpgradeCost()
     return 400
 end
 
+--- Gets the cost of upgrading kicker max range
+--- @return number Cost in cash
+function Card.getKickerRangeUpgradeCost()
+    return 100
+end
+
+--- Gets the cost of upgrading kicker accuracy
+--- @return number Cost in cash
+function Card.getKickerAccuracyUpgradeCost()
+    return 150
+end
+
+--- Gets the cost of upgrading punter max range
+--- @return number Cost in cash
+function Card.getPunterRangeUpgradeCost()
+    return 100
+end
+
+--- Upgrades the kicker's max range
+--- Cost: 100 cash, Effect: +2 yards max range
+--- @return boolean True if upgrade successful
+function Card:upgradeKickerRange()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    if self.cardType ~= Card.TYPE.KICKER then
+        return false
+    end
+
+    self.kickerMaxRange = self.kickerMaxRange + 2
+    self.kickerRangeUpgrades = self.kickerRangeUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+    return true
+end
+
+--- Upgrades the kicker's max range accuracy
+--- Cost: 150 cash, Effect: +5% accuracy at max range
+--- @return boolean True if upgrade successful
+function Card:upgradeKickerAccuracy()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    if self.cardType ~= Card.TYPE.KICKER then
+        return false
+    end
+
+    self.kickerMaxRangeAccuracy = self.kickerMaxRangeAccuracy + 5
+    self.kickerAccuracyUpgrades = self.kickerAccuracyUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+    return true
+end
+
+--- Upgrades the punter's max range
+--- Cost: 100 cash, Effect: +5 yards max range
+--- @return boolean True if upgrade successful
+function Card:upgradePunterRange()
+    if not self:canUpgrade() then
+        return false
+    end
+
+    if self.cardType ~= Card.TYPE.PUNTER then
+        return false
+    end
+
+    self.punterMaxRange = self.punterMaxRange + 5
+    self.punterRangeUpgrades = self.punterRangeUpgrades + 1
+    self.upgradeCount = self.upgradeCount + 1
+    return true
+end
+
 --- Calculates actual yards considering bonus yards chance
 --- @param baseYards number Base yards from card
 --- @return number Final yards (with potential bonus)
@@ -408,12 +496,18 @@ function Card:resetUpgrades()
     self.yardsPerAction = self.baseYardsPerAction
     self.cooldown = self.baseCooldown
     self.speed = self.baseCooldown
+    self.kickerMaxRange = self.baseKickerMaxRange
+    self.kickerMaxRangeAccuracy = self.baseKickerMaxRangeAccuracy
+    self.punterMaxRange = self.basePunterMaxRange
     self.upgradeCount = 0
     self.yardsUpgrades = 0
     self.cooldownUpgrades = 0
     self.boostUpgrades = 0
     self.durationUpgrades = 0
     self.bonusYardsUpgrades = 0
+    self.kickerRangeUpgrades = 0
+    self.kickerAccuracyUpgrades = 0
+    self.punterRangeUpgrades = 0
     self.hasImmunity = false
 end
 
@@ -449,6 +543,21 @@ function Card:recalculateStats()
         -- Need to calculate base effect strength
         local baseStrength = self.effectStrength - (self.durationUpgrades * 0.5)
         self.effectStrength = baseStrength + (self.durationUpgrades * 0.5)
+    end
+
+    -- Apply kicker range upgrades (+2 yards per upgrade)
+    if self.kickerRangeUpgrades and self.kickerRangeUpgrades > 0 then
+        self.kickerMaxRange = self.baseKickerMaxRange + (self.kickerRangeUpgrades * 2)
+    end
+
+    -- Apply kicker accuracy upgrades (+5% per upgrade)
+    if self.kickerAccuracyUpgrades and self.kickerAccuracyUpgrades > 0 then
+        self.kickerMaxRangeAccuracy = self.baseKickerMaxRangeAccuracy + (self.kickerAccuracyUpgrades * 5)
+    end
+
+    -- Apply punter range upgrades (+5 yards per upgrade)
+    if self.punterRangeUpgrades and self.punterRangeUpgrades > 0 then
+        self.punterMaxRange = self.basePunterMaxRange + (self.punterRangeUpgrades * 5)
     end
 
     -- bonusYardsUpgrades and hasImmunity are already stored as flags, no recalc needed

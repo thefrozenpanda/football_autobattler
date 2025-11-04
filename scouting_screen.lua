@@ -276,15 +276,20 @@ function ScoutingScreen.drawCard(card, x, y, mx, my)
 
     -- Upgrade indicator (if card has been upgraded)
     if card.upgradeCount and card.upgradeCount > 0 then
-        local badgeSize = UIScale.scaleUniform(24)
+        local badgeSize = UIScale.scaleUniform(18)
         local badgeX = x + scaledCardWidth - badgeSize - UIScale.scaleUniform(5)
         local badgeY = y + UIScale.scaleHeight(5)
 
-        -- Badge background (gold for 3+ upgrades, silver for 1-2)
-        if card.upgradeCount >= 3 then
-            love.graphics.setColor(0.85, 0.65, 0.1, 0.9)
+        -- Badge color based on upgrade count
+        if card.upgradeCount == 1 then
+            -- Bronze
+            love.graphics.setColor(0.8, 0.5, 0.2, 0.95)
+        elseif card.upgradeCount == 2 then
+            -- Silver
+            love.graphics.setColor(0.75, 0.75, 0.75, 0.95)
         else
-            love.graphics.setColor(0.6, 0.6, 0.65, 0.9)
+            -- Gold (3+)
+            love.graphics.setColor(1, 0.84, 0, 0.95)
         end
         love.graphics.circle("fill", badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2)
 
@@ -292,13 +297,6 @@ function ScoutingScreen.drawCard(card, x, y, mx, my)
         love.graphics.setColor(0, 0, 0, 0.8)
         love.graphics.setLineWidth(UIScale.scaleUniform(2))
         love.graphics.circle("line", badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2)
-
-        -- Upgrade count text
-        love.graphics.setFont(cardPositionFont)
-        love.graphics.setColor(1, 1, 1)
-        local upgradeText = string.format("+%d", card.upgradeCount)
-        local textWidth = cardPositionFont:getWidth(upgradeText)
-        love.graphics.print(upgradeText, badgeX + (badgeSize - textWidth) / 2, badgeY + UIScale.scaleHeight(3))
     end
 end
 
@@ -413,14 +411,21 @@ function ScoutingScreen.drawTooltip(card)
     love.graphics.print(typeText, tooltipX + padding, contentY)
     contentY = contentY + lineHeight
 
-    -- Upgrade count (if upgraded)
+    -- Upgrade tier (if upgraded)
     if card.upgradeCount and card.upgradeCount > 0 then
-        if card.upgradeCount >= 3 then
-            love.graphics.setColor(0.85, 0.65, 0.1)  -- Gold
+        local tierName, tierColor
+        if card.upgradeCount == 1 then
+            tierName = "Bronze"
+            tierColor = {0.8, 0.5, 0.2}
+        elseif card.upgradeCount == 2 then
+            tierName = "Silver"
+            tierColor = {0.75, 0.75, 0.75}
         else
-            love.graphics.setColor(0.6, 0.6, 0.65)  -- Silver
+            tierName = "Gold"
+            tierColor = {1, 0.84, 0}
         end
-        love.graphics.print(string.format("Upgrades: %d", card.upgradeCount), tooltipX + padding, contentY)
+        love.graphics.setColor(tierColor)
+        love.graphics.print(string.format("Tier: %s (%d)", tierName, card.upgradeCount), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
     end
 

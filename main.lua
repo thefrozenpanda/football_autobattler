@@ -162,7 +162,11 @@ function love.update(dt)
                     SeasonManager.playerTeam.coachId,
                     matchData.opponentTeam.coachId,
                     SeasonManager.playerTeam.name,
-                    matchData.opponentTeam.name
+                    matchData.opponentTeam.name,
+                    SeasonManager.playerTeam.kicker,
+                    SeasonManager.playerTeam.punter,
+                    matchData.opponentTeam.kicker,
+                    matchData.opponentTeam.punter
                 )
 
                 -- Advance to match phase
