@@ -22,7 +22,7 @@ function PhaseManager:new(playerCoachId, aiCoachId)
         playerScore = 0,
         aiScore = 0,
 
-        -- Event tracking for popups
+        -- Event tracking for popups (nil = no event)
         lastEvent = nil,  -- "touchdown" or "turnover"
         lastEventTeam = nil  -- "player" or "ai"
     }
@@ -262,9 +262,16 @@ function PhaseManager:switchPhase(isTouchdown)
         self.field:reset(nil, yardsNeeded)
     else
         -- After turnover, new offense starts where old offense was
-        -- Calculate yards needed from field position
-        local yardsFromEndzone = 100 - currentFieldPos
-        self.field:reset(currentFieldPos, yardsFromEndzone)
+        -- Player team drives toward 100, AI team drives toward 0
+        -- Calculate yards needed based on which team now has the ball
+        if self.currentPhase == "player_offense" then
+            -- Player now has the ball, drives toward 100
+            yardsNeeded = 100 - currentFieldPos
+        else
+            -- AI now has the ball, drives toward 0
+            yardsNeeded = currentFieldPos
+        end
+        self.field:reset(currentFieldPos, yardsNeeded)
     end
 end
 

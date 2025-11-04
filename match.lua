@@ -67,6 +67,7 @@ local popupTimer = 0
 local popupDuration = 2.3  -- 0.3s fade in + 1.5s display + 0.5s fade out
 local popupAlpha = 0
 local popupFont
+local matchStartTime = 0  -- Track time since match start to prevent false events
 
 -- Card dimensions (calculated dynamically to fit 3x10 grid with 5px spacing)
 -- Grid area: ~300px wide x ~700px tall
@@ -185,9 +186,10 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     winnerData = nil
     match.shouldReturnToMenu = false  -- Reset flag for new match
     match.optionsRequested = false  -- Reset options flag
+    matchStartTime = 0  -- Reset match start time
 
     debugLogger:log("Match initialization complete")
-    debugLogger:log("Down duration: 3.0 seconds")
+    debugLogger:log("Down duration: 2.0 seconds")
 end
 
 function match.update(dt)
@@ -198,13 +200,14 @@ function match.update(dt)
 
     flux.update(dt)  -- Update Flux animations
     match.updatePopup(dt)  -- Update TD/Turnover popup
+    matchStartTime = matchStartTime + dt  -- Track time since match start
     timeLeft = math.max(0, timeLeft - dt)
 
     phaseManager:update(dt)
     phaseManager:checkPhaseEnd()
 
-    -- Check for TD/Turnover events and trigger popup
-    if phaseManager.lastEvent then
+    -- Check for TD/Turnover events and trigger popup (only after 0.5s to prevent false events at match start)
+    if matchStartTime > 0.5 and phaseManager.lastEvent then
         if phaseManager.lastEvent == "touchdown" then
             local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
             match.showPopup(string.format("%s TOUCHDOWN!", teamName), "touchdown")
@@ -213,6 +216,10 @@ function match.update(dt)
             match.showPopup(string.format("%s TURNOVER!", teamName), "turnover")
         end
         -- Clear the event
+        phaseManager.lastEvent = nil
+        phaseManager.lastEventTeam = nil
+    elseif matchStartTime <= 0.5 and phaseManager.lastEvent then
+        -- Clear any events that occur in the first 0.5 seconds without showing popup
         phaseManager.lastEvent = nil
         phaseManager.lastEventTeam = nil
     end
