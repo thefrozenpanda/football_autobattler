@@ -220,6 +220,7 @@ function match.update(dt)
     -- In overtime, end game immediately if anyone scores
     if inOvertime and phaseManager.playerScore ~= phaseManager.aiScore then
         matchEnded = true
+        match.stopAllAnimations()  -- Stop all card animations
         winnerData = match.calculateWinner()
 
         if debugLogger then
@@ -232,6 +233,26 @@ function match.update(dt)
 
     if timeLeft <= 0 then
         match.handleMatchEnd()
+    end
+end
+
+--- Stops all card animations
+function match.stopAllAnimations()
+    -- Clear all Flux tweens
+    flux.clear()
+
+    -- Reset all card animation offsets
+    local playerCards = phaseManager:getActivePlayerCards()
+    local aiCards = phaseManager:getActiveAICards()
+
+    for _, card in ipairs(playerCards) do
+        card.animOffsetX = 0
+        card.justActed = false
+    end
+
+    for _, card in ipairs(aiCards) do
+        card.animOffsetX = 0
+        card.justActed = false
     end
 end
 
@@ -253,6 +274,7 @@ function match.handleMatchEnd()
     else
         -- Game over - declare winner
         matchEnded = true
+        match.stopAllAnimations()  -- Stop all card animations
         winnerData = match.calculateWinner()
 
         if debugLogger then
@@ -521,13 +543,13 @@ function match.drawCard(card, x, y)
     if card.cardType == Card.TYPE.YARD_GENERATOR then
         love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
-            string.format("%.1f yd", card.yardsPerAction),
+            string.format("%.1f-%.1f", card.yardsPerActionMin, card.yardsPerActionMax),
             x, y + UIScale.scaleHeight(16), scaledCardWidth, "center"
         )
     elseif card.cardType == Card.TYPE.BOOSTER then
         love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
-            string.format("+%d%%", card.boostAmount),
+            string.format("+%d-%d%%", math.floor(card.boostAmountMin), math.ceil(card.boostAmountMax)),
             x, y + UIScale.scaleHeight(16), scaledCardWidth, "center"
         )
     elseif card.cardType == Card.TYPE.DEFENDER then

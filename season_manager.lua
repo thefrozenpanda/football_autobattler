@@ -126,6 +126,8 @@ end
 --- Advances to the preparation phase
 function SeasonManager.goToPreparation()
     SeasonManager.currentPhase = SeasonManager.PHASE.PREPARATION
+    -- Clear weekly upgrade options for next week
+    SeasonManager.weeklyUpgradeOptions = nil
 end
 
 --- Advances to the match phase
