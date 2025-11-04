@@ -139,10 +139,8 @@ function TrainingScreen.generateUpgradeOptions()
                 cost = finalCost
             })
 
-            -- Remove card from pool to avoid duplicates (unless they can still be upgraded)
-            if not card:canUpgrade() and finalType ~= UPGRADE_TYPE.IMMUNITY then
-                table.remove(upgradeableCards, cardIndex)
-            end
+            -- Always remove card from pool to avoid duplicates in the 3 options
+            table.remove(upgradeableCards, cardIndex)
         end
     end
 

@@ -272,11 +272,22 @@ function PhaseManager:switchPhase(isTouchdown)
 
     -- Determine new starting position and yards needed
     local yardsNeeded
+    local startingPosition
     if isTouchdown then
-        -- After touchdown, offense starts at own 20 (needs 80 yards)
+        -- After touchdown/field goal, offense starts at own 20 (needs 80 yards)
         local coach = (self.currentPhase == "player_offense") and self.playerCoach or self.aiCoach
         yardsNeeded = (coach.id == "special_teams") and 68 or 80
-        self.field:reset(nil, yardsNeeded)
+
+        -- Set correct starting position based on which team is on offense
+        if self.currentPhase == "player_offense" then
+            -- Player drives toward 100, starts at their 20
+            startingPosition = 20
+        else
+            -- AI drives toward 0, starts at their 20 (which is position 80)
+            startingPosition = 80
+        end
+
+        self.field:reset(startingPosition, yardsNeeded)
     else
         -- After turnover, new offense starts where old offense was
         -- Player team drives toward 100, AI team drives toward 0

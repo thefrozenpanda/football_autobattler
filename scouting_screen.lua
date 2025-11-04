@@ -181,6 +181,23 @@ function ScoutingScreen.draw()
     yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
     ScoutingScreen.drawCardRow(ScoutingScreen.opponent.defensiveCards, yOffset)
 
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60)
+
+    -- Special Teams
+    love.graphics.setFont(sectionFont)
+    love.graphics.setColor(0.4, 0.9, 0.4)
+    love.graphics.print("Opponent Special Teams", startX, yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
+    local specialTeamsCards = {}
+    if ScoutingScreen.opponent.kicker then
+        table.insert(specialTeamsCards, ScoutingScreen.opponent.kicker)
+    end
+    if ScoutingScreen.opponent.punter then
+        table.insert(specialTeamsCards, ScoutingScreen.opponent.punter)
+    end
+    ScoutingScreen.drawCardRow(specialTeamsCards, yOffset)
+
     -- Start Match button
     local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
