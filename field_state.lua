@@ -19,8 +19,9 @@ function FieldState:new(yardsNeeded)
         downTimer = 2.0,             -- Time remaining in current down (2 seconds)
         downDuration = 2.0,          -- Duration of each down
 
-        -- Field position (for turnovers)
-        fieldPosition = 20,          -- Current yard line (20 = own 20)
+        -- Field position (for turnovers and visualization)
+        fieldPosition = 20,          -- Current yard line (0-100)
+        drivingForward = true,       -- True = driving toward 100, False = driving toward 0
 
         -- Flags
         touchdownScored = false,
@@ -44,7 +45,15 @@ function FieldState:addYards(yards)
     -- Add yards to both counters
     self.totalYards = self.totalYards + yards
     self.downYards = self.downYards + yards
-    self.fieldPosition = self.fieldPosition + yards
+
+    -- Update field position based on direction
+    if self.drivingForward then
+        -- Driving toward 100 (player offense)
+        self.fieldPosition = self.fieldPosition + yards
+    else
+        -- Driving toward 0 (AI offense)
+        self.fieldPosition = self.fieldPosition - yards
+    end
 
     -- Check for touchdown
     if self.totalYards >= self.yardsNeeded then
@@ -61,7 +70,15 @@ function FieldState:removeYards(yards)
     -- Remove yards from both counters (using lume.clamp for cleaner code)
     self.totalYards = lume.clamp(self.totalYards - yards, 0, math.huge)
     self.downYards = lume.clamp(self.downYards - yards, 0, math.huge)
-    self.fieldPosition = lume.clamp(self.fieldPosition - yards, 20, 100)  -- Can't go back past own 20
+
+    -- Update field position based on direction (reverse of addYards)
+    if self.drivingForward then
+        -- Driving toward 100, removing yards moves back
+        self.fieldPosition = lume.clamp(self.fieldPosition - yards, 0, 100)
+    else
+        -- Driving toward 0, removing yards moves back
+        self.fieldPosition = lume.clamp(self.fieldPosition + yards, 0, 100)
+    end
 end
 
 function FieldState:achieveFirstDown()
@@ -107,7 +124,7 @@ function FieldState:getFieldPosition()
     return self.fieldPosition
 end
 
-function FieldState:reset(startingPosition, yardsNeeded)
+function FieldState:reset(startingPosition, yardsNeeded, drivingForward)
     -- Reset for new drive
     self.totalYards = 0
     self.downYards = 0
@@ -116,19 +133,33 @@ function FieldState:reset(startingPosition, yardsNeeded)
     self.touchdownScored = false
     self.turnoverOccurred = false
 
+    -- Set driving direction (default to forward if not specified)
+    if drivingForward ~= nil then
+        self.drivingForward = drivingForward
+    else
+        self.drivingForward = true  -- Default to player direction
+    end
+
     -- Set field position and yards needed
     if startingPosition and yardsNeeded then
         -- Both provided: use them directly (for turnovers)
         self.fieldPosition = startingPosition
         self.yardsNeeded = yardsNeeded
     elseif yardsNeeded then
-        -- Only yards needed: calculate starting position
+        -- Only yards needed: calculate starting position based on direction
         self.yardsNeeded = yardsNeeded
-        self.fieldPosition = 100 - yardsNeeded
+        if self.drivingForward then
+            -- Driving toward 100, start at 100 - yardsNeeded
+            self.fieldPosition = 100 - yardsNeeded
+        else
+            -- Driving toward 0, start at 0 + yardsNeeded
+            self.fieldPosition = yardsNeeded
+        end
     else
-        -- Default: start at own 20, need 80 yards
+        -- Default: start at own 20, need 80 yards, driving forward
         self.fieldPosition = 20
         self.yardsNeeded = 80
+        self.drivingForward = true
     end
 end
 

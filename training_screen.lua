@@ -121,6 +121,8 @@ function TrainingScreen.generateUpgradeOptions()
     -- Generate 3 random options (keep trying until we get 3)
     local attempts = 0
     local maxAttempts = 100  -- Safety limit
+    local usedCombinations = {}  -- Track (card, upgrade_type) pairs to avoid exact duplicates
+
     while #options < 3 and attempts < maxAttempts and #upgradeableCards > 0 do
         attempts = attempts + 1
         local selectedType = allUpgradeTypes[math.random(1, #allUpgradeTypes)]
@@ -133,14 +135,20 @@ function TrainingScreen.generateUpgradeOptions()
         local finalType, finalCost = TrainingScreen.getValidUpgradeForCard(card, selectedType)
 
         if finalType then
-            table.insert(options, {
-                type = finalType,
-                card = card,
-                cost = finalCost
-            })
+            -- Create a unique key for this (card, upgrade_type) combination
+            local combinationKey = tostring(card) .. "_" .. finalType
 
-            -- Always remove card from pool to avoid duplicates in the 3 options
-            table.remove(upgradeableCards, cardIndex)
+            -- Check if we've already used this exact combination
+            if not usedCombinations[combinationKey] then
+                table.insert(options, {
+                    type = finalType,
+                    card = card,
+                    cost = finalCost
+                })
+
+                -- Mark this combination as used
+                usedCombinations[combinationKey] = true
+            end
         end
     end
 
