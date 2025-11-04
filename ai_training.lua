@@ -20,7 +20,10 @@ local UPGRADE_TYPE = {
     BOOST = "boost",
     DURATION = "duration",
     BONUS_YARDS = "bonus_yards",
-    IMMUNITY = "immunity"
+    IMMUNITY = "immunity",
+    KICKER_RANGE = "kicker_range",
+    KICKER_ACCURACY = "kicker_accuracy",
+    PUNTER_RANGE = "punter_range"
 }
 
 --- Generate upgrade options for an AI team
@@ -29,7 +32,7 @@ local UPGRADE_TYPE = {
 function AITraining.generateUpgradeOptions(team)
     local options = {}
 
-    -- Get all upgradeable cards
+    -- Get all upgradeable cards (offensive + defensive + special teams)
     local upgradeableCards = {}
     for _, card in ipairs(team.offensiveCards) do
         if card:canUpgrade() or (not card.hasImmunity and card.upgradeCount <= 1) then
@@ -41,6 +44,13 @@ function AITraining.generateUpgradeOptions(team)
             table.insert(upgradeableCards, card)
         end
     end
+    -- Add special teams cards
+    if team.kicker and team.kicker:canUpgrade() then
+        table.insert(upgradeableCards, team.kicker)
+    end
+    if team.punter and team.punter:canUpgrade() then
+        table.insert(upgradeableCards, team.punter)
+    end
 
     -- Define all possible upgrade types
     local allUpgradeTypes = {
@@ -49,7 +59,10 @@ function AITraining.generateUpgradeOptions(team)
         UPGRADE_TYPE.BOOST,
         UPGRADE_TYPE.DURATION,
         UPGRADE_TYPE.BONUS_YARDS,
-        UPGRADE_TYPE.IMMUNITY
+        UPGRADE_TYPE.IMMUNITY,
+        UPGRADE_TYPE.KICKER_RANGE,
+        UPGRADE_TYPE.KICKER_ACCURACY,
+        UPGRADE_TYPE.PUNTER_RANGE
     }
 
     -- Generate 3 random options
@@ -113,10 +126,31 @@ function AITraining.getValidUpgradeForCard(card, preferredType)
         end
     end
 
-    -- Cooldown: universal
+    -- Cooldown: universal (except special teams)
     if preferredType == UPGRADE_TYPE.COOLDOWN then
-        if card:canUpgrade() then
+        if card:canUpgrade() and card.cardType ~= Card.TYPE.KICKER and card.cardType ~= Card.TYPE.PUNTER then
             return UPGRADE_TYPE.COOLDOWN, Card.getCooldownUpgradeCost()
+        end
+    end
+
+    -- Kicker Range: only for kickers
+    if preferredType == UPGRADE_TYPE.KICKER_RANGE then
+        if card.cardType == Card.TYPE.KICKER and card:canUpgrade() then
+            return UPGRADE_TYPE.KICKER_RANGE, 100
+        end
+    end
+
+    -- Kicker Accuracy: only for kickers
+    if preferredType == UPGRADE_TYPE.KICKER_ACCURACY then
+        if card.cardType == Card.TYPE.KICKER and card:canUpgrade() then
+            return UPGRADE_TYPE.KICKER_ACCURACY, 150
+        end
+    end
+
+    -- Punter Range: only for punters
+    if preferredType == UPGRADE_TYPE.PUNTER_RANGE then
+        if card.cardType == Card.TYPE.PUNTER and card:canUpgrade() then
+            return UPGRADE_TYPE.PUNTER_RANGE, 100
         end
     end
 
@@ -127,8 +161,8 @@ function AITraining.getValidUpgradeForCard(card, preferredType)
         end
     end
 
-    -- Fallback: try cooldown if preferred type doesn't work
-    if card:canUpgrade() then
+    -- Fallback: try cooldown if preferred type doesn't work (not for special teams)
+    if card:canUpgrade() and card.cardType ~= Card.TYPE.KICKER and card.cardType ~= Card.TYPE.PUNTER then
         return UPGRADE_TYPE.COOLDOWN, Card.getCooldownUpgradeCost()
     end
 
@@ -317,6 +351,12 @@ function AITraining.applyUpgrade(option)
         option.card:upgradeBonusYards()
     elseif option.type == UPGRADE_TYPE.IMMUNITY then
         option.card:upgradeImmunity()
+    elseif option.type == UPGRADE_TYPE.KICKER_RANGE then
+        option.card:upgradeKickerRange()
+    elseif option.type == UPGRADE_TYPE.KICKER_ACCURACY then
+        option.card:upgradeKickerAccuracy()
+    elseif option.type == UPGRADE_TYPE.PUNTER_RANGE then
+        option.card:upgradePunterRange()
     end
 end
 

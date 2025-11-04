@@ -10,7 +10,7 @@ PhaseManager.__index = PhaseManager
 -- Debug logger (set by match.lua)
 PhaseManager.logger = nil
 
-function PhaseManager:new(playerCoachId, aiCoachId)
+function PhaseManager:new(playerCoachId, aiCoachId, playerKicker, playerPunter, aiKicker, aiPunter)
     local p = {
         currentPhase = "player_offense",  -- "player_offense" or "player_defense"
 
@@ -18,13 +18,24 @@ function PhaseManager:new(playerCoachId, aiCoachId)
         playerCoach = Coach.getById(playerCoachId),
         aiCoach = Coach.getById(aiCoachId),
 
+        -- Special teams cards
+        playerKicker = playerKicker,
+        playerPunter = playerPunter,
+        aiKicker = aiKicker,
+        aiPunter = aiPunter,
+
         -- Scores
         playerScore = 0,
         aiScore = 0,
 
         -- Event tracking for popups (nil = no event)
-        lastEvent = nil,  -- "touchdown" or "turnover"
-        lastEventTeam = nil  -- "player" or "ai"
+        lastEvent = nil,  -- "touchdown", "turnover", "field_goal_made", "field_goal_missed", "punt"
+        lastEventTeam = nil,  -- "player" or "ai"
+        lastEventYards = nil,  -- For field goals and punts
+        lastEventSuccess = nil,  -- For field goals
+
+        -- Game clock (set externally by match.lua)
+        timeLeft = 60  -- Will be updated by match.lua
     }
     setmetatable(p, PhaseManager)
 
@@ -223,7 +234,13 @@ function PhaseManager:checkPhaseEnd()
         return true
 
     elseif self.field:isTurnover() then
-        -- Turnover on downs
+        -- Check for special teams play before turnover on downs
+        local specialTeamsExecuted = self:checkSpecialTeams()
+        if specialTeamsExecuted then
+            return true
+        end
+
+        -- Regular turnover on downs
         if self.currentPhase == "player_offense" then
             self.lastEvent = "turnover"
             self.lastEventTeam = "player"
@@ -305,6 +322,204 @@ end
 
 function PhaseManager:getAICoachName()
     return self.aiCoach.name
+end
+
+--- Check if team should attempt field goal or punt
+--- @return boolean True if special teams play executed
+function PhaseManager:checkSpecialTeams()
+    -- Get current team's kicker and punter
+    local kicker, punter
+    local isPlayerOffense = (self.currentPhase == "player_offense")
+
+    if isPlayerOffense then
+        kicker = self.playerKicker
+        punter = self.playerPunter
+    else
+        kicker = self.aiKicker
+        punter = self.aiPunter
+    end
+
+    if not kicker or not punter then
+        return false  -- No special teams available
+    end
+
+    -- Calculate yards to endzone (distance for field goal)
+    local yardsToEndzone = self.field:getYardsToTouchdown()
+    local inFGRange = self:isInFieldGoalRange(yardsToEndzone, kicker)
+
+    -- Get current score differential
+    local scoreDiff
+    if isPlayerOffense then
+        scoreDiff = self.playerScore - self.aiScore  -- positive = winning, negative = losing
+    else
+        scoreDiff = self.aiScore - self.playerScore
+    end
+
+    -- Field goal conditions:
+    -- 1. On 4th down in FG range
+    -- 2. Trailing by ≤3 with <7s and in range
+    local shouldKickFG = false
+
+    if inFGRange then
+        shouldKickFG = true  -- Default: always attempt if in range on 4th down
+    end
+
+    if scoreDiff <= -1 and scoreDiff >= -3 and self.timeLeft < 7 and inFGRange then
+        shouldKickFG = true  -- Desperation field goal
+    end
+
+    if shouldKickFG then
+        self:attemptFieldGoal(kicker, yardsToEndzone, isPlayerOffense)
+        return true
+    end
+
+    -- Punt conditions:
+    -- 1. 4th down AND out of FG range AND
+    -- 2. (score tied/winning OR losing by 4+ with >15s)
+    local shouldPunt = false
+
+    if not inFGRange then
+        if scoreDiff >= 0 then
+            -- Tied or winning: always punt
+            shouldPunt = true
+        elseif scoreDiff <= -4 and self.timeLeft > 15 then
+            -- Losing by 4+, but enough time left: punt
+            shouldPunt = true
+        end
+    end
+
+    if shouldPunt then
+        self:executePunt(punter, isPlayerOffense)
+        return true
+    end
+
+    -- No special teams play: go for it (will result in turnover on downs)
+    return false
+end
+
+--- Check if distance is within field goal range
+--- @param yardsToEndzone number Distance to endzone
+--- @param kicker table Kicker card
+--- @return boolean True if in range
+function PhaseManager:isInFieldGoalRange(yardsToEndzone, kicker)
+    if not kicker then return false end
+
+    -- Field goal distance = yards to endzone + 7 (for conversion from line of scrimmage)
+    local fgDistance = yardsToEndzone + 7
+
+    return fgDistance <= kicker.kickerMaxRange
+end
+
+--- Attempt a field goal
+--- @param kicker table Kicker card
+--- @param yardsToEndzone number Distance to endzone
+--- @param isPlayerOffense boolean True if player is kicking
+function PhaseManager:attemptFieldGoal(kicker, yardsToEndzone, isPlayerOffense)
+    -- Calculate field goal distance (line of scrimmage + 7 yards)
+    local fgDistance = yardsToEndzone + 7
+
+    -- Calculate accuracy: Linear from 100% at 1 yard to maxRangeAccuracy at maxRange
+    local maxRange = kicker.kickerMaxRange
+    local maxAccuracy = kicker.kickerMaxRangeAccuracy / 100  -- Convert to 0-1
+
+    local accuracy
+    if fgDistance <= 1 then
+        accuracy = 1.0  -- 100% at 1 yard
+    elseif fgDistance >= maxRange then
+        accuracy = maxAccuracy
+    else
+        -- Linear interpolation
+        accuracy = 1.0 - ((fgDistance - 1) / (maxRange - 1)) * (1.0 - maxAccuracy)
+    end
+
+    -- Random roll
+    local roll = love.math.random()
+    local made = roll <= accuracy
+
+    if made then
+        -- Field goal made: award 3 points
+        if isPlayerOffense then
+            self.playerScore = self.playerScore + 3
+            self.lastEventTeam = "player"
+        else
+            self.aiScore = self.aiScore + 3
+            self.lastEventTeam = "ai"
+        end
+
+        self.lastEvent = "field_goal_made"
+        self.lastEventYards = fgDistance
+        self.lastEventSuccess = true
+
+        -- Log field goal
+        if PhaseManager.logger then
+            PhaseManager.logger:log(string.format("FIELD GOAL MADE: %d yards (%.0f%% accuracy)", fgDistance, accuracy * 100))
+        end
+
+        -- Change possession (like touchdown)
+        self:switchPhase(true)
+    else
+        -- Field goal missed: turnover at line of scrimmage
+        self.lastEvent = "field_goal_missed"
+        self.lastEventYards = fgDistance
+        self.lastEventSuccess = false
+
+        if isPlayerOffense then
+            self.lastEventTeam = "player"
+        else
+            self.lastEventTeam = "ai"
+        end
+
+        -- Log field goal
+        if PhaseManager.logger then
+            PhaseManager.logger:log(string.format("FIELD GOAL MISSED: %d yards (%.0f%% accuracy)", fgDistance, accuracy * 100))
+        end
+
+        -- Change possession (like turnover)
+        self:switchPhase(false)
+    end
+end
+
+--- Execute a punt
+--- @param punter table Punter card
+--- @param isPlayerOffense boolean True if player is punting
+function PhaseManager:executePunt(punter, isPlayerOffense)
+    -- Random distance between minRange and maxRange
+    local puntDistance = love.math.random(punter.punterMinRange, punter.punterMaxRange)
+
+    -- Calculate new field position
+    local currentFieldPos = self.field:getFieldPosition()
+    local newFieldPos
+
+    if isPlayerOffense then
+        -- Player punts: ball moves toward AI endzone (0)
+        newFieldPos = currentFieldPos - puntDistance
+        -- Touchback: clamp to 20-yard line (opponent needs 80 yards)
+        if newFieldPos < 20 then
+            newFieldPos = 20
+            puntDistance = currentFieldPos - 20
+        end
+    else
+        -- AI punts: ball moves toward player endzone (100)
+        newFieldPos = currentFieldPos + puntDistance
+        -- Touchback: clamp to 80-yard line (opponent needs 80 yards from their 20)
+        if newFieldPos > 80 then
+            newFieldPos = 80
+            puntDistance = 80 - currentFieldPos
+        end
+    end
+
+    -- Set event data
+    self.lastEvent = "punt"
+    self.lastEventYards = puntDistance
+    self.lastEventTeam = isPlayerOffense and "player" or "ai"
+
+    -- Log punt
+    if PhaseManager.logger then
+        PhaseManager.logger:log(string.format("PUNT: %d yards (new position: %d)", puntDistance, newFieldPos))
+    end
+
+    -- Change possession (like turnover, but with specific field position)
+    self:switchPhase(false)
 end
 
 return PhaseManager
