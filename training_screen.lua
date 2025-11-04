@@ -44,7 +44,10 @@ local UPGRADE_TYPE = {
     DURATION = "duration",
     BONUS_YARDS = "bonus_yards",
     IMMUNITY = "immunity",
-    BENCH_CARD = "bench_card"
+    BENCH_CARD = "bench_card",
+    KICKER_RANGE = "kicker_range",
+    KICKER_ACCURACY = "kicker_accuracy",
+    PUNTER_RANGE = "punter_range"
 }
 
 --- Initializes the training screen
@@ -82,7 +85,7 @@ function TrainingScreen.generateUpgradeOptions()
 
     local options = {}
 
-    -- Get all upgradeable cards (offensive + defensive)
+    -- Get all upgradeable cards (offensive + defensive + special teams)
     local upgradeableCards = {}
     for _, card in ipairs(SeasonManager.playerTeam.offensiveCards) do
         if card:canUpgrade() or (not card.hasImmunity and card.upgradeCount <= 1) then
@@ -94,6 +97,13 @@ function TrainingScreen.generateUpgradeOptions()
             table.insert(upgradeableCards, card)
         end
     end
+    -- Add special teams cards
+    if SeasonManager.playerTeam.kicker and SeasonManager.playerTeam.kicker:canUpgrade() then
+        table.insert(upgradeableCards, SeasonManager.playerTeam.kicker)
+    end
+    if SeasonManager.playerTeam.punter and SeasonManager.playerTeam.punter:canUpgrade() then
+        table.insert(upgradeableCards, SeasonManager.playerTeam.punter)
+    end
 
     -- Define all possible upgrade types (equal weight)
     local allUpgradeTypes = {
@@ -102,7 +112,10 @@ function TrainingScreen.generateUpgradeOptions()
         UPGRADE_TYPE.BOOST,
         UPGRADE_TYPE.DURATION,
         UPGRADE_TYPE.BONUS_YARDS,
-        UPGRADE_TYPE.IMMUNITY
+        UPGRADE_TYPE.IMMUNITY,
+        UPGRADE_TYPE.KICKER_RANGE,
+        UPGRADE_TYPE.KICKER_ACCURACY,
+        UPGRADE_TYPE.PUNTER_RANGE
     }
 
     -- Generate 3 random options (keep trying until we get 3)
@@ -176,8 +189,29 @@ function TrainingScreen.getValidUpgradeForCard(card, preferredType)
         end
     end
 
-    -- Cooldown: universal fallback
-    if card:canUpgrade() then
+    -- Kicker Range: only for kickers
+    if preferredType == UPGRADE_TYPE.KICKER_RANGE then
+        if card.cardType == Card.TYPE.KICKER and card:canUpgrade() then
+            return UPGRADE_TYPE.KICKER_RANGE, 100
+        end
+    end
+
+    -- Kicker Accuracy: only for kickers
+    if preferredType == UPGRADE_TYPE.KICKER_ACCURACY then
+        if card.cardType == Card.TYPE.KICKER and card:canUpgrade() then
+            return UPGRADE_TYPE.KICKER_ACCURACY, 150
+        end
+    end
+
+    -- Punter Range: only for punters
+    if preferredType == UPGRADE_TYPE.PUNTER_RANGE then
+        if card.cardType == Card.TYPE.PUNTER and card:canUpgrade() then
+            return UPGRADE_TYPE.PUNTER_RANGE, 100
+        end
+    end
+
+    -- Cooldown: universal fallback (not applicable to special teams)
+    if card:canUpgrade() and card.cardType ~= Card.TYPE.KICKER and card.cardType ~= Card.TYPE.PUNTER then
         return UPGRADE_TYPE.COOLDOWN, Card.getCooldownUpgradeCost()
     end
 
@@ -276,6 +310,12 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
         headerText = "Bonus Yards Chance"
     elseif option.type == UPGRADE_TYPE.IMMUNITY then
         headerText = "Freeze/Slow Immunity"
+    elseif option.type == UPGRADE_TYPE.KICKER_RANGE then
+        headerText = "Kicker Range"
+    elseif option.type == UPGRADE_TYPE.KICKER_ACCURACY then
+        headerText = "Kicker Accuracy"
+    elseif option.type == UPGRADE_TYPE.PUNTER_RANGE then
+        headerText = "Punter Range"
     elseif option.type == UPGRADE_TYPE.BENCH_CARD then
         headerText = "New Bench Card"
     end
@@ -353,6 +393,33 @@ function TrainingScreen.drawUpgradeOption(option, x, y, mx, my)
 
         love.graphics.setColor(0.8, 0.3, 0.3)
         love.graphics.print("Costs 2 upgrade slots!", x + padding, contentY)
+
+    elseif option.type == UPGRADE_TYPE.KICKER_RANGE then
+        local currentRange = string.format("Current: %d yard range", option.card.kickerMaxRange)
+        love.graphics.print(currentRange, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
+
+        love.graphics.setColor(0.3, 0.8, 0.3)
+        local newRange = string.format("New: %d yards (+2)", option.card.kickerMaxRange + 2)
+        love.graphics.print(newRange, x + padding, contentY)
+
+    elseif option.type == UPGRADE_TYPE.KICKER_ACCURACY then
+        local currentAccuracy = string.format("Current: %d%% max accuracy", option.card.kickerMaxRangeAccuracy)
+        love.graphics.print(currentAccuracy, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
+
+        love.graphics.setColor(0.3, 0.8, 0.3)
+        local newAccuracy = string.format("New: %d%% (+5%%)", option.card.kickerMaxRangeAccuracy + 5)
+        love.graphics.print(newAccuracy, x + padding, contentY)
+
+    elseif option.type == UPGRADE_TYPE.PUNTER_RANGE then
+        local currentRange = string.format("Current: %d-%d yards", option.card.punterMinRange, option.card.punterMaxRange)
+        love.graphics.print(currentRange, x + padding, contentY)
+        contentY = contentY + UIScale.scaleHeight(25)
+
+        love.graphics.setColor(0.3, 0.8, 0.3)
+        local newRange = string.format("New: %d-%d yards (+5)", option.card.punterMinRange, option.card.punterMaxRange + 5)
+        love.graphics.print(newRange, x + padding, contentY)
 
     elseif option.type == UPGRADE_TYPE.BENCH_CARD then
         local cardInfo = ""
@@ -472,6 +539,12 @@ function TrainingScreen.purchaseUpgrade(option, index)
         option.card:upgradeBonusYards()
     elseif option.type == UPGRADE_TYPE.IMMUNITY then
         option.card:upgradeImmunity()
+    elseif option.type == UPGRADE_TYPE.KICKER_RANGE then
+        option.card:upgradeKickerRange()
+    elseif option.type == UPGRADE_TYPE.KICKER_ACCURACY then
+        option.card:upgradeKickerAccuracy()
+    elseif option.type == UPGRADE_TYPE.PUNTER_RANGE then
+        option.card:upgradePunterRange()
     elseif option.type == UPGRADE_TYPE.BENCH_CARD then
         -- Add to bench
         table.insert(SeasonManager.playerTeam.benchCards, option.card)
