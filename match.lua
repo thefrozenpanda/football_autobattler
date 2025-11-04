@@ -209,29 +209,28 @@ function match.update(dt)
     phaseManager:update(dt)
     phaseManager:checkPhaseEnd()
 
-    -- Check for TD/Turnover/Special Teams events and trigger popup (only after 0.5s to prevent false events at match start)
-    if matchStartTime > 0.5 and phaseManager.lastEvent then
-        if phaseManager.lastEvent == "touchdown" then
-            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
-            match.showPopup(string.format("%s TOUCHDOWN!", teamName), "touchdown")
-        elseif phaseManager.lastEvent == "turnover" then
-            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
-            match.showPopup(string.format("%s TURNOVER!", teamName), "turnover")
-        elseif phaseManager.lastEvent == "field_goal_made" then
-            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
-            match.showPopup(string.format("%s %dYD FIELD GOAL!", teamName, phaseManager.lastEventYards), "field_goal")
-        elseif phaseManager.lastEvent == "field_goal_missed" then
-            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
-            match.showPopup(string.format("%s MISSED %dYD FG!", teamName, phaseManager.lastEventYards), "turnover")
-        elseif phaseManager.lastEvent == "punt" then
-            local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
-            match.showPopup(string.format("%s %dYD PUNT", teamName, phaseManager.lastEventYards), "punt")
+    -- Check for TD/Turnover/Special Teams events and trigger popup (only after 1.0s to prevent false events at match start)
+    if phaseManager.lastEvent then
+        if matchStartTime > 1.0 then
+            -- Show popup for events after initial stabilization period
+            if phaseManager.lastEvent == "touchdown" then
+                local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+                match.showPopup(string.format("%s TOUCHDOWN!", teamName), "touchdown")
+            elseif phaseManager.lastEvent == "turnover" then
+                local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+                match.showPopup(string.format("%s TURNOVER!", teamName), "turnover")
+            elseif phaseManager.lastEvent == "field_goal_made" then
+                local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+                match.showPopup(string.format("%s %dYD FIELD GOAL!", teamName, phaseManager.lastEventYards), "field_goal")
+            elseif phaseManager.lastEvent == "field_goal_missed" then
+                local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+                match.showPopup(string.format("%s MISSED %dYD FG!", teamName, phaseManager.lastEventYards), "turnover")
+            elseif phaseManager.lastEvent == "punt" then
+                local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
+                match.showPopup(string.format("%s %dYD PUNT", teamName, phaseManager.lastEventYards), "punt")
+            end
         end
-        -- Clear the event
-        phaseManager.lastEvent = nil
-        phaseManager.lastEventTeam = nil
-    elseif matchStartTime <= 0.5 and phaseManager.lastEvent then
-        -- Clear any events that occur in the first 0.5 seconds without showing popup
+        -- Always clear the event (whether we showed popup or not)
         phaseManager.lastEvent = nil
         phaseManager.lastEventTeam = nil
     end
@@ -466,29 +465,45 @@ function match.drawUI()
     -- Field indicator (below score)
     match.drawFieldIndicator()
 
-    -- Down and distance info (below field indicator)
-    local totalYards = math.floor(phaseManager.field.totalYards)
-    local yardsNeeded = phaseManager.field.yardsNeeded
-    local downYards = math.floor(phaseManager.field.downYards)
-    local yardsToFirst = math.floor(phaseManager.field:getYardsToFirstDown())
-
-    love.graphics.printf(
-        string.format("Yards: %d/%d | Down: %d  | %d yards to 1st",
-        totalYards, yardsNeeded, phaseManager.field.currentDown, yardsToFirst),
-        0, UIScale.scaleY(195), screenWidth, "center"
-    )
-
     -- Game time with overtime indicator
     local timeDisplay = string.format("Time: %.1f", timeLeft)
     if inOvertime then
         local overtimeName = match.getOvertimeName(overtimePeriod)
         love.graphics.setColor(1, 0.8, 0)  -- Yellow/gold color for overtime
-        love.graphics.printf(overtimeName, 0, UIScale.scaleY(225), screenWidth, "center")
+        love.graphics.printf(overtimeName, 0, UIScale.scaleY(195), screenWidth, "center")
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(255), screenWidth, "center")
-    else
         love.graphics.printf(timeDisplay, 0, UIScale.scaleY(225), screenWidth, "center")
+    else
+        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(195), screenWidth, "center")
     end
+
+    -- Down and distance info (below game timer)
+    local fieldPosition = phaseManager.field.fieldPosition
+    local playerIsOffense = (phaseManager.currentPhase == "player_offense")
+    local yardsToFirst = math.floor(phaseManager.field:getYardsToFirstDown())
+
+    -- Calculate field position in football terminology
+    local yardLine
+    if playerIsOffense then
+        if fieldPosition <= 50 then
+            yardLine = string.format("Own %d", math.floor(fieldPosition))
+        else
+            yardLine = string.format("Opp %d", math.floor(100 - fieldPosition))
+        end
+    else  -- AI offense
+        if fieldPosition >= 50 then
+            yardLine = string.format("Own %d", math.floor(100 - fieldPosition))
+        else
+            yardLine = string.format("Opp %d", math.floor(fieldPosition))
+        end
+    end
+
+    local downInfoY = inOvertime and UIScale.scaleY(255) or UIScale.scaleY(225)
+    love.graphics.printf(
+        string.format("%s | Down: %d | %d yards to 1st",
+        yardLine, phaseManager.field.currentDown, yardsToFirst),
+        0, downInfoY, screenWidth, "center"
+    )
 end
 
 --- Draws the horizontal field indicator with ball position
