@@ -627,6 +627,11 @@ function ScheduleScreen.drawDropdown()
     local mx, my = love.mouse.getPosition()
     my = my - UIScale.scaleHeight(100)  -- Adjust for header
 
+    -- Draw "Choose Team:" label above dropdown
+    love.graphics.setFont(dropdownFont)
+    love.graphics.setColor(0.9, 0.9, 1)
+    love.graphics.print("Choose Team:", scaledDropdownX, scaledDropdownY - UIScale.scaleHeight(25))
+
     -- Draw main dropdown button
     local hovering = mx >= scaledDropdownX and mx <= scaledDropdownX + scaledDropdownWidth and
                      my >= scaledDropdownY and my <= scaledDropdownY + scaledDropdownHeight
@@ -674,7 +679,10 @@ function ScheduleScreen.drawDropdown()
     -- Draw dropdown menu if open
     if ScheduleScreen.dropdownOpen then
         local menuY = scaledDropdownY + scaledDropdownHeight
-        local maxMenuHeight = UIScale.scaleHeight(400)
+        -- Calculate available space to footer (header=100, content=550, footer starts at 650)
+        local footerY = UIScale.scaleHeight(100 + ScheduleScreen.contentHeight)
+        local availableSpace = footerY - menuY - UIScale.scaleHeight(10)  -- 10px margin from footer
+        local maxMenuHeight = availableSpace
         local menuHeight = math.min(#ScheduleScreen.dropdownTeams * scaledItemHeight, maxMenuHeight)
 
         -- Menu background
