@@ -187,13 +187,9 @@ function ScheduleScreen.draw()
         love.graphics.print(buttonText, scaledToggleX + (scaledToggleWidth - textWidth) / 2, scaledToggleY + UIScale.scaleHeight(10))
     end
 
-    love.graphics.push()
-    love.graphics.translate(0, -ScheduleScreen.scrollOffset)
-
-    local yOffset = UIScale.scaleY(START_Y)
+    -- Title with selected team name (fixed, not scrolling)
     local startX = UIScale.scaleX(START_X)
-
-    -- Title with selected team name
+    local yOffset = UIScale.scaleY(START_Y)
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
     local title
@@ -206,6 +202,10 @@ function ScheduleScreen.draw()
     end
     love.graphics.print(title, startX, yOffset)
     yOffset = yOffset + UIScale.scaleHeight(50)
+
+    -- Start scrollable content area
+    love.graphics.push()
+    love.graphics.translate(0, -ScheduleScreen.scrollOffset)
 
     -- Draw bracket or schedule based on toggle
     if ScheduleScreen.showBracket and SeasonManager.inPlayoffs then

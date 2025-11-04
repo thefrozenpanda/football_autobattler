@@ -105,29 +105,30 @@ function TrainingScreen.generateUpgradeOptions()
         UPGRADE_TYPE.IMMUNITY
     }
 
-    -- Generate 3 random options
-    for i = 1, 3 do
+    -- Generate 3 random options (keep trying until we get 3)
+    local attempts = 0
+    local maxAttempts = 100  -- Safety limit
+    while #options < 3 and attempts < maxAttempts and #upgradeableCards > 0 do
+        attempts = attempts + 1
         local selectedType = allUpgradeTypes[math.random(1, #allUpgradeTypes)]
 
         -- Card-based upgrades
-        if #upgradeableCards > 0 then
-            local cardIndex = math.random(1, #upgradeableCards)
-            local card = upgradeableCards[cardIndex]
+        local cardIndex = math.random(1, #upgradeableCards)
+        local card = upgradeableCards[cardIndex]
 
-            -- Validate upgrade type is compatible with card
-            local finalType, finalCost = TrainingScreen.getValidUpgradeForCard(card, selectedType)
+        -- Validate upgrade type is compatible with card
+        local finalType, finalCost = TrainingScreen.getValidUpgradeForCard(card, selectedType)
 
-            if finalType then
-                table.insert(options, {
-                    type = finalType,
-                    card = card,
-                    cost = finalCost
-                })
+        if finalType then
+            table.insert(options, {
+                type = finalType,
+                card = card,
+                cost = finalCost
+            })
 
-                -- Remove card from pool to avoid duplicates (unless they can still be upgraded)
-                if not card:canUpgrade() and finalType ~= UPGRADE_TYPE.IMMUNITY then
-                    table.remove(upgradeableCards, cardIndex)
-                end
+            -- Remove card from pool to avoid duplicates (unless they can still be upgraded)
+            if not card:canUpgrade() and finalType ~= UPGRADE_TYPE.IMMUNITY then
+                table.remove(upgradeableCards, cardIndex)
             end
         end
     end
@@ -161,9 +162,9 @@ function TrainingScreen.getValidUpgradeForCard(card, preferredType)
         end
     end
 
-    -- Bonus yards: only for yard generators
+    -- Bonus yards: only for defenders with REMOVE_YARDS effect
     if preferredType == UPGRADE_TYPE.BONUS_YARDS then
-        if card.cardType == Card.TYPE.YARD_GENERATOR and card:canUpgrade() then
+        if card.cardType == Card.TYPE.DEFENDER and card.effectType == Card.EFFECT.REMOVE_YARDS and card:canUpgrade() then
             return UPGRADE_TYPE.BONUS_YARDS, Card.getBonusYardsUpgradeCost()
         end
     end

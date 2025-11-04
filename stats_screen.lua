@@ -137,19 +137,20 @@ end
 
 --- LÖVE Callback: Draw UI
 function StatsScreen.draw()
-    love.graphics.push()
-    love.graphics.translate(0, -StatsScreen.scrollOffset)
-
-    -- Title
+    -- Title (fixed, not scrolling)
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)
     love.graphics.print("Season Statistics", UIScale.scaleX(50), UIScale.scaleY(START_Y))
 
     local yOffset = UIScale.scaleY(START_Y + 50)
 
-    -- Draw table header
+    -- Draw table header (fixed, not scrolling)
     StatsScreen.drawTableHeader(yOffset)
     yOffset = yOffset + UIScale.scaleHeight(HEADER_HEIGHT)
+
+    -- Start scrollable content area (only table rows)
+    love.graphics.push()
+    love.graphics.translate(0, -StatsScreen.scrollOffset)
 
     -- Draw table rows
     local scaledRowHeight = UIScale.scaleHeight(ROW_HEIGHT)
