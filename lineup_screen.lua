@@ -280,6 +280,23 @@ function LineupScreen.getCardAtPosition(mx, my)
 
     yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60 + SECTION_Y_OFFSET)
 
+    -- Check special teams cards
+    local specialTeamsCards = {}
+    if SeasonManager.playerTeam.kicker then
+        table.insert(specialTeamsCards, SeasonManager.playerTeam.kicker)
+    end
+    if SeasonManager.playerTeam.punter then
+        table.insert(specialTeamsCards, SeasonManager.playerTeam.punter)
+    end
+    for i, card in ipairs(specialTeamsCards) do
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
+        if mx >= x and mx <= x + scaledCardWidth and my >= yOffset and my <= yOffset + scaledCardHeight then
+            return card, "special_teams", i
+        end
+    end
+
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60 + SECTION_Y_OFFSET)
+
     -- Check bench cards
     for i, card in ipairs(SeasonManager.playerTeam.benchCards) do
         local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))

@@ -350,6 +350,23 @@ function ScoutingScreen.getCardAtPosition(mx, my)
         end
     end
 
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60 + SECTION_Y_OFFSET)
+
+    -- Check special teams cards
+    local specialTeamsCards = {}
+    if ScoutingScreen.opponent.kicker then
+        table.insert(specialTeamsCards, ScoutingScreen.opponent.kicker)
+    end
+    if ScoutingScreen.opponent.punter then
+        table.insert(specialTeamsCards, ScoutingScreen.opponent.punter)
+    end
+    for i, card in ipairs(specialTeamsCards) do
+        local x = startX + ((i - 1) * (scaledCardWidth + scaledCardSpacing))
+        if mx >= x and mx <= x + scaledCardWidth and my >= yOffset and my <= yOffset + scaledCardHeight then
+            return card
+        end
+    end
+
     return nil
 end
 
