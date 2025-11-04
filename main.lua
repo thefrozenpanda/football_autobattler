@@ -231,10 +231,20 @@ function love.update(dt)
                     match.getPlayerDefensiveCards()
                 )
 
-                -- Transition to simulation state
-                gameState = "simulating"
-                simulationComplete = false
-                simulationPopup.show()
+                -- Check if player lost in playoffs
+                if SeasonManager.inPlayoffs and not playerWon then
+                    -- Simulate all remaining playoff games
+                    SeasonManager.simulateRemainingPlayoffs()
+
+                    -- Transition directly to season end screen
+                    gameState = "season_end"
+                    seasonEndScreen.load()
+                else
+                    -- Transition to simulation state (regular season or playoff win)
+                    gameState = "simulating"
+                    simulationComplete = false
+                    simulationPopup.show()
+                end
             end
         end
 
