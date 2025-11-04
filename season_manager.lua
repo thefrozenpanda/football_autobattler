@@ -122,6 +122,9 @@ end
 function SeasonManager.goToTraining()
     SeasonManager.currentPhase = SeasonManager.PHASE.TRAINING
 
+    -- Clear weekly upgrade options for new week
+    SeasonManager.weeklyUpgradeOptions = nil
+
     -- Award cash based on match result
     if SeasonManager.lastMatchResult then
         if SeasonManager.lastMatchResult.playerWon then
