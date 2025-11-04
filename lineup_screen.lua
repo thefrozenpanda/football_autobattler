@@ -309,6 +309,10 @@ function LineupScreen.drawTooltip(card)
         lines = lines + 2
     elseif card.cardType == Card.TYPE.DEFENDER then
         lines = lines + 2
+    elseif card.cardType == Card.TYPE.KICKER then
+        lines = lines + 2
+    elseif card.cardType == Card.TYPE.PUNTER then
+        lines = lines + 2
     end
 
     tooltipHeight = (lines * lineHeight) + (padding * 2)
@@ -357,6 +361,10 @@ function LineupScreen.drawTooltip(card)
         typeText = "Booster"
     elseif card.cardType == Card.TYPE.DEFENDER then
         typeText = "Defender"
+    elseif card.cardType == Card.TYPE.KICKER then
+        typeText = "Kicker"
+    elseif card.cardType == Card.TYPE.PUNTER then
+        typeText = "Punter"
     end
     love.graphics.print(typeText, tooltipX + padding, contentY)
     contentY = contentY + lineHeight + UIScale.scaleHeight(5)
@@ -380,6 +388,16 @@ function LineupScreen.drawTooltip(card)
         love.graphics.print(string.format("Effect: %s (%.1f-%.1f)", card.effectType, card.effectStrengthMin, card.effectStrengthMax), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
         love.graphics.print(string.format("Cooldown: %.2fs", card.cooldown), tooltipX + padding, contentY)
+        contentY = contentY + lineHeight
+
+    elseif card.cardType == Card.TYPE.KICKER then
+        love.graphics.print(string.format("Max Range: %d yards", card.kickerMaxRange), tooltipX + padding, contentY)
+        contentY = contentY + lineHeight
+        love.graphics.print(string.format("Max Range Accuracy: %d%%", card.kickerMaxRangeAccuracy), tooltipX + padding, contentY)
+        contentY = contentY + lineHeight
+
+    elseif card.cardType == Card.TYPE.PUNTER then
+        love.graphics.print(string.format("Range: %d-%d yards", card.punterMinRange, card.punterMaxRange), tooltipX + padding, contentY)
         contentY = contentY + lineHeight
     end
 
