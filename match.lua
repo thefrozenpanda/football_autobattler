@@ -425,33 +425,21 @@ function match.drawUI()
     local phaseName = phaseManager:getCurrentPhaseName()
     love.graphics.printf("Phase: " .. phaseName, 0, UIScale.scaleY(15), screenWidth, "center")
 
-    -- Yards display
-    local totalYards = math.floor(phaseManager.field.totalYards)
-    local yardsNeeded = phaseManager.field.yardsNeeded
-    local downYards = math.floor(phaseManager.field.downYards)
-    local yardsToFirst = math.floor(phaseManager.field:getYardsToFirstDown())
-
-    love.graphics.printf(
-        string.format("Yards: %d/%d | Down: %d  | %d yards to 1st",
-        totalYards, yardsNeeded, phaseManager.field.currentDown, yardsToFirst),
-        0, UIScale.scaleY(45), screenWidth, "center"
-    )
-
     -- Down timer
     love.graphics.printf(
         string.format("Down Timer: %.1fs", phaseManager.field.downTimer),
-        0, UIScale.scaleY(75), screenWidth, "center"
+        0, UIScale.scaleY(45), screenWidth, "center"
     )
 
     -- Team names and coaches
     love.graphics.printf(
         string.format("%s  vs  %s", playerTeamName, aiTeamName),
-        0, UIScale.scaleY(105), screenWidth, "center"
+        0, UIScale.scaleY(75), screenWidth, "center"
     )
     love.graphics.setFont(smallFont)
     love.graphics.printf(
         string.format("(%s)  vs  (%s)", playerCoachName, aiCoachName),
-        0, UIScale.scaleY(128), screenWidth, "center"
+        0, UIScale.scaleY(98), screenWidth, "center"
     )
     love.graphics.setFont(font)
 
@@ -460,7 +448,22 @@ function match.drawUI()
     local aiScore = phaseManager.aiScore
     love.graphics.printf(
         string.format("Score: %d - %d", playerScore, aiScore),
-        0, UIScale.scaleY(150), screenWidth, "center"
+        0, UIScale.scaleY(120), screenWidth, "center"
+    )
+
+    -- Field indicator (below score)
+    match.drawFieldIndicator()
+
+    -- Down and distance info (below field indicator)
+    local totalYards = math.floor(phaseManager.field.totalYards)
+    local yardsNeeded = phaseManager.field.yardsNeeded
+    local downYards = math.floor(phaseManager.field.downYards)
+    local yardsToFirst = math.floor(phaseManager.field:getYardsToFirstDown())
+
+    love.graphics.printf(
+        string.format("Yards: %d/%d | Down: %d  | %d yards to 1st",
+        totalYards, yardsNeeded, phaseManager.field.currentDown, yardsToFirst),
+        0, UIScale.scaleY(195), screenWidth, "center"
     )
 
     -- Game time with overtime indicator
@@ -468,12 +471,90 @@ function match.drawUI()
     if inOvertime then
         local overtimeName = match.getOvertimeName(overtimePeriod)
         love.graphics.setColor(1, 0.8, 0)  -- Yellow/gold color for overtime
-        love.graphics.printf(overtimeName, 0, UIScale.scaleY(180), screenWidth, "center")
+        love.graphics.printf(overtimeName, 0, UIScale.scaleY(225), screenWidth, "center")
         love.graphics.setColor(1, 1, 1)
-        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(210), screenWidth, "center")
+        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(255), screenWidth, "center")
     else
-        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(180), screenWidth, "center")
+        love.graphics.printf(timeDisplay, 0, UIScale.scaleY(225), screenWidth, "center")
     end
+end
+
+--- Draws the horizontal field indicator with ball position
+function match.drawFieldIndicator()
+    local screenWidth = UIScale.getWidth()
+    local fieldWidth = screenWidth * 0.33  -- 33% of screen width
+    local fieldX = (screenWidth - fieldWidth) / 2  -- Center horizontally
+    local fieldY = UIScale.scaleY(145)  -- Below score
+    local fieldHeight = UIScale.scaleHeight(30)
+
+    -- Get current field position (0-100)
+    local fieldPosition = phaseManager.field.fieldPosition
+    local playerIsOffense = (phaseManager.currentPhase == "player_offense")
+
+    -- Colors
+    local playerColor = {0.3, 0.8, 0.3}  -- Green
+    local aiColor = {0.8, 0.3, 0.3}      -- Red
+    local fieldLineColor = {0.5, 0.5, 0.6}
+
+    -- Draw endzones
+    local endzoneWidth = fieldWidth * 0.1
+
+    -- AI endzone (left, at position 0)
+    love.graphics.setColor(aiColor[1], aiColor[2], aiColor[3], 0.3)
+    love.graphics.rectangle("fill", fieldX, fieldY, endzoneWidth, fieldHeight)
+    love.graphics.setColor(aiColor)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.rectangle("line", fieldX, fieldY, endzoneWidth, fieldHeight)
+
+    -- Player endzone (right, at position 100)
+    love.graphics.setColor(playerColor[1], playerColor[2], playerColor[3], 0.3)
+    love.graphics.rectangle("fill", fieldX + fieldWidth - endzoneWidth, fieldY, endzoneWidth, fieldHeight)
+    love.graphics.setColor(playerColor)
+    love.graphics.rectangle("line", fieldX + fieldWidth - endzoneWidth, fieldY, endzoneWidth, fieldHeight)
+
+    -- Draw field line (between endzones)
+    love.graphics.setColor(fieldLineColor)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    local lineStartX = fieldX + endzoneWidth
+    local lineEndX = fieldX + fieldWidth - endzoneWidth
+    local lineY = fieldY + fieldHeight / 2
+    love.graphics.line(lineStartX, lineY, lineEndX, lineY)
+
+    -- Draw yard markers (every 5 yards)
+    local playableWidth = lineEndX - lineStartX
+    for yard = 5, 95, 5 do
+        local markerX = lineStartX + (yard / 100) * playableWidth
+        local markerHeight = (yard % 10 == 0) and UIScale.scaleHeight(8) or UIScale.scaleHeight(5)
+        love.graphics.line(markerX, lineY - markerHeight/2, markerX, lineY + markerHeight/2)
+    end
+
+    -- Draw 50-yard line (midfield) - slightly thicker
+    local midX = lineStartX + (50 / 100) * playableWidth
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.line(midX, lineY - UIScale.scaleHeight(10), midX, lineY + UIScale.scaleHeight(10))
+
+    -- Draw ball position indicator (circle)
+    local ballX = lineStartX + (fieldPosition / 100) * playableWidth
+    local ballRadius = UIScale.scaleUniform(8)
+    local ballColor = playerIsOffense and playerColor or aiColor
+
+    love.graphics.setColor(ballColor)
+    love.graphics.circle("fill", ballX, lineY, ballRadius)
+    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.setLineWidth(UIScale.scaleUniform(2))
+    love.graphics.circle("line", ballX, lineY, ballRadius)
+
+    -- Draw team labels in endzones
+    love.graphics.setFont(smallFont)
+    love.graphics.setColor(aiColor)
+    love.graphics.printf("AI", fieldX, fieldY + UIScale.scaleHeight(8), endzoneWidth, "center")
+
+    love.graphics.setColor(playerColor)
+    love.graphics.printf("YOU", fieldX + fieldWidth - endzoneWidth, fieldY + UIScale.scaleHeight(8), endzoneWidth, "center")
+
+    -- Reset font and color
+    love.graphics.setFont(font)
+    love.graphics.setColor(1, 1, 1)
 end
 
 function match.drawTeamCards(cards, side, teamName, formation)

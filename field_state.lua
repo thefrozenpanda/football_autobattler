@@ -116,12 +116,13 @@ function FieldState:reset(startingPosition, yardsNeeded)
     self.touchdownScored = false
     self.turnoverOccurred = false
 
-    -- Set field position
-    if startingPosition then
+    -- Set field position and yards needed
+    if startingPosition and yardsNeeded then
+        -- Both provided: use them directly (for turnovers)
         self.fieldPosition = startingPosition
-        -- Calculate yards needed based on field position
-        self.yardsNeeded = 100 - startingPosition
+        self.yardsNeeded = yardsNeeded
     elseif yardsNeeded then
+        -- Only yards needed: calculate starting position
         self.yardsNeeded = yardsNeeded
         self.fieldPosition = 100 - yardsNeeded
     else
