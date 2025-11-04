@@ -67,6 +67,7 @@ local popupTimer = 0
 local popupDuration = 2.3  -- 0.3s fade in + 1.5s display + 0.5s fade out
 local popupAlpha = 0
 local popupFont
+local matchStartTime = 0  -- Track time since match start to prevent false events
 
 -- Card dimensions (calculated dynamically to fit 3x10 grid with 5px spacing)
 -- Grid area: ~300px wide x ~700px tall
@@ -185,9 +186,10 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam)
     winnerData = nil
     match.shouldReturnToMenu = false  -- Reset flag for new match
     match.optionsRequested = false  -- Reset options flag
+    matchStartTime = 0  -- Reset match start time
 
     debugLogger:log("Match initialization complete")
-    debugLogger:log("Down duration: 3.0 seconds")
+    debugLogger:log("Down duration: 2.0 seconds")
 end
 
 function match.update(dt)
@@ -198,13 +200,14 @@ function match.update(dt)
 
     flux.update(dt)  -- Update Flux animations
     match.updatePopup(dt)  -- Update TD/Turnover popup
+    matchStartTime = matchStartTime + dt  -- Track time since match start
     timeLeft = math.max(0, timeLeft - dt)
 
     phaseManager:update(dt)
     phaseManager:checkPhaseEnd()
 
-    -- Check for TD/Turnover events and trigger popup
-    if phaseManager.lastEvent then
+    -- Check for TD/Turnover events and trigger popup (only after 0.5s to prevent false events at match start)
+    if matchStartTime > 0.5 and phaseManager.lastEvent then
         if phaseManager.lastEvent == "touchdown" then
             local teamName = (phaseManager.lastEventTeam == "player") and "PLAYER" or "OPPONENT"
             match.showPopup(string.format("%s TOUCHDOWN!", teamName), "touchdown")
@@ -215,11 +218,16 @@ function match.update(dt)
         -- Clear the event
         phaseManager.lastEvent = nil
         phaseManager.lastEventTeam = nil
+    elseif matchStartTime <= 0.5 and phaseManager.lastEvent then
+        -- Clear any events that occur in the first 0.5 seconds without showing popup
+        phaseManager.lastEvent = nil
+        phaseManager.lastEventTeam = nil
     end
 
     -- In overtime, end game immediately if anyone scores
     if inOvertime and phaseManager.playerScore ~= phaseManager.aiScore then
         matchEnded = true
+        match.stopAllAnimations()  -- Stop all card animations
         winnerData = match.calculateWinner()
 
         if debugLogger then
@@ -232,6 +240,26 @@ function match.update(dt)
 
     if timeLeft <= 0 then
         match.handleMatchEnd()
+    end
+end
+
+--- Stops all card animations
+function match.stopAllAnimations()
+    -- Clear all Flux tweens
+    flux.clear()
+
+    -- Reset all card animation offsets
+    local playerCards = phaseManager:getActivePlayerCards()
+    local aiCards = phaseManager:getActiveAICards()
+
+    for _, card in ipairs(playerCards) do
+        card.animOffsetX = 0
+        card.justActed = false
+    end
+
+    for _, card in ipairs(aiCards) do
+        card.animOffsetX = 0
+        card.justActed = false
     end
 end
 
@@ -253,6 +281,7 @@ function match.handleMatchEnd()
     else
         -- Game over - declare winner
         matchEnded = true
+        match.stopAllAnimations()  -- Stop all card animations
         winnerData = match.calculateWinner()
 
         if debugLogger then
@@ -521,13 +550,13 @@ function match.drawCard(card, x, y)
     if card.cardType == Card.TYPE.YARD_GENERATOR then
         love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
-            string.format("%.1f yd", card.yardsPerAction),
+            string.format("%.1f-%.1f", card.yardsPerActionMin, card.yardsPerActionMax),
             x, y + UIScale.scaleHeight(16), scaledCardWidth, "center"
         )
     elseif card.cardType == Card.TYPE.BOOSTER then
         love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
-            string.format("+%d%%", card.boostAmount),
+            string.format("+%d-%d%%", math.floor(card.boostAmountMin), math.ceil(card.boostAmountMax)),
             x, y + UIScale.scaleHeight(16), scaledCardWidth, "center"
         )
     elseif card.cardType == Card.TYPE.DEFENDER then

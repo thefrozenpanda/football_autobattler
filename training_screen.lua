@@ -48,7 +48,7 @@ local UPGRADE_TYPE = {
 }
 
 --- Initializes the training screen
---- Generates 3 random upgrade options
+--- Generates 3 random upgrade options (only if not already generated for this week)
 function TrainingScreen.load()
     -- Update UI scale
     UIScale.update()
@@ -62,8 +62,16 @@ function TrainingScreen.load()
     buttonFont = love.graphics.newFont(UIScale.scaleFontSize(20))
     instructFont = love.graphics.newFont(UIScale.scaleFontSize(20))
 
-    TrainingScreen.upgradeOptions = {}
-    TrainingScreen.generateUpgradeOptions()
+    -- Check if options already exist in SeasonManager for this week
+    if SeasonManager.weeklyUpgradeOptions and #SeasonManager.weeklyUpgradeOptions > 0 then
+        -- Use existing options (locked for the week)
+        TrainingScreen.upgradeOptions = SeasonManager.weeklyUpgradeOptions
+    else
+        -- Generate new options and store them
+        TrainingScreen.upgradeOptions = {}
+        TrainingScreen.generateUpgradeOptions()
+        SeasonManager.weeklyUpgradeOptions = TrainingScreen.upgradeOptions
+    end
 end
 
 --- Generates 3 random upgrade options for the week

@@ -273,6 +273,33 @@ function ScoutingScreen.drawCard(card, x, y, mx, my)
     love.graphics.setFont(cardNumberFont)
     local numText = string.format("#%d", card.number)
     love.graphics.print(numText, x + UIScale.scaleUniform(10), y + UIScale.scaleHeight(35))
+
+    -- Upgrade indicator (if card has been upgraded)
+    if card.upgradeCount and card.upgradeCount > 0 then
+        local badgeSize = UIScale.scaleUniform(24)
+        local badgeX = x + scaledCardWidth - badgeSize - UIScale.scaleUniform(5)
+        local badgeY = y + UIScale.scaleHeight(5)
+
+        -- Badge background (gold for 3+ upgrades, silver for 1-2)
+        if card.upgradeCount >= 3 then
+            love.graphics.setColor(0.85, 0.65, 0.1, 0.9)
+        else
+            love.graphics.setColor(0.6, 0.6, 0.65, 0.9)
+        end
+        love.graphics.circle("fill", badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2)
+
+        -- Badge border
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.setLineWidth(UIScale.scaleUniform(2))
+        love.graphics.circle("line", badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2)
+
+        -- Upgrade count text
+        love.graphics.setFont(cardPositionFont)
+        love.graphics.setColor(1, 1, 1)
+        local upgradeText = string.format("+%d", card.upgradeCount)
+        local textWidth = cardPositionFont:getWidth(upgradeText)
+        love.graphics.print(upgradeText, badgeX + (badgeSize - textWidth) / 2, badgeY + UIScale.scaleHeight(3))
+    end
 end
 
 --- Gets the card at the given mouse position
@@ -331,6 +358,11 @@ function ScoutingScreen.drawTooltip(card)
         lines = lines + 3
     end
 
+    -- Add line for upgrade count if upgraded
+    if card.upgradeCount and card.upgradeCount > 0 then
+        lines = lines + 1
+    end
+
     tooltipHeight = (lines * lineHeight) + (padding * 2)
 
     -- Position tooltip
@@ -379,7 +411,20 @@ function ScoutingScreen.drawTooltip(card)
         typeText = "Defender"
     end
     love.graphics.print(typeText, tooltipX + padding, contentY)
-    contentY = contentY + lineHeight + UIScale.scaleHeight(5)
+    contentY = contentY + lineHeight
+
+    -- Upgrade count (if upgraded)
+    if card.upgradeCount and card.upgradeCount > 0 then
+        if card.upgradeCount >= 3 then
+            love.graphics.setColor(0.85, 0.65, 0.1)  -- Gold
+        else
+            love.graphics.setColor(0.6, 0.6, 0.65)  -- Silver
+        end
+        love.graphics.print(string.format("Upgrades: %d", card.upgradeCount), tooltipX + padding, contentY)
+        contentY = contentY + lineHeight
+    end
+
+    contentY = contentY + UIScale.scaleHeight(5)
 
     -- Stats
     love.graphics.setColor(0.9, 0.9, 1)

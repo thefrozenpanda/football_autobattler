@@ -126,6 +126,8 @@ end
 --- Advances to the preparation phase
 function SeasonManager.goToPreparation()
     SeasonManager.currentPhase = SeasonManager.PHASE.PREPARATION
+    -- Clear weekly upgrade options for next week
+    SeasonManager.weeklyUpgradeOptions = nil
 end
 
 --- Advances to the match phase
@@ -390,6 +392,89 @@ function SeasonManager.simulateWildcardRound()
     -- Advance bracket to divisional round
     ScheduleGenerator.advanceBracket(SeasonManager.playoffBracket, results)
     SeasonManager.advancePlayoffs()
+end
+
+--- Simulates all remaining playoff games after player elimination
+--- Used when player loses in playoffs to complete the bracket
+function SeasonManager.simulateRemainingPlayoffs()
+    if not SeasonManager.inPlayoffs or not SeasonManager.playoffBracket then
+        return
+    end
+
+    local match = require("match")
+    local ScheduleGenerator = require("schedule_generator")
+    local currentRound = SeasonManager.playoffBracket.currentRound
+
+    -- Simulate remaining matches in current round
+    local function simulateRound(roundName)
+        local matches = SeasonManager.playoffBracket[roundName]
+        if not matches then return false end
+
+        local results = {}
+        for _, matchData in ipairs(matches) do
+            if not matchData.played then
+                local homeScore, awayScore = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
+                matchData.played = true
+                matchData.homeScore = homeScore
+                matchData.awayScore = awayScore
+
+                -- Determine winner
+                local winner = (homeScore > awayScore) and matchData.homeTeam or matchData.awayTeam
+                table.insert(results, {
+                    winner = winner,
+                    homeTeam = matchData.homeTeam,
+                    awayTeam = matchData.awayTeam,
+                    conference = matchData.conference
+                })
+            end
+        end
+
+        -- Advance bracket if matches were played
+        if #results > 0 then
+            ScheduleGenerator.advanceBracket(SeasonManager.playoffBracket, results)
+            return true
+        end
+
+        return false
+    end
+
+    -- Simulate current round if needed
+    if simulateRound(currentRound) then
+        -- Advance to next round
+        if currentRound == "wildcard" then
+            SeasonManager.playoffBracket.currentRound = "divisional"
+            currentRound = "divisional"
+        elseif currentRound == "divisional" then
+            SeasonManager.playoffBracket.currentRound = "conference"
+            currentRound = "conference"
+        elseif currentRound == "conference" then
+            SeasonManager.playoffBracket.currentRound = "championship"
+            currentRound = "championship"
+        else
+            -- Done
+            SeasonManager.currentPhase = "season_end"
+            return
+        end
+    end
+
+    -- Simulate remaining rounds
+    local roundOrder = {"divisional", "conference", "championship"}
+    local startSimulating = false
+
+    for _, roundName in ipairs(roundOrder) do
+        if roundName == currentRound then
+            startSimulating = true
+        end
+
+        if startSimulating then
+            simulateRound(roundName)
+            -- Update bracket's current round
+            SeasonManager.playoffBracket.currentRound = roundName
+        end
+    end
+
+    -- Mark season as complete
+    SeasonManager.currentPhase = "season_end"
 end
 
 --- Gets the player's playoff match for the current round

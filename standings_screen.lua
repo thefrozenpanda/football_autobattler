@@ -173,13 +173,18 @@ function StandingsScreen.drawTeamRow(team, position, x, y, alternate)
     love.graphics.print(tostring(position), currentX, yOffset)
     currentX = currentX + UIScale.scaleWidth(columns[1].width)
 
-    -- Team name
+    -- Team name (truncate if too long to prevent clipping)
     if isPlayerTeam then
         love.graphics.setColor(1, 1, 0.8)  -- Slight yellow tint for player
     else
         love.graphics.setColor(0.9, 0.9, 1)
     end
-    love.graphics.print(team.name, currentX, yOffset)
+    local teamName = team.name
+    local maxChars = 20  -- Maximum characters before truncation
+    if string.len(teamName) > maxChars then
+        teamName = string.sub(teamName, 1, maxChars - 3) .. "..."
+    end
+    love.graphics.print(teamName, currentX, yOffset)
     currentX = currentX + UIScale.scaleWidth(columns[2].width)
 
     -- Record
