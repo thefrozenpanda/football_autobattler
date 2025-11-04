@@ -245,9 +245,6 @@ end
 
 --- Stops all card animations
 function match.stopAllAnimations()
-    -- Clear all Flux tweens
-    flux.clear()
-
     -- Reset all card animation offsets
     local playerCards = phaseManager:getActivePlayerCards()
     local aiCards = phaseManager:getActiveAICards()
