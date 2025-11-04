@@ -511,14 +511,14 @@ function match.drawFieldIndicator()
     -- Draw endzones
     local endzoneWidth = fieldWidth * 0.1
 
-    -- Player endzone (left, at visual position for field pos 100)
+    -- Player endzone (left, at visual position for field pos 0)
     love.graphics.setColor(playerColor[1], playerColor[2], playerColor[3], 0.3)
     love.graphics.rectangle("fill", fieldX, fieldY, endzoneWidth, fieldHeight)
     love.graphics.setColor(playerColor)
     love.graphics.setLineWidth(UIScale.scaleUniform(2))
     love.graphics.rectangle("line", fieldX, fieldY, endzoneWidth, fieldHeight)
 
-    -- AI endzone (right, at visual position for field pos 0)
+    -- AI endzone (right, at visual position for field pos 100)
     love.graphics.setColor(aiColor[1], aiColor[2], aiColor[3], 0.3)
     love.graphics.rectangle("fill", fieldX + fieldWidth - endzoneWidth, fieldY, endzoneWidth, fieldHeight)
     love.graphics.setColor(aiColor)
@@ -533,10 +533,10 @@ function match.drawFieldIndicator()
     love.graphics.line(lineStartX, lineY, lineEndX, lineY)
 
     -- Draw yard markers (every 5 yards)
-    -- Reversed: 100 on left, 0 on right
+    -- Position 0 on left, 100 on right
     local playableWidth = lineEndX - lineStartX
     for yard = 5, 95, 5 do
-        local markerX = lineStartX + ((100 - yard) / 100) * playableWidth
+        local markerX = lineStartX + (yard / 100) * playableWidth
         local markerHeight = (yard % 10 == 0) and UIScale.scaleHeight(8) or UIScale.scaleHeight(5)
         love.graphics.line(markerX, lineY - markerHeight/2, markerX, lineY + markerHeight/2)
     end
@@ -547,8 +547,8 @@ function match.drawFieldIndicator()
     love.graphics.line(midX, lineY - UIScale.scaleHeight(10), midX, lineY + UIScale.scaleHeight(10))
 
     -- Draw ball position indicator (circle)
-    -- Reversed: position 100 on left, position 0 on right
-    local ballX = lineStartX + ((100 - fieldPosition) / 100) * playableWidth
+    -- Position 0 on left, position 100 on right
+    local ballX = lineStartX + (fieldPosition / 100) * playableWidth
     local ballRadius = UIScale.scaleUniform(8)
     local ballColor = playerIsOffense and playerColor or aiColor
 

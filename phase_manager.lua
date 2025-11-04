@@ -43,8 +43,9 @@ function PhaseManager:new(playerCoachId, aiCoachId, playerKicker, playerPunter, 
     local playerYardsNeeded = (playerCoachId == "special_teams") and 68 or 80
     local aiYardsNeeded = (aiCoachId == "special_teams") and 68 or 80
 
-    -- Create field state
+    -- Create field state (player starts on offense, driving forward toward 100)
     p.field = FieldState:new(playerYardsNeeded)
+    p.field.drivingForward = true  -- Player drives toward 100
 
     -- Create card managers with coach-specific cards
     p.playerOffense = CardManager:new("player", "offense", p.playerCoach.offensiveCards)
@@ -270,24 +271,28 @@ function PhaseManager:switchPhase(isTouchdown)
         PhaseManager.logger:logPhaseChange(self.currentPhase)
     end
 
-    -- Determine new starting position and yards needed
+    -- Determine new starting position, yards needed, and direction
     local yardsNeeded
     local startingPosition
+    local drivingForward
+
     if isTouchdown then
         -- After touchdown/field goal, offense starts at own 20 (needs 80 yards)
         local coach = (self.currentPhase == "player_offense") and self.playerCoach or self.aiCoach
         yardsNeeded = (coach.id == "special_teams") and 68 or 80
 
-        -- Set correct starting position based on which team is on offense
+        -- Set correct starting position and direction based on which team is on offense
         if self.currentPhase == "player_offense" then
             -- Player drives toward 100, starts at their 20
             startingPosition = 20
+            drivingForward = true
         else
             -- AI drives toward 0, starts at their 20 (which is position 80)
             startingPosition = 80
+            drivingForward = false
         end
 
-        self.field:reset(startingPosition, yardsNeeded)
+        self.field:reset(startingPosition, yardsNeeded, drivingForward)
     else
         -- After turnover, new offense starts where old offense was
         -- Player team drives toward 100, AI team drives toward 0
@@ -295,11 +300,13 @@ function PhaseManager:switchPhase(isTouchdown)
         if self.currentPhase == "player_offense" then
             -- Player now has the ball, drives toward 100
             yardsNeeded = 100 - currentFieldPos
+            drivingForward = true
         else
             -- AI now has the ball, drives toward 0
             yardsNeeded = currentFieldPos
+            drivingForward = false
         end
-        self.field:reset(currentFieldPos, yardsNeeded)
+        self.field:reset(currentFieldPos, yardsNeeded, drivingForward)
     end
 end
 
@@ -495,38 +502,43 @@ end
 --- @param isPlayerOffense boolean True if player is punting
 function PhaseManager:executePunt(punter, isPlayerOffense)
     -- Random distance between minRange and maxRange
-    local puntDistance = love.math.random(punter.punterMinRange, punter.punterMaxRange)
+    local actualPuntDistance = love.math.random(punter.punterMinRange, punter.punterMaxRange)
+    local netPuntDistance = actualPuntDistance  -- May be adjusted for touchbacks
 
     -- Calculate new field position
     local currentFieldPos = self.field:getFieldPosition()
     local newFieldPos
 
     if isPlayerOffense then
-        -- Player punts: ball moves toward AI endzone (0)
-        newFieldPos = currentFieldPos - puntDistance
-        -- Touchback: clamp to 20-yard line (opponent needs 80 yards)
-        if newFieldPos < 20 then
-            newFieldPos = 20
-            puntDistance = currentFieldPos - 20
-        end
-    else
-        -- AI punts: ball moves toward player endzone (100)
-        newFieldPos = currentFieldPos + puntDistance
-        -- Touchback: clamp to 80-yard line (opponent needs 80 yards from their 20)
+        -- Player punts: ball moves toward AI endzone (position 100, on RIGHT)
+        newFieldPos = currentFieldPos + actualPuntDistance
+        -- Touchback: clamp to opponent's 20-yard line (position 80)
         if newFieldPos > 80 then
             newFieldPos = 80
-            puntDistance = 80 - currentFieldPos
+            netPuntDistance = newFieldPos - currentFieldPos  -- Show net yards
+        end
+    else
+        -- AI punts: ball moves toward player endzone (position 0, on LEFT)
+        newFieldPos = currentFieldPos - actualPuntDistance
+        -- Touchback: clamp to opponent's 20-yard line (position 20)
+        if newFieldPos < 20 then
+            newFieldPos = 20
+            netPuntDistance = currentFieldPos - newFieldPos  -- Show net yards
         end
     end
 
-    -- Set event data
+    -- Set event data (show actual distance in popup)
     self.lastEvent = "punt"
-    self.lastEventYards = puntDistance
+    self.lastEventYards = actualPuntDistance
     self.lastEventTeam = isPlayerOffense and "player" or "ai"
 
     -- Log punt
     if PhaseManager.logger then
-        PhaseManager.logger:log(string.format("PUNT: %d yards (new position: %d)", puntDistance, newFieldPos))
+        if netPuntDistance < actualPuntDistance then
+            PhaseManager.logger:log(string.format("PUNT: %d yards (TOUCHBACK, net %d yards, new position: %d)", actualPuntDistance, netPuntDistance, newFieldPos))
+        else
+            PhaseManager.logger:log(string.format("PUNT: %d yards (new position: %d)", actualPuntDistance, newFieldPos))
+        end
     end
 
     -- Change possession (like turnover, but with specific field position)
