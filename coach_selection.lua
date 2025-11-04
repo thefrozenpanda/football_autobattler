@@ -146,31 +146,15 @@ function coachSelection.drawCoachCard(coach, x, y, isSelected, scale)
     love.graphics.setColor(0.7, 0.7, 0.7)
     love.graphics.printf(coach.signatureDesc, x + UIScale.scaleWidth(10), y + UIScale.scaleHeight(155), scaledCardWidth - UIScale.scaleWidth(20), "left")
 
-    -- Offensive preview
-    love.graphics.setColor(0.9, 0.6, 0.3)
-    love.graphics.printf("Offense:", x + UIScale.scaleWidth(10), y + UIScale.scaleHeight(195), scaledCardWidth - UIScale.scaleWidth(20), "left")
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    local offenseText = ""
-    for idx, card in ipairs(coach.offensiveCards) do
-        offenseText = offenseText .. card.position
-        if idx < #coach.offensiveCards then
-            offenseText = offenseText .. ", "
-        end
-    end
-    love.graphics.printf(offenseText, x + UIScale.scaleWidth(10), y + UIScale.scaleHeight(215), scaledCardWidth - UIScale.scaleWidth(20), "left")
+    -- Special Teams bonus (only for Special Teams coach)
+    if coach.id == "special_teams" then
+        love.graphics.setColor(0.4, 0.9, 0.4)
+        love.graphics.printf("Special Teams:", x + UIScale.scaleWidth(10), y + UIScale.scaleHeight(195), scaledCardWidth - UIScale.scaleWidth(20), "left")
+        love.graphics.setColor(0.8, 0.8, 0.8)
 
-    -- Defensive preview
-    love.graphics.setColor(0.3, 0.6, 0.9)
-    love.graphics.printf("Defense:", x + UIScale.scaleWidth(10), y + UIScale.scaleHeight(235), scaledCardWidth - UIScale.scaleWidth(20), "left")
-    love.graphics.setColor(0.8, 0.8, 0.8)
-    local defenseText = ""
-    for idx, card in ipairs(coach.defensiveCards) do
-        defenseText = defenseText .. card.position
-        if idx < #coach.defensiveCards then
-            defenseText = defenseText .. ", "
-        end
+        local bonusText = "Kicker: 55 yd range, 75% max accuracy\nPunter: 40-50 yd range"
+        love.graphics.printf(bonusText, x + UIScale.scaleWidth(10), y + UIScale.scaleHeight(215), scaledCardWidth - UIScale.scaleWidth(20), "left")
     end
-    love.graphics.printf(defenseText, x + UIScale.scaleWidth(10), y + UIScale.scaleHeight(255), scaledCardWidth - UIScale.scaleWidth(20), "left")
 
     love.graphics.pop()
 end

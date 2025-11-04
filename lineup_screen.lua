@@ -97,6 +97,23 @@ function LineupScreen.draw()
 
     yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60)
 
+    -- Special Teams
+    love.graphics.setFont(sectionFont)
+    love.graphics.setColor(0.4, 0.9, 0.4)
+    love.graphics.print("Special Teams (2)", startX, yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(SECTION_Y_OFFSET)
+    local specialTeamsCards = {}
+    if SeasonManager.playerTeam.kicker then
+        table.insert(specialTeamsCards, SeasonManager.playerTeam.kicker)
+    end
+    if SeasonManager.playerTeam.punter then
+        table.insert(specialTeamsCards, SeasonManager.playerTeam.punter)
+    end
+    LineupScreen.drawCardRow(specialTeamsCards, yOffset, "special_teams")
+
+    yOffset = yOffset + UIScale.scaleHeight(CARD_HEIGHT + 60)
+
     -- Bench
     love.graphics.setFont(sectionFont)
     love.graphics.setColor(0.7, 0.7, 0.8)
