@@ -450,9 +450,40 @@ end
 function SeasonMenu.wheelmoved(x, y)
     -- Forward scroll to current screen if it supports it
     if SeasonMenu.currentScreen == "schedule" and ScheduleScreen and ScheduleScreen.wheelmoved then
-        ScheduleScreen.wheelmoved(x, y)
+        ScheduleScreen.wheelmoved(y)
     elseif SeasonMenu.currentScreen == "stats" and StatsScreen and StatsScreen.wheelmoved then
-        StatsScreen.wheelmoved(x, y)
+        StatsScreen.wheelmoved(y)
+    end
+end
+
+--- LÖVE Callback: Mouse Moved
+--- @param x number Mouse X position
+--- @param y number Mouse Y position
+function SeasonMenu.mousemoved(x, y)
+    -- Adjust y for header offset
+    local adjustedY = y - UIScale.scaleHeight(HEADER_HEIGHT)
+
+    -- Forward to current screen if it supports it
+    if SeasonMenu.currentScreen == "schedule" and ScheduleScreen and ScheduleScreen.mousemoved then
+        ScheduleScreen.mousemoved(x, adjustedY)
+    elseif SeasonMenu.currentScreen == "stats" and StatsScreen and StatsScreen.mousemoved then
+        StatsScreen.mousemoved(x, adjustedY)
+    end
+end
+
+--- LÖVE Callback: Mouse Released
+--- @param x number Mouse X position
+--- @param y number Mouse Y position
+--- @param button number Mouse button
+function SeasonMenu.mousereleased(x, y, button)
+    -- Adjust y for header offset
+    local adjustedY = y - UIScale.scaleHeight(HEADER_HEIGHT)
+
+    -- Forward to current screen if it supports it
+    if SeasonMenu.currentScreen == "schedule" and ScheduleScreen and ScheduleScreen.mousereleased then
+        ScheduleScreen.mousereleased(x, adjustedY, button)
+    elseif SeasonMenu.currentScreen == "stats" and StatsScreen and StatsScreen.mousereleased then
+        StatsScreen.mousereleased(x, adjustedY, button)
     end
 end
 

@@ -394,10 +394,23 @@ function love.mousemoved(x, y, dx, dy)
         menu.mousemoved(x, y)
     elseif gameState == "coach_selection" then
         coachSelection.mousemoved(x, y)
+    elseif gameState == "season_menu" then
+        seasonMenu.mousemoved(x, y)
     elseif gameState == "game" then
         match.mousemoved(x, y)
     elseif gameState == "options" then
         optionsMenu.mousemoved(x, y)
+    end
+end
+
+--- LÖVE Callback: Mouse Released
+--- Handles mouse button release events. Delegates to current state module.
+--- @param x number Mouse X position in pixels
+--- @param y number Mouse Y position in pixels
+--- @param button number Mouse button (1=left, 2=right, 3=middle)
+function love.mousereleased(x, y, button)
+    if gameState == "season_menu" then
+        seasonMenu.mousereleased(x, y, button)
     end
 end
 

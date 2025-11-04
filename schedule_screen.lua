@@ -21,6 +21,8 @@ ScheduleScreen.showBracket = false  -- Toggle between schedule and bracket view
 ScheduleScreen.selectedTeam = nil   -- Currently selected team for schedule view
 ScheduleScreen.dropdownOpen = false  -- Is the dropdown menu open?
 ScheduleScreen.dropdownTeams = {}    -- Sorted list of teams for dropdown
+ScheduleScreen.isDraggingScrollbar = false  -- Is user dragging scrollbar
+ScheduleScreen.scrollbarBounds = {}  -- Cached scrollbar bounds for hit detection
 
 -- UI configuration (base values for 1600x900)
 local GAME_ROW_HEIGHT = 45
@@ -239,6 +241,18 @@ function ScheduleScreen.drawScrollBar()
     local contentHeight = ScheduleScreen.contentHeight + ScheduleScreen.maxScroll
     local thumbHeight = math.max(barHeight * (ScheduleScreen.contentHeight / contentHeight), UIScale.scaleHeight(30))
     local thumbY = barY + (ScheduleScreen.scrollOffset / ScheduleScreen.maxScroll) * (barHeight - thumbHeight)
+
+    -- Cache scrollbar bounds for hit detection
+    ScheduleScreen.scrollbarBounds = {
+        trackX = barX,
+        trackY = barY,
+        trackWidth = barWidth,
+        trackHeight = barHeight,
+        thumbX = barX,
+        thumbY = thumbY,
+        thumbWidth = barWidth,
+        thumbHeight = thumbHeight
+    }
 
     -- Thumb
     love.graphics.setColor(0.5, 0.6, 0.7, 0.8)
@@ -739,6 +753,30 @@ function ScheduleScreen.mousepressed(x, y, button)
 
     local my = y
 
+    -- Check scrollbar clicks
+    if ScheduleScreen.maxScroll > 0 and ScheduleScreen.scrollbarBounds.thumbX then
+        local bounds = ScheduleScreen.scrollbarBounds
+
+        -- Check if clicking on thumb
+        if x >= bounds.thumbX and x <= bounds.thumbX + bounds.thumbWidth and
+           y >= bounds.thumbY and y <= bounds.thumbY + bounds.thumbHeight then
+            ScheduleScreen.isDraggingScrollbar = true
+            ScheduleScreen.dragStartY = y
+            ScheduleScreen.dragStartOffset = ScheduleScreen.scrollOffset
+            return
+        end
+
+        -- Check if clicking on track (jump to position)
+        if x >= bounds.trackX and x <= bounds.trackX + bounds.trackWidth and
+           y >= bounds.trackY and y <= bounds.trackY + bounds.trackHeight then
+            -- Calculate scroll position based on click
+            local clickRatio = (y - bounds.trackY) / bounds.trackHeight
+            ScheduleScreen.scrollOffset = clickRatio * ScheduleScreen.maxScroll
+            ScheduleScreen.scrollOffset = math.max(0, math.min(ScheduleScreen.scrollOffset, ScheduleScreen.maxScroll))
+            return
+        end
+    end
+
     -- Check dropdown clicks
     local scaledDropdownX = UIScale.scaleX(DROPDOWN_X)
     local scaledDropdownY = UIScale.scaleY(DROPDOWN_Y)
@@ -795,6 +833,35 @@ end
 function ScheduleScreen.wheelmoved(y)
     ScheduleScreen.scrollOffset = ScheduleScreen.scrollOffset - (y * UIScale.scaleUniform(30))
     ScheduleScreen.scrollOffset = math.max(0, math.min(ScheduleScreen.scrollOffset, ScheduleScreen.maxScroll))
+end
+
+--- LÖVE Callback: Mouse Moved
+--- @param x number Mouse X position
+--- @param y number Mouse Y position
+function ScheduleScreen.mousemoved(x, y)
+    if ScheduleScreen.isDraggingScrollbar and ScheduleScreen.scrollbarBounds.trackHeight then
+        local bounds = ScheduleScreen.scrollbarBounds
+        local deltaY = y - ScheduleScreen.dragStartY
+
+        -- Calculate how much to scroll based on drag distance
+        -- Convert thumb movement to scroll offset movement
+        local thumbRange = bounds.trackHeight - bounds.thumbHeight
+        if thumbRange > 0 then
+            local scrollDelta = (deltaY / thumbRange) * ScheduleScreen.maxScroll
+            ScheduleScreen.scrollOffset = ScheduleScreen.dragStartOffset + scrollDelta
+            ScheduleScreen.scrollOffset = math.max(0, math.min(ScheduleScreen.scrollOffset, ScheduleScreen.maxScroll))
+        end
+    end
+end
+
+--- LÖVE Callback: Mouse Released
+--- @param x number Mouse X position
+--- @param y number Mouse Y position
+--- @param button number Mouse button
+function ScheduleScreen.mousereleased(x, y, button)
+    if button == 1 then
+        ScheduleScreen.isDraggingScrollbar = false
+    end
 end
 
 return ScheduleScreen

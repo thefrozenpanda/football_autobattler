@@ -22,6 +22,8 @@ StatsScreen.sortAscending = true  -- Sort direction
 StatsScreen.scrollOffset = 0
 StatsScreen.maxScroll = 0
 StatsScreen.contentHeight = 700
+StatsScreen.isDraggingScrollbar = false  -- Is user dragging scrollbar
+StatsScreen.scrollbarBounds = {}  -- Cached scrollbar bounds for hit detection
 
 -- UI configuration (base values for 1600x900)
 local ROW_HEIGHT = 35
@@ -185,6 +187,18 @@ function StatsScreen.drawScrollBar()
     local thumbHeight = math.max(barHeight * (StatsScreen.contentHeight / contentHeight), UIScale.scaleHeight(30))
     local thumbY = barY + (StatsScreen.scrollOffset / StatsScreen.maxScroll) * (barHeight - thumbHeight)
 
+    -- Cache scrollbar bounds for hit detection
+    StatsScreen.scrollbarBounds = {
+        trackX = barX,
+        trackY = barY,
+        trackWidth = barWidth,
+        trackHeight = barHeight,
+        thumbX = barX,
+        thumbY = thumbY,
+        thumbWidth = barWidth,
+        thumbHeight = thumbHeight
+    }
+
     -- Thumb
     love.graphics.setColor(0.5, 0.6, 0.7, 0.8)
     love.graphics.rectangle("fill", barX, thumbY, barWidth, thumbHeight, UIScale.scaleUniform(5), UIScale.scaleUniform(5))
@@ -324,6 +338,30 @@ function StatsScreen.mousepressed(x, y, button)
         return
     end
 
+    -- Check scrollbar clicks
+    if StatsScreen.maxScroll > 0 and StatsScreen.scrollbarBounds.thumbX then
+        local bounds = StatsScreen.scrollbarBounds
+
+        -- Check if clicking on thumb
+        if x >= bounds.thumbX and x <= bounds.thumbX + bounds.thumbWidth and
+           y >= bounds.thumbY and y <= bounds.thumbY + bounds.thumbHeight then
+            StatsScreen.isDraggingScrollbar = true
+            StatsScreen.dragStartY = y
+            StatsScreen.dragStartOffset = StatsScreen.scrollOffset
+            return
+        end
+
+        -- Check if clicking on track (jump to position)
+        if x >= bounds.trackX and x <= bounds.trackX + bounds.trackWidth and
+           y >= bounds.trackY and y <= bounds.trackY + bounds.trackHeight then
+            -- Calculate scroll position based on click
+            local clickRatio = (y - bounds.trackY) / bounds.trackHeight
+            StatsScreen.scrollOffset = clickRatio * StatsScreen.maxScroll
+            StatsScreen.scrollOffset = math.max(0, math.min(StatsScreen.scrollOffset, StatsScreen.maxScroll))
+            return
+        end
+    end
+
     -- Check if clicking on header to sort
     local headerY = UIScale.scaleY(START_Y + 50) - StatsScreen.scrollOffset
     local scaledHeaderHeight = UIScale.scaleHeight(HEADER_HEIGHT)
@@ -355,6 +393,35 @@ function StatsScreen.wheelmoved(y)
     local scrollSpeed = UIScale.scaleUniform(30)
     StatsScreen.scrollOffset = StatsScreen.scrollOffset - (y * scrollSpeed)
     StatsScreen.scrollOffset = math.max(0, math.min(StatsScreen.scrollOffset, StatsScreen.maxScroll))
+end
+
+--- LÖVE Callback: Mouse Moved
+--- @param x number Mouse X position
+--- @param y number Mouse Y position
+function StatsScreen.mousemoved(x, y)
+    if StatsScreen.isDraggingScrollbar and StatsScreen.scrollbarBounds.trackHeight then
+        local bounds = StatsScreen.scrollbarBounds
+        local deltaY = y - StatsScreen.dragStartY
+
+        -- Calculate how much to scroll based on drag distance
+        -- Convert thumb movement to scroll offset movement
+        local thumbRange = bounds.trackHeight - bounds.thumbHeight
+        if thumbRange > 0 then
+            local scrollDelta = (deltaY / thumbRange) * StatsScreen.maxScroll
+            StatsScreen.scrollOffset = StatsScreen.dragStartOffset + scrollDelta
+            StatsScreen.scrollOffset = math.max(0, math.min(StatsScreen.scrollOffset, StatsScreen.maxScroll))
+        end
+    end
+end
+
+--- LÖVE Callback: Mouse Released
+--- @param x number Mouse X position
+--- @param y number Mouse Y position
+--- @param button number Mouse button
+function StatsScreen.mousereleased(x, y, button)
+    if button == 1 then
+        StatsScreen.isDraggingScrollbar = false
+    end
 end
 
 return StatsScreen
