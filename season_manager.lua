@@ -156,6 +156,14 @@ function SeasonManager.updatePlayerCardStats(offensiveCards, defensiveCards)
         return
     end
 
+    -- Additional defensive checks for card arrays
+    if not SeasonManager.playerTeam.offensiveCards or not SeasonManager.playerTeam.defensiveCards then
+        if Card.logger then
+            Card.logger:log("WARNING: playerTeam missing card arrays in updatePlayerCardStats")
+        end
+        return
+    end
+
     -- Update offensive cards
     for i, matchCard in ipairs(offensiveCards) do
         if SeasonManager.playerTeam.offensiveCards[i] then
@@ -913,22 +921,20 @@ function SeasonManager.loadSeason()
         end
     end
 
+    -- Build team lookup index for O(1) access (performance optimization)
+    local teamByName = {}
+    for _, team in ipairs(SeasonManager.teams) do
+        teamByName[team.name] = team
+    end
+
     -- Restore schedule
     SeasonManager.schedule = {}
     for week, matchesData in ipairs(saveData.schedule) do
         SeasonManager.schedule[week] = {}
         for _, matchData in ipairs(matchesData) do
-            -- Find teams by name
-            local homeTeam = nil
-            local awayTeam = nil
-            for _, team in ipairs(SeasonManager.teams) do
-                if team.name == matchData.homeTeamName then
-                    homeTeam = team
-                end
-                if team.name == matchData.awayTeamName then
-                    awayTeam = team
-                end
-            end
+            -- Find teams by name using index (O(1) lookup)
+            local homeTeam = teamByName[matchData.homeTeamName]
+            local awayTeam = teamByName[matchData.awayTeamName]
 
             -- Validate teams were found
             if not homeTeam or not awayTeam then
@@ -951,18 +957,11 @@ function SeasonManager.loadSeason()
     if saveData.playoffBracket and saveData.playoffBracket.currentRound then
         SeasonManager.playoffBracket = {currentRound = saveData.playoffBracket.currentRound}
 
+        -- Use team lookup index for playoff matches (O(1) access)
         local function loadMatch(matchData)
             if matchData then
-                local homeTeam = nil
-                local awayTeam = nil
-                for _, team in ipairs(SeasonManager.teams) do
-                    if team.name == matchData.homeTeamName then
-                        homeTeam = team
-                    end
-                    if team.name == matchData.awayTeamName then
-                        awayTeam = team
-                    end
-                end
+                local homeTeam = teamByName[matchData.homeTeamName]
+                local awayTeam = teamByName[matchData.awayTeamName]
 
                 -- Validate teams were found
                 if not homeTeam or not awayTeam then

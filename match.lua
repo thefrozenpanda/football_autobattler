@@ -5,6 +5,7 @@ local Card = require("card")
 local CardManager = require("card_manager")
 local FieldState = require("field_state")
 local UIScale = require("ui_scale")
+local Coach = require("coach")
 local flux = require("lib.flux")
 
 local match = {}
@@ -169,12 +170,13 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam, playerKicker, 
     cachedScaledCardPadding = UIScale.scaleWidth(CARD_PADDING)
     cachedScaledProgressBarHeight = UIScale.scaleHeight(PROGRESS_BAR_HEIGHT)
 
-    -- Store team and coach names
-    local Coach = require("coach")
+    -- Store team and coach names (cache coach objects for performance)
     playerTeamName = playerTeam or "Player"
     aiTeamName = aiTeam or "Opponent"
-    playerCoachName = Coach.getById(playerCoachId).name
-    aiCoachName = Coach.getById(aiCoachId).name
+    local playerCoach = Coach.getById(playerCoachId)
+    local aiCoach = Coach.getById(aiCoachId)
+    playerCoachName = playerCoach.name
+    aiCoachName = aiCoach.name
 
     -- Initialize scaled fonts
     font = love.graphics.newFont(UIScale.scaleFontSize(20))
@@ -665,7 +667,6 @@ function match.drawCard(card, x, y)
     love.graphics.printf(card.position, x, y + UIScale.scaleHeight(3), scaledCardWidth, "center")
 
     -- Draw stats based on card type
-    local Card = require("card")
     if card.cardType == Card.TYPE.YARD_GENERATOR then
         love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
