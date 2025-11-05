@@ -445,6 +445,9 @@ function PhaseManager:attemptFieldGoal(kicker, yardsToEndzone, isPlayerOffense)
         accuracy = 1.0  -- 100% at 1 yard
     elseif fgDistance >= maxRange then
         accuracy = maxAccuracy
+    elseif maxRange <= 1 then
+        -- Guard against division by zero
+        accuracy = maxAccuracy
     else
         -- Linear interpolation
         accuracy = 1.0 - ((fgDistance - 1) / (maxRange - 1)) * (1.0 - maxAccuracy)

@@ -39,6 +39,7 @@ function Card:new(position, cardType, stats)
         boostAmountMin = stats.boostAmountMin or stats.boostAmount or 0,
         boostAmountMax = stats.boostAmountMax or stats.boostAmount or 0,
         boostAmount = stats.boostAmount or 0,       -- Percentage boost (e.g., 20 = 20%)
+        baseBoostAmount = stats.boostAmount or 0,   -- Original value before upgrades
         boostTargets = stats.boostTargets or {},    -- Which positions to boost (e.g., {"QB", "RB"})
 
         -- Defensive stats (with ranges)
@@ -46,6 +47,7 @@ function Card:new(position, cardType, stats)
         effectStrengthMin = stats.effectStrengthMin or stats.effectStrength or 0,
         effectStrengthMax = stats.effectStrengthMax or stats.effectStrength or 0,
         effectStrength = stats.effectStrength or 0, -- Strength of effect
+        baseEffectStrength = stats.effectStrength or 0, -- Original value before upgrades
         targetPositions = stats.targetPositions or {}, -- Which positions to target
 
         -- Kicker stats
@@ -61,8 +63,8 @@ function Card:new(position, cardType, stats)
 
         -- Common stats
         speed = stats.speed or 1.5,
-        cooldown = stats.speed or 1.5,  -- Cooldown in seconds between actions
-        baseCooldown = stats.speed or 1.5,  -- Original cooldown before upgrades
+        cooldown = stats.cooldown or stats.speed or 1.5,  -- Cooldown in seconds between actions
+        baseCooldown = stats.cooldown or stats.speed or 1.5,  -- Original cooldown before upgrades
         timer = 0,
 
         -- Upgrade tracking
@@ -213,6 +215,9 @@ function Card:applyFreeze(duration)
 end
 
 function Card:getProgress()
+    if self.cooldown <= 0 then
+        return 0
+    end
     return self.timer / self.cooldown
 end
 
@@ -533,16 +538,14 @@ function Card:recalculateStats()
 
     -- Apply boost upgrades (+5% per upgrade)
     if self.boostUpgrades and self.boostUpgrades > 0 then
-        -- Need to calculate base boost amount
-        local baseBoost = self.boostAmount - (self.boostUpgrades * 5)
-        self.boostAmount = baseBoost + (self.boostUpgrades * 5)
+        -- Recalculate boost amount from base value
+        self.boostAmount = self.baseBoostAmount + (self.boostUpgrades * 5)
     end
 
     -- Apply duration upgrades (+0.5s per upgrade)
     if self.durationUpgrades and self.durationUpgrades > 0 then
-        -- Need to calculate base effect strength
-        local baseStrength = self.effectStrength - (self.durationUpgrades * 0.5)
-        self.effectStrength = baseStrength + (self.durationUpgrades * 0.5)
+        -- Recalculate effect strength from base value
+        self.effectStrength = self.baseEffectStrength + (self.durationUpgrades * 0.5)
     end
 
     -- Apply kicker range upgrades (+2 yards per upgrade)
