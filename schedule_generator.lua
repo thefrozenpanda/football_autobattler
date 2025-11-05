@@ -222,7 +222,11 @@ function ScheduleGenerator.getLowestSeed(winners, seeds)
             end
         end
     end
-    return winners[1]
+    -- Validate winners is not empty
+    if #winners > 0 then
+        return winners[1]
+    end
+    return nil
 end
 
 --- Gets the highest seed from winners array
@@ -237,7 +241,11 @@ function ScheduleGenerator.getHighestSeed(winners, seeds)
             end
         end
     end
-    return winners[1]
+    -- Validate winners is not empty
+    if #winners > 0 then
+        return winners[1]
+    end
+    return nil
 end
 
 --- Shuffles an array randomly (Fisher-Yates algorithm)

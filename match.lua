@@ -5,6 +5,7 @@ local Card = require("card")
 local CardManager = require("card_manager")
 local FieldState = require("field_state")
 local UIScale = require("ui_scale")
+local Coach = require("coach")
 local flux = require("lib.flux")
 
 local match = {}
@@ -40,6 +41,12 @@ local CARD_WIDTH = 60
 local CARD_HEIGHT = 60
 local CARD_PADDING = 8
 local PROGRESS_BAR_HEIGHT = 5
+
+-- Cached scaled values (updated when match loads)
+local cachedScaledCardWidth = CARD_WIDTH
+local cachedScaledCardHeight = CARD_HEIGHT
+local cachedScaledCardPadding = CARD_PADDING
+local cachedScaledProgressBarHeight = PROGRESS_BAR_HEIGHT
 
 -- Pause menu constants
 local paused = false
@@ -157,12 +164,19 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam, playerKicker, 
     -- Update UI scale
     UIScale.update()
 
-    -- Store team and coach names
-    local Coach = require("coach")
+    -- Update cached scaled values for performance
+    cachedScaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
+    cachedScaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+    cachedScaledCardPadding = UIScale.scaleWidth(CARD_PADDING)
+    cachedScaledProgressBarHeight = UIScale.scaleHeight(PROGRESS_BAR_HEIGHT)
+
+    -- Store team and coach names (cache coach objects for performance)
     playerTeamName = playerTeam or "Player"
     aiTeamName = aiTeam or "Opponent"
-    playerCoachName = Coach.getById(playerCoachId).name
-    aiCoachName = Coach.getById(aiCoachId).name
+    local playerCoach = Coach.getById(playerCoachId)
+    local aiCoach = Coach.getById(aiCoachId)
+    playerCoachName = playerCoach.name
+    aiCoachName = aiCoach.name
 
     -- Initialize scaled fonts
     font = love.graphics.newFont(UIScale.scaleFontSize(20))
@@ -607,8 +621,8 @@ function match.drawTeamCards(cards, side, teamName, formation)
 end
 
 function match.drawCard(card, x, y)
-    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
-    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+    local scaledCardWidth = cachedScaledCardWidth
+    local scaledCardHeight = cachedScaledCardHeight
 
     -- Apply animation offset (horizontal bounce toward center)
     x = x + (card.animOffsetX or 0)
@@ -653,7 +667,6 @@ function match.drawCard(card, x, y)
     love.graphics.printf(card.position, x, y + UIScale.scaleHeight(3), scaledCardWidth, "center")
 
     -- Draw stats based on card type
-    local Card = require("card")
     if card.cardType == Card.TYPE.YARD_GENERATOR then
         love.graphics.setFont(cardStatsFont)
         love.graphics.printf(
@@ -690,7 +703,7 @@ function match.drawCard(card, x, y)
     end
 
     -- Draw progress bar
-    local scaledProgressBarHeight = UIScale.scaleHeight(PROGRESS_BAR_HEIGHT)
+    local scaledProgressBarHeight = cachedScaledProgressBarHeight
     local progressBarY = y + scaledCardHeight - scaledProgressBarHeight - UIScale.scaleHeight(3)
     local progressBarWidth = scaledCardWidth - UIScale.scaleWidth(10)
     local progressBarX = x + UIScale.scaleWidth(5)
@@ -722,8 +735,8 @@ function match.getCardAtPosition(mx, my)
     local playerFormation = playerIsOffense and OFFENSIVE_FORMATION or DEFENSIVE_FORMATION_MIRRORED
     local aiFormation = playerIsOffense and DEFENSIVE_FORMATION or OFFENSIVE_FORMATION_MIRRORED
 
-    local scaledCardWidth = UIScale.scaleWidth(CARD_WIDTH)
-    local scaledCardHeight = UIScale.scaleHeight(CARD_HEIGHT)
+    local scaledCardWidth = cachedScaledCardWidth
+    local scaledCardHeight = cachedScaledCardHeight
 
     -- Check player cards
     local playerStartX = UIScale.scaleX(150)

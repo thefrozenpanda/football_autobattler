@@ -220,6 +220,9 @@ end
 
 -- Get random coach (for AI)
 function Coach.getRandom()
+    if #Coach.types == 0 then
+        return nil
+    end
     local index = love.math.random(1, #Coach.types)
     return Coach.types[index]
 end
@@ -229,6 +232,9 @@ end
 -- @param cardDefs table Array of card definitions (e.g., coachData.offensiveCards)
 -- @return table Array of Card instances
 function Coach.createCardSet(cardDefs)
+    if not cardDefs then
+        return {}
+    end
     local cards = {}
     for i, cardDef in ipairs(cardDefs) do
         local card = Card:new(cardDef.position, cardDef.cardType, cardDef.stats)

@@ -156,6 +156,14 @@ function SeasonManager.updatePlayerCardStats(offensiveCards, defensiveCards)
         return
     end
 
+    -- Additional defensive checks for card arrays
+    if not SeasonManager.playerTeam.offensiveCards or not SeasonManager.playerTeam.defensiveCards then
+        if Card.logger then
+            Card.logger:log("WARNING: playerTeam missing card arrays in updatePlayerCardStats")
+        end
+        return
+    end
+
     -- Update offensive cards
     for i, matchCard in ipairs(offensiveCards) do
         if SeasonManager.playerTeam.offensiveCards[i] then
@@ -210,7 +218,7 @@ function SeasonManager.recordMatchResult(homeTeam, awayTeam, homeScore, awayScor
         SeasonManager.lastMatchResult = {
             playerScore = (homeTeam == SeasonManager.playerTeam) and homeScore or awayScore,
             aiScore = (homeTeam == SeasonManager.playerTeam) and awayScore or homeScore,
-            playerWon = (homeTeam == SeasonManager.playerTeam) and homeScore > awayScore or awayScore > homeScore,
+            playerWon = (homeTeam == SeasonManager.playerTeam) and (homeScore > awayScore) or (awayScore > homeScore),
             mvpOffense = nil,  -- Will be set by match.lua
             mvpDefense = nil   -- Will be set by match.lua
         }
@@ -285,6 +293,15 @@ function SeasonManager.startPlayoffs()
     local standingsB = Team.sortByStandings(conferenceB)
 
     -- Top 6 per conference make playoffs
+    -- Validate we have enough teams
+    if #standingsA < 6 or #standingsB < 6 then
+        if Card.logger then
+            Card.logger:log("ERROR: Not enough teams for playoffs (Conference A: " .. #standingsA .. ", Conference B: " .. #standingsB .. ")")
+        end
+        SeasonManager.currentPhase = "season_end"
+        return
+    end
+
     local playoffTeamsA = {standingsA[1], standingsA[2], standingsA[3], standingsA[4], standingsA[5], standingsA[6]}
     local playoffTeamsB = {standingsB[1], standingsB[2], standingsB[3], standingsB[4], standingsB[5], standingsB[6]}
 
@@ -904,30 +921,35 @@ function SeasonManager.loadSeason()
         end
     end
 
+    -- Build team lookup index for O(1) access (performance optimization)
+    local teamByName = {}
+    for _, team in ipairs(SeasonManager.teams) do
+        teamByName[team.name] = team
+    end
+
     -- Restore schedule
     SeasonManager.schedule = {}
     for week, matchesData in ipairs(saveData.schedule) do
         SeasonManager.schedule[week] = {}
         for _, matchData in ipairs(matchesData) do
-            -- Find teams by name
-            local homeTeam = nil
-            local awayTeam = nil
-            for _, team in ipairs(SeasonManager.teams) do
-                if team.name == matchData.homeTeamName then
-                    homeTeam = team
-                end
-                if team.name == matchData.awayTeamName then
-                    awayTeam = team
-                end
-            end
+            -- Find teams by name using index (O(1) lookup)
+            local homeTeam = teamByName[matchData.homeTeamName]
+            local awayTeam = teamByName[matchData.awayTeamName]
 
-            table.insert(SeasonManager.schedule[week], {
-                homeTeam = homeTeam,
-                awayTeam = awayTeam,
-                homeScore = matchData.homeScore,
-                awayScore = matchData.awayScore,
-                played = matchData.played
-            })
+            -- Validate teams were found
+            if not homeTeam or not awayTeam then
+                if Card.logger then
+                    Card.logger:log("WARNING: Could not find team in save data - Home: " .. tostring(matchData.homeTeamName) .. ", Away: " .. tostring(matchData.awayTeamName))
+                end
+            else
+                table.insert(SeasonManager.schedule[week], {
+                    homeTeam = homeTeam,
+                    awayTeam = awayTeam,
+                    homeScore = matchData.homeScore,
+                    awayScore = matchData.awayScore,
+                    played = matchData.played
+                })
+            end
         end
     end
 
@@ -935,17 +957,18 @@ function SeasonManager.loadSeason()
     if saveData.playoffBracket and saveData.playoffBracket.currentRound then
         SeasonManager.playoffBracket = {currentRound = saveData.playoffBracket.currentRound}
 
+        -- Use team lookup index for playoff matches (O(1) access)
         local function loadMatch(matchData)
             if matchData then
-                local homeTeam = nil
-                local awayTeam = nil
-                for _, team in ipairs(SeasonManager.teams) do
-                    if team.name == matchData.homeTeamName then
-                        homeTeam = team
+                local homeTeam = teamByName[matchData.homeTeamName]
+                local awayTeam = teamByName[matchData.awayTeamName]
+
+                -- Validate teams were found
+                if not homeTeam or not awayTeam then
+                    if Card.logger then
+                        Card.logger:log("WARNING: Could not find playoff team in save data - Home: " .. tostring(matchData.homeTeamName) .. ", Away: " .. tostring(matchData.awayTeamName))
                     end
-                    if team.name == matchData.awayTeamName then
-                        awayTeam = team
-                    end
+                    return nil
                 end
 
                 return {
@@ -1042,36 +1065,36 @@ end
 --- @return string Serialized table as Lua code
 function SeasonManager.serializeTable(t, indent)
     indent = indent or ""
-    local result = "{\n"
+    local parts = {"{\n"}
 
     for k, v in pairs(t) do
-        result = result .. indent .. "  "
-
-        -- Key
+        -- Build key string
+        local keyStr
         if type(k) == "string" then
-            result = result .. "[\"" .. k .. "\"] = "
+            keyStr = "[\"" .. k .. "\"] = "
         else
-            result = result .. "[" .. tostring(k) .. "] = "
+            keyStr = "[" .. tostring(k) .. "] = "
         end
 
-        -- Value
+        -- Build value string
+        local valueStr
         if type(v) == "table" then
-            result = result .. SeasonManager.serializeTable(v, indent .. "  ")
+            valueStr = SeasonManager.serializeTable(v, indent .. "  ")
         elseif type(v) == "string" then
-            result = result .. "\"" .. v .. "\""
+            valueStr = "\"" .. v .. "\""
         elseif type(v) == "boolean" then
-            result = result .. tostring(v)
+            valueStr = tostring(v)
         elseif type(v) == "number" then
-            result = result .. tostring(v)
+            valueStr = tostring(v)
         else
-            result = result .. "nil"
+            valueStr = "nil"
         end
 
-        result = result .. ",\n"
+        table.insert(parts, indent .. "  " .. keyStr .. valueStr .. ",\n")
     end
 
-    result = result .. indent .. "}"
-    return result
+    table.insert(parts, indent .. "}")
+    return table.concat(parts)
 end
 
 --- Simple table deserializer

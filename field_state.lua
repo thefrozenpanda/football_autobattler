@@ -67,17 +67,17 @@ function FieldState:addYards(yards)
 end
 
 function FieldState:removeYards(yards)
-    -- Remove yards from both counters (using lume.clamp for cleaner code)
-    self.totalYards = lume.clamp(self.totalYards - yards, 0, math.huge)
-    self.downYards = lume.clamp(self.downYards - yards, 0, math.huge)
+    -- Remove yards from both counters (inline math for performance)
+    self.totalYards = math.max(0, self.totalYards - yards)
+    self.downYards = math.max(0, self.downYards - yards)
 
     -- Update field position based on direction (reverse of addYards)
     if self.drivingForward then
         -- Driving toward 100, removing yards moves back
-        self.fieldPosition = lume.clamp(self.fieldPosition - yards, 0, 100)
+        self.fieldPosition = math.max(0, math.min(100, self.fieldPosition - yards))
     else
         -- Driving toward 0, removing yards moves back
-        self.fieldPosition = lume.clamp(self.fieldPosition + yards, 0, 100)
+        self.fieldPosition = math.max(0, math.min(100, self.fieldPosition + yards))
     end
 end
 

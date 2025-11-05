@@ -11,7 +11,8 @@ function CardManager:new(side, phase, cardDefinitions)
     local c = {
         side = side,        -- "player" or "ai"
         phase = phase,      -- "offense" or "defense"
-        cards = {}
+        cards = {},
+        cardCache = {}      -- Cache for filtered card lists by type
     }
     setmetatable(c, CardManager)
 
@@ -28,6 +29,9 @@ function CardManager:new(side, phase, cardDefinitions)
         end
     end
 
+    -- Build cache after all cards are added
+    c:buildCache()
+
     return c
 end
 
@@ -41,34 +45,31 @@ function CardManager:update(dt)
     end
 end
 
-function CardManager:getYardGenerators()
-    local generators = {}
+-- Builds cache of filtered card lists by type for performance
+function CardManager:buildCache()
+    self.cardCache = {}
+    self.cardCache[Card.TYPE.YARD_GENERATOR] = {}
+    self.cardCache[Card.TYPE.BOOSTER] = {}
+    self.cardCache[Card.TYPE.DEFENDER] = {}
+
     for _, card in ipairs(self.cards) do
-        if card.cardType == Card.TYPE.YARD_GENERATOR then
-            table.insert(generators, card)
+        local cardType = card.cardType
+        if self.cardCache[cardType] then
+            table.insert(self.cardCache[cardType], card)
         end
     end
-    return generators
+end
+
+function CardManager:getYardGenerators()
+    return self.cardCache[Card.TYPE.YARD_GENERATOR] or {}
 end
 
 function CardManager:getBoosters()
-    local boosters = {}
-    for _, card in ipairs(self.cards) do
-        if card.cardType == Card.TYPE.BOOSTER then
-            table.insert(boosters, card)
-        end
-    end
-    return boosters
+    return self.cardCache[Card.TYPE.BOOSTER] or {}
 end
 
 function CardManager:getDefenders()
-    local defenders = {}
-    for _, card in ipairs(self.cards) do
-        if card.cardType == Card.TYPE.DEFENDER then
-            table.insert(defenders, card)
-        end
-    end
-    return defenders
+    return self.cardCache[Card.TYPE.DEFENDER] or {}
 end
 
 -- Find cards by position (for targeting)
