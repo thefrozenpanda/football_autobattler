@@ -11,8 +11,9 @@ function FieldState:new(yardsNeeded)
     local f = {
         -- Yard tracking
         totalYards = 0,              -- Total yards gained this drive (0 to yardsNeeded)
-        downYards = 0,               -- Yards gained this set of downs (0 to 10)
+        downYards = 0,               -- Yards gained this set of downs (can go negative if losing ground)
         yardsNeeded = yardsNeeded or 80,  -- Yards needed to score TD (80 default, 68 for Special Teams)
+        firstDownLine = 10,          -- Field position where first down is achieved (starts 10 yards ahead)
 
         -- Down tracking
         currentDown = 1,             -- Current down (1-4)
@@ -60,16 +61,18 @@ function FieldState:addYards(yards)
         self.touchdownScored = true
     end
 
-    -- Check for first down
-    if self.downYards >= 10 then
+    -- Check for first down (reached or passed the first down line)
+    if self.fieldPosition >= self.firstDownLine and self.drivingForward then
+        self:achieveFirstDown()
+    elseif self.fieldPosition <= self.firstDownLine and not self.drivingForward then
         self:achieveFirstDown()
     end
 end
 
 function FieldState:removeYards(yards)
-    -- Remove yards from both counters (inline math for performance)
+    -- Remove yards from totalYards (clamped to 0) and downYards (can go negative)
     self.totalYards = math.max(0, self.totalYards - yards)
-    self.downYards = math.max(0, self.downYards - yards)
+    self.downYards = self.downYards - yards  -- Allow negative to track loss of ground
 
     -- Update field position based on direction (reverse of addYards)
     if self.drivingForward then
@@ -86,6 +89,13 @@ function FieldState:achieveFirstDown()
     self.currentDown = 1
     self.downYards = 0
     self.downTimer = self.downDuration
+
+    -- Set new first down line (10 yards ahead of current position)
+    if self.drivingForward then
+        self.firstDownLine = self.fieldPosition + 10
+    else
+        self.firstDownLine = self.fieldPosition - 10
+    end
 end
 
 function FieldState:advanceDown()
@@ -99,11 +109,18 @@ function FieldState:advanceDown()
 
     -- Check for turnover on downs
     if self.currentDown > 4 then
-        -- Check if we got the first down
-        if self.downYards < 10 then
+        -- Check if we've reached the first down line
+        local reachedFirstDown = false
+        if self.drivingForward then
+            reachedFirstDown = self.fieldPosition >= self.firstDownLine
+        else
+            reachedFirstDown = self.fieldPosition <= self.firstDownLine
+        end
+
+        if not reachedFirstDown then
             self.turnoverOccurred = true
             if FieldState.logger then
-                FieldState.logger:log("TURNOVER: Failed to get 10 yards in 4 downs")
+                FieldState.logger:log("TURNOVER: Failed to reach first down line in 4 downs")
             end
         else
             -- Got first down on 4th down
@@ -161,10 +178,22 @@ function FieldState:reset(startingPosition, yardsNeeded, drivingForward)
         self.yardsNeeded = 80
         self.drivingForward = true
     end
+
+    -- Set first down line (10 yards ahead of starting position)
+    if self.drivingForward then
+        self.firstDownLine = self.fieldPosition + 10
+    else
+        self.firstDownLine = self.fieldPosition - 10
+    end
 end
 
 function FieldState:getYardsToFirstDown()
-    return math.max(0, 10 - self.downYards)
+    -- Calculate distance to first down line based on direction
+    if self.drivingForward then
+        return math.max(0, self.firstDownLine - self.fieldPosition)
+    else
+        return math.max(0, self.fieldPosition - self.firstDownLine)
+    end
 end
 
 function FieldState:getYardsToTouchdown()

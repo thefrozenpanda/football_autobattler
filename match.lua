@@ -207,8 +207,13 @@ function match.load(playerCoachId, aiCoachId, playerTeam, aiTeam, playerKicker, 
 end
 
 function match.update(dt)
-    if paused or matchEnded then
-        flux.update(dt)  -- Update animations even when paused
+    if paused then
+        -- Don't update anything (including animations) when paused
+        return
+    end
+
+    if matchEnded then
+        flux.update(dt)  -- Update animations when match ended (for smooth transitions)
         return
     end
 
