@@ -61,6 +61,12 @@ function PhaseManager:new(playerCoachId, aiCoachId, playerKicker, playerPunter, 
 end
 
 function PhaseManager:update(dt)
+    -- Force 4th down to expire immediately if time is critically low
+    -- This ensures special teams decisions are made before game clock expires
+    if self.field.currentDown == 4 and self.timeLeft <= 2.5 and self.field.downTimer > 0.1 then
+        self.field.downTimer = 0.01  -- Force down to expire on next update
+    end
+
     -- Update field state (down timer)
     self.field:update(dt)
 
