@@ -61,6 +61,12 @@ function PhaseManager:new(playerCoachId, aiCoachId, playerKicker, playerPunter, 
 end
 
 function PhaseManager:update(dt)
+    -- Force 4th down to expire immediately if time is critically low
+    -- This ensures special teams decisions are made before game clock expires
+    if self.field.currentDown == 4 and self.timeLeft <= 2.5 and self.field.downTimer > 0.1 then
+        self.field.downTimer = 0.01  -- Force down to expire on next update
+    end
+
     -- Update field state (down timer)
     self.field:update(dt)
 
@@ -256,8 +262,9 @@ function PhaseManager:checkPhaseEnd()
     return false
 end
 
-function PhaseManager:switchPhase(isTouchdown)
-    local currentFieldPos = self.field:getFieldPosition()
+function PhaseManager:switchPhase(isTouchdown, overridePosition)
+    -- Use override position if provided (for punts), otherwise use current position
+    local currentFieldPos = overridePosition or self.field:getFieldPosition()
 
     -- Switch phase
     if self.currentPhase == "player_offense" then
@@ -294,7 +301,7 @@ function PhaseManager:switchPhase(isTouchdown)
 
         self.field:reset(startingPosition, yardsNeeded, drivingForward)
     else
-        -- After turnover, new offense starts where old offense was
+        -- After turnover, new offense starts where old offense was (or punt landing spot if overridePosition provided)
         -- Player team drives toward 100, AI team drives toward 0
         -- Calculate yards needed based on which team now has the ball
         if self.currentPhase == "player_offense" then
@@ -544,8 +551,8 @@ function PhaseManager:executePunt(punter, isPlayerOffense)
         end
     end
 
-    -- Change possession (like turnover, but with specific field position)
-    self:switchPhase(false)
+    -- Change possession with punt landing position
+    self:switchPhase(false, newFieldPos)
 end
 
 return PhaseManager
