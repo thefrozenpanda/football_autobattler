@@ -13,7 +13,6 @@ function FieldState:new(yardsNeeded)
         totalYards = 0,              -- Total yards gained this drive (0 to yardsNeeded)
         downYards = 0,               -- Yards gained this set of downs (can go negative if losing ground)
         yardsNeeded = yardsNeeded or 80,  -- Yards needed to score TD (80 default, 68 for Special Teams)
-        firstDownLine = 10,          -- Field position where first down is achieved (starts 10 yards ahead)
 
         -- Down tracking
         currentDown = 1,             -- Current down (1-4)
@@ -29,6 +28,10 @@ function FieldState:new(yardsNeeded)
         turnoverOccurred = false
     }
     setmetatable(f, FieldState)
+
+    -- Initialize firstDownLine based on starting position (must be done after fieldPosition is set)
+    f.firstDownLine = f.fieldPosition + 10  -- 10 yards ahead of start
+
     return f
 end
 
