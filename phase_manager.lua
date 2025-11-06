@@ -262,8 +262,9 @@ function PhaseManager:checkPhaseEnd()
     return false
 end
 
-function PhaseManager:switchPhase(isTouchdown)
-    local currentFieldPos = self.field:getFieldPosition()
+function PhaseManager:switchPhase(isTouchdown, overridePosition)
+    -- Use override position if provided (for punts), otherwise use current position
+    local currentFieldPos = overridePosition or self.field:getFieldPosition()
 
     -- Switch phase
     if self.currentPhase == "player_offense" then
@@ -300,7 +301,7 @@ function PhaseManager:switchPhase(isTouchdown)
 
         self.field:reset(startingPosition, yardsNeeded, drivingForward)
     else
-        -- After turnover, new offense starts where old offense was
+        -- After turnover, new offense starts where old offense was (or punt landing spot if overridePosition provided)
         -- Player team drives toward 100, AI team drives toward 0
         -- Calculate yards needed based on which team now has the ball
         if self.currentPhase == "player_offense" then
@@ -550,8 +551,8 @@ function PhaseManager:executePunt(punter, isPlayerOffense)
         end
     end
 
-    -- Change possession (like turnover, but with specific field position)
-    self:switchPhase(false)
+    -- Change possession with punt landing position
+    self:switchPhase(false, newFieldPos)
 end
 
 return PhaseManager
