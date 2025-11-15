@@ -129,103 +129,87 @@ function MatchResultPopup.draw()
     local isTie = MatchResultPopup.playerScore == MatchResultPopup.opponentScore
     local winnerName = playerWon and MatchResultPopup.playerTeamName or MatchResultPopup.opponentTeamName
 
-    -- Title (Winner announcement)
+    -- Title (Winner announcement) - matches manual match format
     love.graphics.setFont(titleFont)
-    local titleText = ""
-    local titleColor = {1, 1, 1}
-
-    if isTie then
-        titleText = "Tie Game"
-        titleColor = {1, 1, 0.5}
-    else
-        titleText = winnerName .. " Wins!"
-        titleColor = playerWon and {0.3, 1, 0.3} or {1, 0.5, 0.5}
-    end
-
-    love.graphics.setColor(titleColor)
+    local titleText = isTie and "TIE GAME" or (winnerName .. " WINS!")
+    love.graphics.setColor(1, 0.8, 0.2)  -- Gold color like manual match
     local titleWidth = titleFont:getWidth(titleText)
     love.graphics.print(titleText, popupX + (scaledPopupWidth - titleWidth) / 2, contentY)
 
-    contentY = contentY + UIScale.scaleHeight(55)
-
-    -- Winning coach style (if not a tie)
-    if not isTie then
-        love.graphics.setFont(infoFont)
-        love.graphics.setColor(0.8, 0.8, 0.9)
-        local styleText = "Winning Coach Style: " .. MatchResultPopup.winningCoachStyle
-        local styleWidth = infoFont:getWidth(styleText)
-        love.graphics.print(styleText, popupX + (scaledPopupWidth - styleWidth) / 2, contentY)
-        contentY = contentY + UIScale.scaleHeight(40)
-    else
-        contentY = contentY + UIScale.scaleHeight(20)
-    end
-
-    -- Final Score
-    love.graphics.setFont(teamFont)
-    love.graphics.setColor(0.9, 0.9, 1)
-    local scoreText = "Final Score"
-    local scoreTextWidth = teamFont:getWidth(scoreText)
-    love.graphics.print(scoreText, popupX + (scaledPopupWidth - scoreTextWidth) / 2, contentY)
-
-    contentY = contentY + UIScale.scaleHeight(35)
-
-    -- Score display
-    love.graphics.setFont(scoreFont)
-    love.graphics.setColor(1, 1, 1)
-    local fullScoreText = string.format("%s %d - %d %s",
-        MatchResultPopup.playerTeamName, MatchResultPopup.playerScore,
-        MatchResultPopup.opponentScore, MatchResultPopup.opponentTeamName)
-    local fullScoreWidth = scoreFont:getWidth(fullScoreText)
-
-    -- If text is too wide, use smaller font
-    if fullScoreWidth > scaledPopupWidth - UIScale.scaleWidth(40) then
-        love.graphics.setFont(teamFont)
-        fullScoreWidth = teamFont:getWidth(fullScoreText)
-    end
-
-    love.graphics.print(fullScoreText, popupX + (scaledPopupWidth - fullScoreWidth) / 2, contentY)
-
     contentY = contentY + UIScale.scaleHeight(60)
 
-    -- Players of the Game
+    -- Coach style (matches manual match format)
+    love.graphics.setFont(teamFont)
+    love.graphics.setColor(0.8, 0.8, 0.8)
+    local coachText = isTie and "No Winner" or MatchResultPopup.winningCoachStyle
+    local coachWidth = teamFont:getWidth(coachText)
+    love.graphics.print(coachText, popupX + (scaledPopupWidth - coachWidth) / 2, contentY)
+
+    contentY = contentY + UIScale.scaleHeight(45)
+
+    -- Final Score (matches manual match format exactly)
     love.graphics.setFont(infoFont)
-    love.graphics.setColor(0.9, 0.9, 1)
+    love.graphics.setColor(1, 1, 1)
+    local scoreText = string.format("Final Score:  Player %d - %d AI",
+        MatchResultPopup.playerScore,
+        MatchResultPopup.opponentScore)
+    local scoreWidth = infoFont:getWidth(scoreText)
+    love.graphics.print(scoreText, popupX + (scaledPopupWidth - scoreWidth) / 2, contentY)
+
+    contentY = contentY + UIScale.scaleHeight(50)
+
+    -- Players of the Game (matches manual match format)
+    love.graphics.setFont(teamFont)
+    love.graphics.setColor(0.9, 0.6, 0.3)  -- Orange color like manual match
     local pogText = "Players of the Game"
-    local pogWidth = infoFont:getWidth(pogText)
+    local pogWidth = teamFont:getWidth(pogText)
     love.graphics.print(pogText, popupX + (scaledPopupWidth - pogWidth) / 2, contentY)
 
-    contentY = contentY + UIScale.scaleHeight(35)
+    contentY = contentY + UIScale.scaleHeight(50)
 
-    -- Offensive MVP
-    love.graphics.setFont(mvpFont)
-    love.graphics.setColor(0.7, 1, 0.7)
-    local offenseLabel = "Offensive:"
-    love.graphics.print(offenseLabel, popupX + UIScale.scaleWidth(80), contentY)
-
-    love.graphics.setColor(1, 1, 1)
-    local offenseMVPText = "N/A"
-    if MatchResultPopup.offensiveMVP then
-        offenseMVPText = string.format("%s #%d",
-            MatchResultPopup.offensiveMVP.position,
-            MatchResultPopup.offensiveMVP.number)
-    end
-    love.graphics.print(offenseMVPText, popupX + UIScale.scaleWidth(200), contentY)
+    -- Offensive MVP (matches manual match format)
+    love.graphics.setFont(infoFont)
+    love.graphics.setColor(0.3, 0.8, 0.3)  -- Green color like manual match
+    love.graphics.printf("Offensive Player:", popupX + UIScale.scaleWidth(50), contentY,
+        scaledPopupWidth - UIScale.scaleWidth(100), "left")
 
     contentY = contentY + UIScale.scaleHeight(30)
 
-    -- Defensive MVP
-    love.graphics.setColor(1, 0.7, 0.7)
-    local defenseLabel = "Defensive:"
-    love.graphics.print(defenseLabel, popupX + UIScale.scaleWidth(80), contentY)
+    love.graphics.setColor(1, 1, 1)
+    if MatchResultPopup.offensiveMVP and MatchResultPopup.offensiveMVP.position ~= "N/A" then
+        local offenseMVPText = string.format("%s - %.1f yards, %d TDs",
+            MatchResultPopup.offensiveMVP.position,
+            tonumber(MatchResultPopup.offensiveMVP.yards),
+            MatchResultPopup.offensiveMVP.touchdowns)
+        love.graphics.printf(offenseMVPText, popupX + UIScale.scaleWidth(50), contentY,
+            scaledPopupWidth - UIScale.scaleWidth(100), "left")
+    else
+        love.graphics.printf("N/A", popupX + UIScale.scaleWidth(50), contentY,
+            scaledPopupWidth - UIScale.scaleWidth(100), "left")
+    end
+
+    contentY = contentY + UIScale.scaleHeight(50)
+
+    -- Defensive MVP (matches manual match format)
+    love.graphics.setColor(0.3, 0.6, 0.9)  -- Blue color like manual match
+    love.graphics.printf("Defensive Player:", popupX + UIScale.scaleWidth(50), contentY,
+        scaledPopupWidth - UIScale.scaleWidth(100), "left")
+
+    contentY = contentY + UIScale.scaleHeight(30)
 
     love.graphics.setColor(1, 1, 1)
-    local defenseMVPText = "N/A"
-    if MatchResultPopup.defensiveMVP then
-        defenseMVPText = string.format("%s #%d",
+    if MatchResultPopup.defensiveMVP and MatchResultPopup.defensiveMVP.position ~= "N/A" then
+        local defenseMVPText = string.format("%s - %d slows, %d freezes, %.1f yards reduced",
             MatchResultPopup.defensiveMVP.position,
-            MatchResultPopup.defensiveMVP.number)
+            MatchResultPopup.defensiveMVP.slows,
+            MatchResultPopup.defensiveMVP.freezes,
+            tonumber(MatchResultPopup.defensiveMVP.yardsReduced))
+        love.graphics.printf(defenseMVPText, popupX + UIScale.scaleWidth(50), contentY,
+            scaledPopupWidth - UIScale.scaleWidth(100), "left")
+    else
+        love.graphics.printf("N/A", popupX + UIScale.scaleWidth(50), contentY,
+            scaledPopupWidth - UIScale.scaleWidth(100), "left")
     end
-    love.graphics.print(defenseMVPText, popupX + UIScale.scaleWidth(200), contentY)
 
     -- Return to Menu button
     local scaledButtonWidth = UIScale.scaleWidth(BUTTON_WIDTH)

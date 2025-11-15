@@ -314,15 +314,14 @@ function love.update(dt)
             love.timer.sleep(0.3)
 
             -- Run the simulation
-            local playerScore, opponentScore = match.simulateAIMatch(
+            local homeScore, awayScore, offensiveMVP, defensiveMVP = match.simulateAIMatch(
                 simulatedMatchData.isHome and SeasonManager.playerTeam or simulatedMatchData.opponentTeam,
                 simulatedMatchData.isHome and simulatedMatchData.opponentTeam or SeasonManager.playerTeam
             )
 
-            -- Adjust scores based on home/away
-            if not simulatedMatchData.isHome then
-                playerScore, opponentScore = opponentScore, playerScore
-            end
+            -- Get player and opponent scores based on home/away
+            local playerScore = simulatedMatchData.isHome and homeScore or awayScore
+            local opponentScore = simulatedMatchData.isHome and awayScore or homeScore
 
             -- Record match result
             SeasonManager.recordMatchResult(
@@ -354,16 +353,15 @@ function love.update(dt)
             -- Hide simulation popup
             simulationPopup.hide()
 
-            -- Show match result popup
-            -- Note: MVPs are nil for simulated games since we don't track individual stats
+            -- Show match result popup with MVP stats
             matchResultPopup.show(
                 playerScore,
                 opponentScore,
                 SeasonManager.playerTeam.name,
                 simulatedMatchData.opponentTeam.name,
                 winningCoachId,
-                nil,  -- No offensive MVP for simulated games
-                nil   -- No defensive MVP for simulated games
+                offensiveMVP,
+                defensiveMVP
             )
 
             -- Transition to showing match result state
