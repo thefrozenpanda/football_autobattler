@@ -342,15 +342,22 @@ function love.update(dt)
                 SeasonManager.playerTeam.defensiveCards
             )
 
+            -- Determine winning coach
+            local winningCoachId = playerWon and SeasonManager.playerTeam.coachId or simulatedMatchData.opponentTeam.coachId
+
             -- Hide simulation popup
             simulationPopup.hide()
 
             -- Show match result popup
+            -- Note: MVPs are nil for simulated games since we don't track individual stats
             matchResultPopup.show(
                 playerScore,
                 opponentScore,
                 SeasonManager.playerTeam.name,
-                simulatedMatchData.opponentTeam.name
+                simulatedMatchData.opponentTeam.name,
+                winningCoachId,
+                nil,  -- No offensive MVP for simulated games
+                nil   -- No defensive MVP for simulated games
             )
 
             -- Transition to showing match result state
