@@ -54,6 +54,8 @@ local previousState = "menu"  -- Track previous state for returning from options
 local simulationComplete = false
 local simulatedMatchData = nil  -- Stores data for simulated player match
 local cameFromSimulatedMatch = false  -- Track if we're simulating after a simulated match
+local simulatedPlayerScore = 0  -- Store player score from simulated match
+local simulatedOpponentScore = 0  -- Store opponent score from simulated match
 
 --- LÖVE Callback: Initialization
 --- Called once at game startup. Initializes the window and loads the main menu.
@@ -345,6 +347,10 @@ function love.update(dt)
             -- Determine winning coach
             local winningCoachId = playerWon and SeasonManager.playerTeam.coachId or simulatedMatchData.opponentTeam.coachId
 
+            -- Store scores for later use (playoff checking)
+            simulatedPlayerScore = playerScore
+            simulatedOpponentScore = opponentScore
+
             -- Hide simulation popup
             simulationPopup.hide()
 
@@ -372,10 +378,8 @@ function love.update(dt)
 
             -- Check if player lost in playoffs
             if SeasonManager.inPlayoffs and simulatedMatchData then
-                local playerScore = SeasonManager.lastMatchResult.homeScore
-                local opponentScore = SeasonManager.lastMatchResult.awayScore
-                local playerWon = (simulatedMatchData.isHome and playerScore > opponentScore) or
-                                 (not simulatedMatchData.isHome and opponentScore > playerScore)
+                -- Use the stored scores from the simulation
+                local playerWon = simulatedPlayerScore > simulatedOpponentScore
 
                 if not playerWon then
                     -- Simulate all remaining playoff games
@@ -385,6 +389,8 @@ function love.update(dt)
                     gameState = "season_end"
                     seasonEndScreen.load()
                     simulatedMatchData = nil
+                    simulatedPlayerScore = 0
+                    simulatedOpponentScore = 0
                     return
                 end
             end
@@ -396,6 +402,8 @@ function love.update(dt)
             simulationPopup.message = "Simulating remaining games..."
             simulationPopup.show()
             simulatedMatchData = nil
+            simulatedPlayerScore = 0
+            simulatedOpponentScore = 0
         end
 
     -- Options Menu State
