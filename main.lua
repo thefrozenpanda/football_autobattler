@@ -53,6 +53,7 @@ local gameState = "menu"
 local previousState = "menu"  -- Track previous state for returning from options
 local simulationComplete = false
 local simulatedMatchData = nil  -- Stores data for simulated player match
+local cameFromSimulatedMatch = false  -- Track if we're simulating after a simulated match
 
 --- LÖVE Callback: Initialization
 --- Called once at game startup. Initializes the window and loads the main menu.
@@ -270,6 +271,7 @@ function love.update(dt)
                     -- Transition to simulation state (regular season or playoff win)
                     gameState = "simulating"
                     simulationComplete = false
+                    cameFromSimulatedMatch = false  -- Came from real match
                     simulationPopup.show()
                 end
             end
@@ -298,6 +300,7 @@ function love.update(dt)
 
         if simulationComplete then
             simulationPopup.hide()
+            cameFromSimulatedMatch = false  -- Reset flag
             gameState = "season_menu"
             seasonMenu.load()
         end
@@ -339,15 +342,22 @@ function love.update(dt)
                 SeasonManager.playerTeam.defensiveCards
             )
 
+            -- Determine winning coach
+            local winningCoachId = playerWon and SeasonManager.playerTeam.coachId or simulatedMatchData.opponentTeam.coachId
+
             -- Hide simulation popup
             simulationPopup.hide()
 
             -- Show match result popup
+            -- Note: MVPs are nil for simulated games since we don't track individual stats
             matchResultPopup.show(
                 playerScore,
                 opponentScore,
                 SeasonManager.playerTeam.name,
-                simulatedMatchData.opponentTeam.name
+                simulatedMatchData.opponentTeam.name,
+                winningCoachId,
+                nil,  -- No offensive MVP for simulated games
+                nil   -- No defensive MVP for simulated games
             )
 
             -- Transition to showing match result state
@@ -382,6 +392,7 @@ function love.update(dt)
             -- Continue with normal flow (simulate other games, advance week)
             gameState = "simulating"
             simulationComplete = false
+            cameFromSimulatedMatch = true  -- Came from simulated match
             simulationPopup.message = "Simulating remaining games..."
             simulationPopup.show()
             simulatedMatchData = nil
@@ -450,8 +461,12 @@ function love.draw()
     elseif gameState == "game" then
         match.draw()
     elseif gameState == "simulating" then
-        -- Draw the match screen in background, then overlay popup
-        match.draw()
+        -- Draw appropriate background based on whether we came from real or simulated match
+        if cameFromSimulatedMatch then
+            seasonMenu.draw()
+        else
+            match.draw()
+        end
         simulationPopup.draw()
     elseif gameState == "simulating_player_match" then
         -- Draw season menu in background, then overlay simulation popup
