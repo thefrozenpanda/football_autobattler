@@ -53,6 +53,7 @@ local gameState = "menu"
 local previousState = "menu"  -- Track previous state for returning from options
 local simulationComplete = false
 local simulatedMatchData = nil  -- Stores data for simulated player match
+local cameFromSimulatedMatch = false  -- Track if we're simulating after a simulated match
 
 --- LÖVE Callback: Initialization
 --- Called once at game startup. Initializes the window and loads the main menu.
@@ -270,6 +271,7 @@ function love.update(dt)
                     -- Transition to simulation state (regular season or playoff win)
                     gameState = "simulating"
                     simulationComplete = false
+                    cameFromSimulatedMatch = false  -- Came from real match
                     simulationPopup.show()
                 end
             end
@@ -298,6 +300,7 @@ function love.update(dt)
 
         if simulationComplete then
             simulationPopup.hide()
+            cameFromSimulatedMatch = false  -- Reset flag
             gameState = "season_menu"
             seasonMenu.load()
         end
@@ -382,6 +385,7 @@ function love.update(dt)
             -- Continue with normal flow (simulate other games, advance week)
             gameState = "simulating"
             simulationComplete = false
+            cameFromSimulatedMatch = true  -- Came from simulated match
             simulationPopup.message = "Simulating remaining games..."
             simulationPopup.show()
             simulatedMatchData = nil
@@ -450,8 +454,12 @@ function love.draw()
     elseif gameState == "game" then
         match.draw()
     elseif gameState == "simulating" then
-        -- Draw the match screen in background, then overlay popup
-        match.draw()
+        -- Draw appropriate background based on whether we came from real or simulated match
+        if cameFromSimulatedMatch then
+            seasonMenu.draw()
+        else
+            match.draw()
+        end
         simulationPopup.draw()
     elseif gameState == "simulating_player_match" then
         -- Draw season menu in background, then overlay simulation popup
