@@ -202,7 +202,21 @@ function SeasonManager.recordMatchResult(homeTeam, awayTeam, homeScore, awayScor
     end
 
     -- Update schedule to mark match as played and save scores
-    if SeasonManager.schedule[SeasonManager.currentWeek] then
+    if SeasonManager.inPlayoffs then
+        -- Update playoff bracket match
+        local currentRound = SeasonManager.playoffBracket.currentRound
+        if SeasonManager.playoffBracket[currentRound] then
+            for _, match in ipairs(SeasonManager.playoffBracket[currentRound]) do
+                if match.homeTeam == homeTeam and match.awayTeam == awayTeam then
+                    match.homeScore = homeScore
+                    match.awayScore = awayScore
+                    match.played = true
+                    break
+                end
+            end
+        end
+    elseif SeasonManager.schedule[SeasonManager.currentWeek] then
+        -- Update regular season schedule match
         for _, match in ipairs(SeasonManager.schedule[SeasonManager.currentWeek]) do
             if match.homeTeam == homeTeam and match.awayTeam == awayTeam then
                 match.homeScore = homeScore
