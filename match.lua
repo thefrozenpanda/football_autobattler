@@ -333,7 +333,7 @@ function match.calculateWinner()
     local aiScore = phaseManager.aiScore
 
     local winner = (playerScore > aiScore) and "player" or "ai"
-    local winnerName = (playerScore > aiScore) and "PLAYER" or "AI"
+    local winnerName = (playerScore > aiScore) and playerTeamName or aiTeamName
     local winnerCoachName = (winner == "player") and phaseManager:getPlayerCoachName() or phaseManager:getAICoachName()
 
     -- Get MVP stats
@@ -1249,7 +1249,7 @@ end
 --- Runs at accelerated speed for quick results
 --- @param teamA table Home team
 --- @param teamB table Away team
---- @return number, number Home score, away score
+--- @return number, number, table, table Home score, away score, offensive MVP, defensive MVP
 function match.simulateAIMatch(teamA, teamB)
     -- Create a temporary phase manager for simulation
     local simPhaseManager = PhaseManager:new(teamA.coachId, teamB.coachId, teamA.kicker, teamA.punter, teamB.kicker, teamB.punter)
@@ -1292,7 +1292,21 @@ function match.simulateAIMatch(teamA, teamB)
         end
     end
 
-    return simPhaseManager.playerScore, simPhaseManager.aiScore
+    -- Calculate MVP stats from the winning team
+    local homeScore = simPhaseManager.playerScore
+    local awayScore = simPhaseManager.aiScore
+    local winnerCards = (homeScore > awayScore) and {
+        offense = simPhaseManager.playerOffense.cards,
+        defense = simPhaseManager.playerDefense.cards
+    } or {
+        offense = simPhaseManager.aiOffense.cards,
+        defense = simPhaseManager.aiDefense.cards
+    }
+
+    local offensiveMVP = match.getOffensiveMVP(winnerCards.offense)
+    local defensiveMVP = match.getDefensiveMVP(winnerCards.defense)
+
+    return homeScore, awayScore, offensiveMVP, defensiveMVP
 end
 
 return match
