@@ -36,6 +36,7 @@ local seasonMenu = require("season_menu")
 local seasonEndScreen = require("season_end_screen")
 local SeasonManager = require("season_manager")
 local simulationPopup = require("simulation_popup")
+local matchResultPopup = require("match_result_popup")
 
 -- Options and settings
 local optionsMenu = require("options_menu")
@@ -47,10 +48,11 @@ local flux = require("lib.flux")
 local lume = require("lib.lume")
 
 -- Game State Management
--- Possible states: "menu", "coach_selection", "team_naming", "season_menu", "game", "simulating", "season_end", "options"
+-- Possible states: "menu", "coach_selection", "team_naming", "season_menu", "game", "simulating", "simulating_player_match", "showing_match_result", "season_end", "options"
 local gameState = "menu"
 local previousState = "menu"  -- Track previous state for returning from options
 local simulationComplete = false
+local simulatedMatchData = nil  -- Stores data for simulated player match
 
 --- LÖVE Callback: Initialization
 --- Called once at game startup. Initializes the window and loads the main menu.
@@ -173,6 +175,27 @@ function love.update(dt)
                 SeasonManager.goToMatch()
             end
 
+        -- Check if player clicked "Simulate Game" from scouting screen
+        elseif scoutingScreen.isSimulateMatchRequested() then
+            -- Reset the flag immediately
+            scoutingScreen.simulateMatchRequested = false
+
+            -- Get match data
+            local matchData = SeasonManager.getPlayerMatch()
+
+            if matchData then
+                -- Store match data for later processing
+                simulatedMatchData = matchData
+
+                -- Advance to match phase
+                SeasonManager.goToMatch()
+
+                -- Transition to simulating player match state
+                gameState = "simulating_player_match"
+                simulationPopup.message = "Simulating Your Game..."
+                simulationPopup.show()
+            end
+
         -- Check if season is complete
         elseif SeasonManager.isSeasonComplete() then
             gameState = "season_end"
@@ -279,6 +302,91 @@ function love.update(dt)
             seasonMenu.load()
         end
 
+    -- Simulating Player Match State
+    elseif gameState == "simulating_player_match" then
+        if simulatedMatchData then
+            -- Brief delay to show "Simulating..." message
+            love.timer.sleep(0.3)
+
+            -- Run the simulation
+            local playerScore, opponentScore = match.simulateAIMatch(
+                simulatedMatchData.isHome and SeasonManager.playerTeam or simulatedMatchData.opponentTeam,
+                simulatedMatchData.isHome and simulatedMatchData.opponentTeam or SeasonManager.playerTeam
+            )
+
+            -- Adjust scores based on home/away
+            if not simulatedMatchData.isHome then
+                playerScore, opponentScore = opponentScore, playerScore
+            end
+
+            -- Record match result
+            SeasonManager.recordMatchResult(
+                simulatedMatchData.isHome and SeasonManager.playerTeam or simulatedMatchData.opponentTeam,
+                simulatedMatchData.isHome and simulatedMatchData.opponentTeam or SeasonManager.playerTeam,
+                simulatedMatchData.isHome and playerScore or opponentScore,
+                simulatedMatchData.isHome and opponentScore or playerScore
+            )
+
+            -- Award cash for playing the game
+            local playerWon = playerScore > opponentScore
+            local cashReward = playerWon and 100 or 50  -- 100 for win, 50 for loss
+            SeasonManager.playerTeam:awardCash(cashReward)
+
+            -- Update player card stats from simulation
+            -- Note: For simulated games, we use the team's card arrays directly
+            SeasonManager.updatePlayerCardStats(
+                SeasonManager.playerTeam.offensiveCards,
+                SeasonManager.playerTeam.defensiveCards
+            )
+
+            -- Hide simulation popup
+            simulationPopup.hide()
+
+            -- Show match result popup
+            matchResultPopup.show(
+                playerScore,
+                opponentScore,
+                SeasonManager.playerTeam.name,
+                simulatedMatchData.opponentTeam.name
+            )
+
+            -- Transition to showing match result state
+            gameState = "showing_match_result"
+        end
+
+    -- Showing Match Result State (after simulation)
+    elseif gameState == "showing_match_result" then
+        -- Wait for user to click continue
+        if matchResultPopup.isContinueRequested() then
+            matchResultPopup.hide()
+
+            -- Check if player lost in playoffs
+            if SeasonManager.inPlayoffs and simulatedMatchData then
+                local playerScore = SeasonManager.lastMatchResult.homeScore
+                local opponentScore = SeasonManager.lastMatchResult.awayScore
+                local playerWon = (simulatedMatchData.isHome and playerScore > opponentScore) or
+                                 (not simulatedMatchData.isHome and opponentScore > playerScore)
+
+                if not playerWon then
+                    -- Simulate all remaining playoff games
+                    SeasonManager.simulateRemainingPlayoffs()
+
+                    -- Transition directly to season end screen
+                    gameState = "season_end"
+                    seasonEndScreen.load()
+                    simulatedMatchData = nil
+                    return
+                end
+            end
+
+            -- Continue with normal flow (simulate other games, advance week)
+            gameState = "simulating"
+            simulationComplete = false
+            simulationPopup.message = "Simulating remaining games..."
+            simulationPopup.show()
+            simulatedMatchData = nil
+        end
+
     -- Options Menu State
     elseif gameState == "options" then
         optionsMenu.update(dt)
@@ -345,6 +453,14 @@ function love.draw()
         -- Draw the match screen in background, then overlay popup
         match.draw()
         simulationPopup.draw()
+    elseif gameState == "simulating_player_match" then
+        -- Draw season menu in background, then overlay simulation popup
+        seasonMenu.draw()
+        simulationPopup.draw()
+    elseif gameState == "showing_match_result" then
+        -- Draw season menu in background, then overlay match result popup
+        seasonMenu.draw()
+        matchResultPopup.draw()
     elseif gameState == "options" then
         optionsMenu.draw()
     elseif gameState == "season_end" then
@@ -389,6 +505,8 @@ function love.mousepressed(x, y, button)
         seasonMenu.mousepressed(x, y, button)
     elseif gameState == "game" then
         match.mousepressed(x, y, button)
+    elseif gameState == "showing_match_result" then
+        matchResultPopup.mousepressed(x, y, button)
     elseif gameState == "options" then
         optionsMenu.mousepressed(x, y, button)
     elseif gameState == "season_end" then
