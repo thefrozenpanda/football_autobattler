@@ -20,6 +20,7 @@ ScoutingScreen.opponent = nil
 ScoutingScreen.matchData = nil
 ScoutingScreen.hoveredCard = nil
 ScoutingScreen.startMatchRequested = false
+ScoutingScreen.simulateMatchRequested = false
 ScoutingScreen.contentHeight = 700
 
 -- UI configuration (base values for 1600x900)
@@ -59,6 +60,7 @@ function ScoutingScreen.load()
 
     ScoutingScreen.hoveredCard = nil
     ScoutingScreen.startMatchRequested = false
+    ScoutingScreen.simulateMatchRequested = false
 
     -- Get next opponent
     ScoutingScreen.matchData = SeasonManager.getPlayerMatch()
@@ -198,34 +200,60 @@ function ScoutingScreen.draw()
     end
     ScoutingScreen.drawCardRow(specialTeamsCards, yOffset)
 
-    -- Start Match button
+    -- Action buttons (Start Match and Simulate Game)
     local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
-    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonSpacing = UIScale.scaleUniform(20)
+    local totalWidth = (scaledButtonWidth * 2) + buttonSpacing
+    local startX = UIScale.centerX(totalWidth)
     local buttonY = UIScale.scaleHeight(ScoutingScreen.contentHeight - START_BUTTON_HEIGHT - 30)
 
     local mx, my = love.mouse.getPosition()
     my = my - UIScale.scaleHeight(100)  -- Adjust for header
-    local hoveringButton = mx >= buttonX and mx <= buttonX + scaledButtonWidth and
-                          my >= buttonY and my <= buttonY + scaledButtonHeight
 
-    -- Button
-    if hoveringButton then
+    -- Start Match button (left)
+    local startButtonX = startX
+    local hoveringStartButton = mx >= startButtonX and mx <= startButtonX + scaledButtonWidth and
+                                my >= buttonY and my <= buttonY + scaledButtonHeight
+
+    if hoveringStartButton then
         love.graphics.setColor(0.3, 0.6, 0.3)
     else
         love.graphics.setColor(0.2, 0.5, 0.2)
     end
-    love.graphics.rectangle("fill", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+    love.graphics.rectangle("fill", startButtonX, buttonY, scaledButtonWidth, scaledButtonHeight)
 
     love.graphics.setColor(0, 0, 0)
     love.graphics.setLineWidth(UIScale.scaleUniform(3))
-    love.graphics.rectangle("line", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+    love.graphics.rectangle("line", startButtonX, buttonY, scaledButtonWidth, scaledButtonHeight)
 
     love.graphics.setFont(buttonFont)
     love.graphics.setColor(1, 1, 1)
-    local buttonText = "Start Match"
-    local buttonTextWidth = buttonFont:getWidth(buttonText)
-    love.graphics.print(buttonText, buttonX + (scaledButtonWidth - buttonTextWidth) / 2, buttonY + UIScale.scaleHeight(15))
+    local startButtonText = "Start Match"
+    local startButtonTextWidth = buttonFont:getWidth(startButtonText)
+    love.graphics.print(startButtonText, startButtonX + (scaledButtonWidth - startButtonTextWidth) / 2, buttonY + UIScale.scaleHeight(15))
+
+    -- Simulate Game button (right)
+    local simulateButtonX = startX + scaledButtonWidth + buttonSpacing
+    local hoveringSimulateButton = mx >= simulateButtonX and mx <= simulateButtonX + scaledButtonWidth and
+                                   my >= buttonY and my <= buttonY + scaledButtonHeight
+
+    if hoveringSimulateButton then
+        love.graphics.setColor(0.4, 0.5, 0.7)
+    else
+        love.graphics.setColor(0.3, 0.4, 0.6)
+    end
+    love.graphics.rectangle("fill", simulateButtonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", simulateButtonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    love.graphics.setFont(buttonFont)
+    love.graphics.setColor(1, 1, 1)
+    local simulateButtonText = "Simulate Game"
+    local simulateButtonTextWidth = buttonFont:getWidth(simulateButtonText)
+    love.graphics.print(simulateButtonText, simulateButtonX + (scaledButtonWidth - simulateButtonTextWidth) / 2, buttonY + UIScale.scaleHeight(15))
 
     -- Draw tooltip if hovering
     if ScoutingScreen.hoveredCard then
@@ -581,20 +609,37 @@ function ScoutingScreen.mousepressed(x, y, button)
 
     local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
-    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonSpacing = UIScale.scaleUniform(20)
+    local totalWidth = (scaledButtonWidth * 2) + buttonSpacing
+    local startX = UIScale.centerX(totalWidth)
     local buttonY = UIScale.scaleHeight(ScoutingScreen.contentHeight - START_BUTTON_HEIGHT - 30)
 
-    if x >= buttonX and x <= buttonX + scaledButtonWidth and
-       y >= buttonY and y <= buttonY + scaledButtonHeight then
-        -- Check if bye week - simulate wildcard if so
-        if SeasonManager.playerHasByeWeek() then
+    -- Check if bye week - only show simulate button
+    if SeasonManager.playerHasByeWeek() then
+        local buttonX = UIScale.centerX(scaledButtonWidth)
+        if x >= buttonX and x <= buttonX + scaledButtonWidth and
+           y >= buttonY and y <= buttonY + scaledButtonHeight then
             SeasonManager.simulateWildcardRound()
             -- Reload to show divisional matchup
             ScoutingScreen.load()
-        else
-            -- Normal match start
-            ScoutingScreen.startMatchRequested = true
         end
+        return
+    end
+
+    -- Start Match button (left)
+    local startButtonX = startX
+    if x >= startButtonX and x <= startButtonX + scaledButtonWidth and
+       y >= buttonY and y <= buttonY + scaledButtonHeight then
+        ScoutingScreen.startMatchRequested = true
+        return
+    end
+
+    -- Simulate Game button (right)
+    local simulateButtonX = startX + scaledButtonWidth + buttonSpacing
+    if x >= simulateButtonX and x <= simulateButtonX + scaledButtonWidth and
+       y >= buttonY and y <= buttonY + scaledButtonHeight then
+        ScoutingScreen.simulateMatchRequested = true
+        return
     end
 end
 
@@ -602,6 +647,12 @@ end
 --- @return boolean True if button clicked
 function ScoutingScreen.isStartMatchRequested()
     return ScoutingScreen.startMatchRequested
+end
+
+--- Checks if simulate match was requested
+--- @return boolean True if button clicked
+function ScoutingScreen.isSimulateMatchRequested()
+    return ScoutingScreen.simulateMatchRequested
 end
 
 return ScoutingScreen
