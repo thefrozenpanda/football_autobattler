@@ -520,6 +520,106 @@ function SeasonManager.simulateRemainingPlayoffs()
     SeasonManager.currentPhase = "season_end"
 end
 
+--- Simulates all remaining playoff games with round-specific callbacks
+--- Used when player wants to see the final champion after elimination
+--- @param roundCallback function Optional callback function(roundName) called before each round simulation
+--- @return table|nil Champion team or nil if playoffs not available
+function SeasonManager.simulateAllRemainingPlayoffsWithCallback(roundCallback)
+    if not SeasonManager.inPlayoffs or not SeasonManager.playoffBracket then
+        return nil
+    end
+
+    local match = require("match")
+    local ScheduleGenerator = require("schedule_generator")
+
+    -- Helper function to simulate a round
+    local function simulateRound(roundName)
+        local matches = SeasonManager.playoffBracket[roundName]
+        if not matches or #matches == 0 then
+            return nil
+        end
+
+        -- Call callback if provided
+        if roundCallback then
+            roundCallback(roundName)
+        end
+
+        local results = {}
+        for _, matchData in ipairs(matches) do
+            if not matchData.played then
+                local homeScore, awayScore, _, _, _, _, _, _ = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
+                matchData.played = true
+                matchData.homeScore = homeScore
+                matchData.awayScore = awayScore
+
+                -- Record result for bracket advancement
+                table.insert(results, {
+                    homeTeam = matchData.homeTeam,
+                    awayTeam = matchData.awayTeam,
+                    homeScore = homeScore,
+                    awayScore = awayScore,
+                    conference = matchData.conference
+                })
+            end
+        end
+
+        -- Advance bracket if matches were played
+        if #results > 0 then
+            ScheduleGenerator.advanceBracket(SeasonManager.playoffBracket, results)
+        end
+
+        return results
+    end
+
+    -- Determine which rounds need to be simulated
+    local currentRound = SeasonManager.playoffBracket.currentRound
+    local roundsToSimulate = {}
+
+    if currentRound == "wildcard" or not currentRound then
+        roundsToSimulate = {"wildcard", "divisional", "conference", "championship"}
+    elseif currentRound == "divisional" then
+        roundsToSimulate = {"divisional", "conference", "championship"}
+    elseif currentRound == "conference" then
+        roundsToSimulate = {"conference", "championship"}
+    elseif currentRound == "championship" then
+        roundsToSimulate = {"championship"}
+    end
+
+    local championshipResult = nil
+
+    -- Simulate each round
+    for _, roundName in ipairs(roundsToSimulate) do
+        local results = simulateRound(roundName)
+
+        if roundName == "championship" and results and #results > 0 then
+            championshipResult = results[1]
+        end
+
+        -- Advance to next round
+        if roundName == "wildcard" then
+            SeasonManager.playoffBracket.currentRound = "divisional"
+        elseif roundName == "divisional" then
+            SeasonManager.playoffBracket.currentRound = "conference"
+        elseif roundName == "conference" then
+            SeasonManager.playoffBracket.currentRound = "championship"
+        end
+    end
+
+    -- Mark playoffs as simulated
+    SeasonManager.playoffBracket.fullySimulated = true
+
+    -- Determine champion
+    if championshipResult then
+        local champion = (championshipResult.homeScore > championshipResult.awayScore)
+            and championshipResult.homeTeam
+            or championshipResult.awayTeam
+
+        return champion, championshipResult
+    end
+
+    return nil
+end
+
 --- Gets the player's playoff match for the current round
 --- @return table|nil Match data or nil if eliminated
 function SeasonManager.getPlayerPlayoffMatch()
@@ -563,6 +663,79 @@ end
 --- @return boolean True if season complete
 function SeasonManager.isSeasonComplete()
     return SeasonManager.currentPhase == "season_end"
+end
+
+--- Checks if player is eliminated from playoffs (didn't make it or lost)
+--- @return boolean True if player is eliminated
+function SeasonManager.playerIsEliminated()
+    -- If season is complete, player is eliminated
+    if SeasonManager.currentPhase == "season_end" then
+        return true
+    end
+
+    -- If not in playoffs and past week 17, player didn't make it
+    if not SeasonManager.inPlayoffs and SeasonManager.currentWeek > 17 then
+        return true
+    end
+
+    -- If in playoffs but has no match and no bye, player is eliminated
+    if SeasonManager.inPlayoffs then
+        local hasMatch = SeasonManager.getPlayerPlayoffMatch() ~= nil
+        local hasBye = SeasonManager.playerHasByeWeek()
+        if not hasMatch and not hasBye then
+            return true
+        end
+    end
+
+    return false
+end
+
+--- Gets player's final conference standing (1-8)
+--- @return number|nil Conference standing, or nil if not available
+function SeasonManager.getPlayerFinalStanding()
+    if not SeasonManager.playerTeam then
+        return nil
+    end
+
+    local conference = SeasonManager.playerTeam.conference
+    local standings = SeasonManager.getStandings(conference)
+
+    for i, team in ipairs(standings) do
+        if team == SeasonManager.playerTeam then
+            return i
+        end
+    end
+
+    return nil
+end
+
+--- Gets top performing offensive and defensive player cards from the season
+--- @return table {offensive = card, defensive = card}
+function SeasonManager.getTopPlayerStats()
+    if not SeasonManager.playerTeam then
+        return {offensive = nil, defensive = nil}
+    end
+
+    local topOffensive = nil
+    local topDefensive = nil
+
+    -- Find top offensive card (by yards gained)
+    for _, card in ipairs(SeasonManager.playerTeam.offensiveCards) do
+        if not topOffensive or (card.yardsGained or 0) > (topOffensive.yardsGained or 0) then
+            topOffensive = card
+        end
+    end
+
+    -- Find top defensive card (by total impact: slows + freezes)
+    for _, card in ipairs(SeasonManager.playerTeam.defensiveCards) do
+        local cardImpact = (card.timesSlowed or 0) + (card.timesFroze or 0)
+        local topImpact = topDefensive and ((topDefensive.timesSlowed or 0) + (topDefensive.timesFroze or 0)) or 0
+        if not topDefensive or cardImpact > topImpact then
+            topDefensive = card
+        end
+    end
+
+    return {offensive = topOffensive, defensive = topDefensive}
 end
 
 --- Gets the full regular season schedule

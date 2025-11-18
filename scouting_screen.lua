@@ -21,6 +21,8 @@ ScoutingScreen.matchData = nil
 ScoutingScreen.hoveredCard = nil
 ScoutingScreen.startMatchRequested = false
 ScoutingScreen.simulateMatchRequested = false
+ScoutingScreen.playoffsSimulated = false
+ScoutingScreen.viewBracketRequested = false
 ScoutingScreen.contentHeight = 700
 
 -- UI configuration (base values for 1600x900)
@@ -61,6 +63,14 @@ function ScoutingScreen.load()
     ScoutingScreen.hoveredCard = nil
     ScoutingScreen.startMatchRequested = false
     ScoutingScreen.simulateMatchRequested = false
+    ScoutingScreen.viewBracketRequested = false
+
+    -- Check if playoffs were already simulated
+    if SeasonManager.playoffBracket and SeasonManager.playoffBracket.fullySimulated then
+        ScoutingScreen.playoffsSimulated = true
+    else
+        ScoutingScreen.playoffsSimulated = false
+    end
 
     -- Get next opponent
     ScoutingScreen.matchData = SeasonManager.getPlayerMatch()
@@ -86,6 +96,12 @@ end
 function ScoutingScreen.draw()
     -- Check for bye week
     local hasByeWeek = SeasonManager.playerHasByeWeek()
+
+    -- Check if player is eliminated
+    if ScoutingScreen.playerIsEliminated() and not hasByeWeek then
+        ScoutingScreen.drawEliminatedScreen()
+        return
+    end
 
     if not ScoutingScreen.opponent and not hasByeWeek then
         -- No upcoming match and no bye week
@@ -607,6 +623,29 @@ function ScoutingScreen.mousepressed(x, y, button)
         return
     end
 
+    -- Check if on eliminated screen
+    if ScoutingScreen.playerIsEliminated() and not SeasonManager.playerHasByeWeek() then
+        -- Button click detection for eliminated screen
+        -- Note: We can't easily calculate the exact y position without duplicating logic,
+        -- so we'll use a more generous hit detection area
+        local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
+        local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
+        local buttonX = UIScale.centerX(scaledButtonWidth)
+
+        -- Check if click is in general button area (anywhere in lower half of screen)
+        if x >= buttonX and x <= buttonX + scaledButtonWidth and
+           y >= UIScale.scaleHeight(400) and y <= UIScale.scaleHeight(650) then
+            if ScoutingScreen.playoffsSimulated then
+                -- Navigate to bracket view
+                ScoutingScreen.viewBracketRequested = true
+            else
+                -- Will be handled in main.lua to simulate playoffs
+                ScoutingScreen.simulateMatchRequested = true
+            end
+        end
+        return
+    end
+
     local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
     local buttonSpacing = UIScale.scaleUniform(20)
@@ -653,6 +692,174 @@ end
 --- @return boolean True if button clicked
 function ScoutingScreen.isSimulateMatchRequested()
     return ScoutingScreen.simulateMatchRequested
+end
+
+--- Checks if view bracket was requested
+--- @return boolean True if button clicked
+function ScoutingScreen.isViewBracketRequested()
+    return ScoutingScreen.viewBracketRequested
+end
+
+--- Checks if player is eliminated (wrapper for SeasonManager function)
+--- @return boolean True if player is eliminated
+function ScoutingScreen.playerIsEliminated()
+    return SeasonManager.playerIsEliminated()
+end
+
+--- Draws the eliminated screen with season summary and playoff simulation button
+function ScoutingScreen.drawEliminatedScreen()
+    local yOffset = UIScale.scaleY(80)
+    local Coach = require("coach")
+
+    -- Player's Team Name
+    love.graphics.setFont(titleFont)
+    love.graphics.setColor(1, 1, 1)
+    local teamName = SeasonManager.playerTeam.name
+    local teamNameWidth = titleFont:getWidth(teamName)
+    love.graphics.print(teamName, UIScale.centerX(teamNameWidth), yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(50)
+
+    -- Player's Coaching Style
+    love.graphics.setFont(matchupFont)
+    love.graphics.setColor(0.9, 0.8, 0.5)
+    local coachData = Coach.getById(SeasonManager.playerTeam.coachId)
+    local coachName = coachData and coachData.name or "Unknown"
+    local coachNameWidth = matchupFont:getWidth(coachName)
+    love.graphics.print(coachName, UIScale.centerX(coachNameWidth), yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(40)
+
+    -- Player's Final Record
+    love.graphics.setFont(recordFont)
+    love.graphics.setColor(0.8, 0.9, 1)
+    local recordText = "Final Record: " .. SeasonManager.playerTeam:getRecordString()
+    local recordWidth = recordFont:getWidth(recordText)
+    love.graphics.print(recordText, UIScale.centerX(recordWidth), yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(35)
+
+    -- Final Conference Standing
+    local standing = SeasonManager.getPlayerFinalStanding()
+    if standing then
+        local standingText = string.format("%d%s in Conference %s",
+            standing,
+            standing == 1 and "st" or (standing == 2 and "nd" or (standing == 3 and "rd" or "th")),
+            SeasonManager.playerTeam.conference)
+        local standingWidth = recordFont:getWidth(standingText)
+        love.graphics.print(standingText, UIScale.centerX(standingWidth), yOffset)
+
+        yOffset = yOffset + UIScale.scaleHeight(35)
+    end
+
+    -- Elimination Message
+    love.graphics.setFont(matchupFont)
+    love.graphics.setColor(1, 0.7, 0.7)
+    local eliminationMsg
+    if not SeasonManager.inPlayoffs then
+        eliminationMsg = "Did not qualify for playoffs"
+    else
+        -- Determine which round they were eliminated in
+        local currentRound = SeasonManager.playoffBracket and SeasonManager.playoffBracket.currentRound
+        if currentRound == "divisional" then
+            eliminationMsg = "Eliminated in Wild Card Round"
+        elseif currentRound == "conference" then
+            eliminationMsg = "Eliminated in Divisional Round"
+        elseif currentRound == "championship" then
+            eliminationMsg = "Eliminated in Conference Championship"
+        else
+            eliminationMsg = "Eliminated from playoffs"
+        end
+    end
+    local eliminationWidth = matchupFont:getWidth(eliminationMsg)
+    love.graphics.print(eliminationMsg, UIScale.centerX(eliminationWidth), yOffset)
+
+    yOffset = yOffset + UIScale.scaleHeight(50)
+
+    -- Top Player Stats
+    local topStats = SeasonManager.getTopPlayerStats()
+    if topStats.offensive or topStats.defensive then
+        love.graphics.setFont(sectionFont)
+        love.graphics.setColor(1, 0.9, 0.5)
+        local statsHeader = "Season Leaders"
+        local statsHeaderWidth = sectionFont:getWidth(statsHeader)
+        love.graphics.print(statsHeader, UIScale.centerX(statsHeaderWidth), yOffset)
+
+        yOffset = yOffset + UIScale.scaleHeight(40)
+
+        love.graphics.setFont(recordFont)
+
+        if topStats.offensive then
+            love.graphics.setColor(0.3, 0.9, 0.3)
+            local offText = string.format("Top Offensive: %s - %.1f yards, %d TDs",
+                topStats.offensive.position or "Unknown",
+                topStats.offensive.yardsGained or 0,
+                topStats.offensive.touchdownsScored or 0)
+            local offWidth = recordFont:getWidth(offText)
+            love.graphics.print(offText, UIScale.centerX(offWidth), yOffset)
+
+            yOffset = yOffset + UIScale.scaleHeight(30)
+        end
+
+        if topStats.defensive then
+            love.graphics.setColor(0.9, 0.3, 0.3)
+            local defText = string.format("Top Defensive: %s - %d slows, %d freezes",
+                topStats.defensive.position or "Unknown",
+                topStats.defensive.timesSlowed or 0,
+                topStats.defensive.timesFroze or 0)
+            local defWidth = recordFont:getWidth(defText)
+            love.graphics.print(defText, UIScale.centerX(defWidth), yOffset)
+
+            yOffset = yOffset + UIScale.scaleHeight(30)
+        end
+    end
+
+    yOffset = yOffset + UIScale.scaleHeight(20)
+
+    -- Button: "Simulate the Playoffs" or "View Bracket"
+    local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
+    local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
+    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonY = yOffset
+
+    local mx, my = love.mouse.getPosition()
+    my = my - UIScale.scaleHeight(100)  -- Adjust for header
+    local hoveringButton = mx >= buttonX and mx <= buttonX + scaledButtonWidth and
+                          my >= buttonY and my <= buttonY + scaledButtonHeight
+
+    -- Button background
+    if ScoutingScreen.playoffsSimulated then
+        -- View Bracket button (blue)
+        if hoveringButton then
+            love.graphics.setColor(0.4, 0.6, 0.9)
+        else
+            love.graphics.setColor(0.3, 0.5, 0.8)
+        end
+    else
+        -- Simulate Playoffs button (green)
+        if hoveringButton then
+            love.graphics.setColor(0.4, 0.8, 0.5)
+        else
+            love.graphics.setColor(0.3, 0.7, 0.4)
+        end
+    end
+    love.graphics.rectangle("fill", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    -- Button border
+    if hoveringButton then
+        love.graphics.setColor(0.6, 0.9, 1)
+    else
+        love.graphics.setColor(0.5, 0.7, 0.9)
+    end
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    -- Button text
+    love.graphics.setFont(buttonFont)
+    love.graphics.setColor(1, 1, 1)
+    local buttonText = ScoutingScreen.playoffsSimulated and "View Bracket" or "Simulate the Playoffs"
+    local buttonTextWidth = buttonFont:getWidth(buttonText)
+    love.graphics.print(buttonText, buttonX + (scaledButtonWidth - buttonTextWidth) / 2, buttonY + UIScale.scaleHeight(15))
 end
 
 return ScoutingScreen
