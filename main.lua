@@ -37,6 +37,7 @@ local seasonEndScreen = require("season_end_screen")
 local SeasonManager = require("season_manager")
 local simulationPopup = require("simulation_popup")
 local matchResultPopup = require("match_result_popup")
+local championAnnouncementPopup = require("champion_announcement_popup")
 
 -- Options and settings
 local optionsMenu = require("options_menu")
@@ -183,21 +184,37 @@ function love.update(dt)
             -- Reset the flag immediately
             scoutingScreen.simulateMatchRequested = false
 
-            -- Get match data
-            local matchData = SeasonManager.getPlayerMatch()
+            -- Check if player is eliminated (simulating playoffs scenario)
+            if SeasonManager.playerIsEliminated() and SeasonManager.inPlayoffs then
+                -- Transition to simulating all playoffs state
+                gameState = "simulating_all_playoffs"
+            else
+                -- Get match data for simulating player's game
+                local matchData = SeasonManager.getPlayerMatch()
 
-            if matchData then
-                -- Store match data for later processing
-                simulatedMatchData = matchData
+                if matchData then
+                    -- Store match data for later processing
+                    simulatedMatchData = matchData
 
-                -- Advance to match phase
-                SeasonManager.goToMatch()
+                    -- Advance to match phase
+                    SeasonManager.goToMatch()
 
-                -- Transition to simulating player match state
-                gameState = "simulating_player_match"
-                simulationPopup.message = "Simulating Your Game..."
-                simulationPopup.show()
+                    -- Transition to simulating player match state
+                    gameState = "simulating_player_match"
+                    simulationPopup.message = "Simulating Your Game..."
+                    simulationPopup.show()
+                end
             end
+
+        -- Check if player clicked "View Bracket" from scouting screen
+        elseif scoutingScreen.isViewBracketRequested() then
+            -- Reset the flag immediately
+            scoutingScreen.viewBracketRequested = false
+
+            -- Navigate to Schedule screen with bracket view
+            local scheduleScreen = require("schedule_screen")
+            scheduleScreen.showBracket = true
+            seasonMenu.switchScreen("schedule")
 
         -- Check if season is complete
         elseif SeasonManager.isSeasonComplete() then
@@ -408,6 +425,71 @@ function love.update(dt)
             simulatedOpponentScore = 0
         end
 
+    -- Simulating All Playoffs State (when player is eliminated)
+    elseif gameState == "simulating_all_playoffs" then
+        -- Show initial message
+        simulationPopup.message = "Preparing to simulate playoffs..."
+        simulationPopup.show()
+        love.timer.sleep(0.3)
+
+        -- Simulate all remaining playoff rounds with round-specific callbacks
+        local champion, championshipResult = SeasonManager.simulateAllRemainingPlayoffsWithCallback(function(roundName)
+            -- Update message for each round
+            if roundName == "wildcard" then
+                simulationPopup.message = "Simulating Wild Card Round..."
+            elseif roundName == "divisional" then
+                simulationPopup.message = "Simulating Divisional Round..."
+            elseif roundName == "conference" then
+                simulationPopup.message = "Simulating Conference Round..."
+            elseif roundName == "championship" then
+                simulationPopup.message = "Simulating Championship..."
+            end
+
+            -- Brief delay to show the message
+            love.timer.sleep(0.5)
+        end)
+
+        -- Hide simulation popup
+        simulationPopup.hide()
+
+        -- Show champion announcement if we have results
+        if champion and championshipResult then
+            local runnerUp = (championshipResult.homeScore > championshipResult.awayScore)
+                and championshipResult.awayTeam
+                or championshipResult.homeTeam
+
+            championAnnouncementPopup.show(
+                champion,
+                runnerUp,
+                championshipResult.homeScore > championshipResult.awayScore
+                    and championshipResult.homeScore
+                    or championshipResult.awayScore,
+                championshipResult.homeScore > championshipResult.awayScore
+                    and championshipResult.awayScore
+                    or championshipResult.homeScore
+            )
+
+            gameState = "showing_champion_announcement"
+        else
+            -- No championship result, go back to season menu
+            gameState = "season_menu"
+            seasonMenu.load()
+        end
+
+    -- Showing Champion Announcement State
+    elseif gameState == "showing_champion_announcement" then
+        -- Wait for user to click continue
+        if championAnnouncementPopup.isContinueRequested() then
+            championAnnouncementPopup.hide()
+
+            -- Navigate to Schedule screen's bracket view
+            local scheduleScreen = require("schedule_screen")
+            scheduleScreen.showBracket = true
+            seasonMenu.switchScreen("schedule")
+            gameState = "season_menu"
+            seasonMenu.load()
+        end
+
     -- Options Menu State
     elseif gameState == "options" then
         optionsMenu.update(dt)
@@ -486,6 +568,14 @@ function love.draw()
         -- Draw season menu in background, then overlay match result popup
         seasonMenu.draw()
         matchResultPopup.draw()
+    elseif gameState == "simulating_all_playoffs" then
+        -- Draw season menu in background, then overlay simulation popup
+        seasonMenu.draw()
+        simulationPopup.draw()
+    elseif gameState == "showing_champion_announcement" then
+        -- Draw season menu in background, then overlay champion announcement
+        seasonMenu.draw()
+        championAnnouncementPopup.draw()
     elseif gameState == "options" then
         optionsMenu.draw()
     elseif gameState == "season_end" then
@@ -532,6 +622,8 @@ function love.mousepressed(x, y, button)
         match.mousepressed(x, y, button)
     elseif gameState == "showing_match_result" then
         matchResultPopup.mousepressed(x, y, button)
+    elseif gameState == "showing_champion_announcement" then
+        championAnnouncementPopup.mousepressed(x, y, button)
     elseif gameState == "options" then
         optionsMenu.mousepressed(x, y, button)
     elseif gameState == "season_end" then

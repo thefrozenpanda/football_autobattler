@@ -232,6 +232,17 @@ end
 
 --- LÖVE Callback: Draw UI
 function TrainingScreen.draw()
+    -- Check if player is eliminated
+    if SeasonManager.playerIsEliminated() then
+        -- Show season complete message
+        love.graphics.setFont(titleFont)
+        love.graphics.setColor(1, 1, 1)
+        local messageText = "Season Complete - Training Unavailable"
+        local messageWidth = titleFont:getWidth(messageText)
+        love.graphics.print(messageText, (UIScale.getWidth() - messageWidth) / 2, UIScale.scaleY(250))
+        return
+    end
+
     -- Title
     love.graphics.setFont(titleFont)
     love.graphics.setColor(1, 1, 1)

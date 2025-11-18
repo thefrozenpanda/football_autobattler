@@ -77,6 +77,11 @@ function ScheduleScreen.load()
     -- Build sorted team list: player first, then AI teams alphabetically
     ScheduleScreen.buildDropdownTeams()
 
+    -- Default to bracket view if player is eliminated, otherwise show schedule
+    if SeasonManager.playerIsEliminated() and SeasonManager.inPlayoffs then
+        ScheduleScreen.showBracket = true
+    end
+
     ScheduleScreen.scrollOffset = 0
     ScheduleScreen.calculateMaxScroll()
 end
