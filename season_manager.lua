@@ -506,6 +506,10 @@ function SeasonManager.simulateWildcardRound()
     -- Advance bracket to divisional round
     ScheduleGenerator.advanceBracket(SeasonManager.playoffBracket, results)
     SeasonManager.advancePlayoffs()
+
+    -- Advance to training phase so player can get upgrades before divisional round
+    -- This matches the normal flow after playing a game
+    SeasonManager.goToTraining()
 end
 
 --- Simulates all remaining playoff games after player elimination
