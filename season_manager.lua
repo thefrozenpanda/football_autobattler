@@ -536,12 +536,12 @@ function SeasonManager.simulateRemainingPlayoffs()
                 matchData.homeScore = homeScore
                 matchData.awayScore = awayScore
 
-                -- Determine winner
-                local winner = (homeScore > awayScore) and matchData.homeTeam or matchData.awayTeam
+                -- Add result with scores for bracket advancement
                 table.insert(results, {
-                    winner = winner,
                     homeTeam = matchData.homeTeam,
                     awayTeam = matchData.awayTeam,
+                    homeScore = homeScore,
+                    awayScore = awayScore,
                     conference = matchData.conference
                 })
             end
