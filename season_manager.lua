@@ -548,7 +548,13 @@ function SeasonManager.getPlayerPlayoffMatch()
         end
     end
 
-    -- Player not in current round - eliminated
+    -- Player not in current round - check if they have a bye or are eliminated
+    -- If player has a bye week (e.g., top seed in wildcard round), don't mark season as ended
+    if SeasonManager.playerHasByeWeek() then
+        return nil  -- Player has bye, not eliminated
+    end
+
+    -- Player is eliminated from playoffs
     SeasonManager.currentPhase = "season_end"
     return nil
 end
