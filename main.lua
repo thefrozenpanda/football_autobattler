@@ -280,7 +280,10 @@ function love.update(dt)
 
                 -- Check if player lost in playoffs
                 if SeasonManager.inPlayoffs and not playerWon then
-                    -- Simulate all remaining playoff games
+                    -- First, complete the current playoff round (simulate other games and advance bracket)
+                    SeasonManager.simulateCurrentPlayoffRound()
+
+                    -- Then simulate all remaining playoff games
                     SeasonManager.simulateRemainingPlayoffs()
 
                     -- Transition directly to season end screen
@@ -401,7 +404,10 @@ function love.update(dt)
                 local playerWon = simulatedPlayerScore > simulatedOpponentScore
 
                 if not playerWon then
-                    -- Simulate all remaining playoff games
+                    -- First, complete the current playoff round (simulate other games and advance bracket)
+                    SeasonManager.simulateCurrentPlayoffRound()
+
+                    -- Then simulate all remaining playoff games
                     SeasonManager.simulateRemainingPlayoffs()
 
                     -- Transition directly to season end screen
