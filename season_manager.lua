@@ -253,7 +253,7 @@ function SeasonManager.simulateWeek()
         -- Skip player's match
         if matchData.homeTeam ~= SeasonManager.playerTeam and matchData.awayTeam ~= SeasonManager.playerTeam then
             -- Simulate full match (run actual match logic in background)
-            local homeScore, awayScore, _, _ = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
+            local homeScore, awayScore, _, _, _, _, _, _ = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
             SeasonManager.recordMatchResult(matchData.homeTeam, matchData.awayTeam, homeScore, awayScore)
 
             -- Award cash to AI teams (same as player: 100 for win, 50 for loss)
@@ -406,7 +406,7 @@ function SeasonManager.simulateWildcardRound()
 
     -- Simulate all 4 wildcard games
     for _, matchData in ipairs(SeasonManager.playoffBracket.wildcard) do
-        local homeScore, awayScore, _, _ = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
+        local homeScore, awayScore, _, _, _, _, _, _ = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
         matchData.played = true
         matchData.homeScore = homeScore
         matchData.awayScore = awayScore

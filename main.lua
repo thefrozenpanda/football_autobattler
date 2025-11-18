@@ -314,7 +314,7 @@ function love.update(dt)
             love.timer.sleep(0.3)
 
             -- Run the simulation
-            local homeScore, awayScore, offensiveMVP, defensiveMVP = match.simulateAIMatch(
+            local homeScore, awayScore, offensiveMVP, defensiveMVP, teamAOffense, teamADefense, teamBOffense, teamBDefense = match.simulateAIMatch(
                 simulatedMatchData.isHome and SeasonManager.playerTeam or simulatedMatchData.opponentTeam,
                 simulatedMatchData.isHome and simulatedMatchData.opponentTeam or SeasonManager.playerTeam
             )
@@ -322,6 +322,11 @@ function love.update(dt)
             -- Get player and opponent scores based on home/away
             local playerScore = simulatedMatchData.isHome and homeScore or awayScore
             local opponentScore = simulatedMatchData.isHome and awayScore or homeScore
+
+            -- Get player's cards from simulation
+            -- teamA is player if isHome, teamB is player if not isHome
+            local playerOffenseCards = simulatedMatchData.isHome and teamAOffense or teamBOffense
+            local playerDefenseCards = simulatedMatchData.isHome and teamADefense or teamBDefense
 
             -- Record match result
             SeasonManager.recordMatchResult(
@@ -337,10 +342,9 @@ function love.update(dt)
             SeasonManager.playerTeam:awardCash(cashReward)
 
             -- Update player card stats from simulation
-            -- Note: For simulated games, we use the team's card arrays directly
             SeasonManager.updatePlayerCardStats(
-                SeasonManager.playerTeam.offensiveCards,
-                SeasonManager.playerTeam.defensiveCards
+                playerOffenseCards,
+                playerDefenseCards
             )
 
             -- Determine winning coach

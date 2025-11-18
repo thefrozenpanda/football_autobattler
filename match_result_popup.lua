@@ -69,7 +69,7 @@ function MatchResultPopup.show(playerScore, opponentScore, playerTeamName, oppon
     -- Get winning coach style
     local coachData = Coach.getById(winningCoachId)
     if coachData then
-        MatchResultPopup.winningCoachStyle = coachData.style or "Unknown"
+        MatchResultPopup.winningCoachStyle = coachData.name or "Unknown"
     else
         MatchResultPopup.winningCoachStyle = "Unknown"
     end
