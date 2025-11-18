@@ -242,6 +242,13 @@ end
 --- Simulates all AI vs AI matches for the current week
 --- Runs full match simulation for each non-player game
 function SeasonManager.simulateWeek()
+    -- Handle playoff games differently
+    if SeasonManager.inPlayoffs and SeasonManager.playoffBracket then
+        SeasonManager.simulateCurrentPlayoffRound()
+        return
+    end
+
+    -- Regular season simulation
     local weekSchedule = SeasonManager.schedule[SeasonManager.currentWeek]
     if not weekSchedule then
         return
@@ -265,6 +272,70 @@ function SeasonManager.simulateWeek()
                 matchData.homeTeam:awardCash(50)   -- Loser
             end
         end
+    end
+end
+
+--- Simulates all remaining games in the current playoff round (excluding player's game if they played)
+--- and advances the bracket to the next round
+function SeasonManager.simulateCurrentPlayoffRound()
+    if not SeasonManager.playoffBracket then
+        return
+    end
+
+    local match = require("match")
+    local ScheduleGenerator = require("schedule_generator")
+    local currentRound = SeasonManager.playoffBracket.currentRound
+    local matches = SeasonManager.playoffBracket[currentRound]
+
+    if not matches then
+        return
+    end
+
+    local results = {}
+
+    -- Simulate all unplayed games in current round
+    for _, matchData in ipairs(matches) do
+        if not matchData.played then
+            local homeScore, awayScore, _, _, _, _, _, _ = match.simulateAIMatch(matchData.homeTeam, matchData.awayTeam)
+            matchData.played = true
+            matchData.homeScore = homeScore
+            matchData.awayScore = awayScore
+
+            -- Record result
+            SeasonManager.recordMatchResult(matchData.homeTeam, matchData.awayTeam, homeScore, awayScore)
+
+            -- Award cash to teams
+            if homeScore > awayScore then
+                matchData.homeTeam:awardCash(100)
+                matchData.awayTeam:awardCash(50)
+            else
+                matchData.awayTeam:awardCash(100)
+                matchData.homeTeam:awardCash(50)
+            end
+
+            table.insert(results, {
+                homeTeam = matchData.homeTeam,
+                awayTeam = matchData.awayTeam,
+                homeScore = homeScore,
+                awayScore = awayScore,
+                conference = matchData.conference
+            })
+        else
+            -- Game was already played (by player or earlier simulation)
+            -- Still need to include it in results for bracket advancement
+            table.insert(results, {
+                homeTeam = matchData.homeTeam,
+                awayTeam = matchData.awayTeam,
+                homeScore = matchData.homeScore,
+                awayScore = matchData.awayScore,
+                conference = matchData.conference
+            })
+        end
+    end
+
+    -- Advance bracket to next round with all results
+    if #results > 0 then
+        ScheduleGenerator.advanceBracket(SeasonManager.playoffBracket, results)
     end
 end
 

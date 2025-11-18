@@ -77,9 +77,11 @@ function ScheduleScreen.load()
     -- Build sorted team list: player first, then AI teams alphabetically
     ScheduleScreen.buildDropdownTeams()
 
-    -- Default to bracket view if player is eliminated, otherwise show schedule
-    if SeasonManager.playerIsEliminated() and SeasonManager.inPlayoffs then
+    -- Default to bracket view when playoffs start (for all players)
+    if SeasonManager.inPlayoffs then
         ScheduleScreen.showBracket = true
+    else
+        ScheduleScreen.showBracket = false
     end
 
     ScheduleScreen.scrollOffset = 0
@@ -120,26 +122,9 @@ end
 
 --- Calculates the maximum scroll amount
 function ScheduleScreen.calculateMaxScroll()
-    local totalGames = 17  -- Regular season
-
-    if SeasonManager.inPlayoffs then
-        -- Add playoff games
-        if SeasonManager.playoffBracket.wildcard then
-            totalGames = totalGames + 4  -- 4 Wild Card games
-        end
-        if SeasonManager.playoffBracket.currentRound == "divisional" or
-           SeasonManager.playoffBracket.currentRound == "conference" or
-           SeasonManager.playoffBracket.currentRound == "championship" then
-            totalGames = totalGames + 4  -- 4 Divisional games
-        end
-        if SeasonManager.playoffBracket.currentRound == "conference" or
-           SeasonManager.playoffBracket.currentRound == "championship" then
-            totalGames = totalGames + 2  -- 2 Conference games
-        end
-        if SeasonManager.playoffBracket.currentRound == "championship" then
-            totalGames = totalGames + 1  -- 1 Championship game
-        end
-    end
+    -- For schedule view: only regular season (17 weeks)
+    -- For bracket view: bracket is drawn differently and doesn't use same row height
+    local totalGames = 17  -- Regular season only
 
     local contentHeight = totalGames * UIScale.scaleHeight(GAME_ROW_HEIGHT)
     ScheduleScreen.maxScroll = math.max(0, contentHeight - UIScale.scaleHeight(ScheduleScreen.contentHeight))
@@ -295,51 +280,13 @@ function ScheduleScreen.drawSchedule(yOffset)
         end
     end
 
-    -- Playoff games (only shown in schedule view)
-    if SeasonManager.inPlayoffs and SeasonManager.playoffBracket then
-        yOffset = yOffset + UIScale.scaleHeight(30)
-
-        -- Section header
+    -- Note: Playoff games are shown in the Bracket view only
+    -- Use the "Show Bracket" toggle to view playoff games
+    if SeasonManager.inPlayoffs then
+        yOffset = yOffset + UIScale.scaleHeight(50)
         love.graphics.setFont(playoffHeaderFont)
-        love.graphics.setColor(0.8, 0.8, 1)
-        love.graphics.print("PLAYOFFS", startX, yOffset)
-        yOffset = yOffset + UIScale.scaleHeight(40)
-
-        -- Wild Card
-        if SeasonManager.playoffBracket.wildcard then
-            for _, match in ipairs(SeasonManager.playoffBracket.wildcard) do
-                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 18, yOffset, true, "Wild Card", viewingTeam)
-                end
-            end
-        end
-
-        -- Divisional
-        if SeasonManager.playoffBracket.divisional and #SeasonManager.playoffBracket.divisional > 0 then
-            for _, match in ipairs(SeasonManager.playoffBracket.divisional) do
-                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 19, yOffset, true, "Divisional", viewingTeam)
-                end
-            end
-        end
-
-        -- Conference
-        if SeasonManager.playoffBracket.conference and #SeasonManager.playoffBracket.conference > 0 then
-            for _, match in ipairs(SeasonManager.playoffBracket.conference) do
-                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 20, yOffset, true, "Conference", viewingTeam)
-                end
-            end
-        end
-
-        -- Championship
-        if SeasonManager.playoffBracket.championship and #SeasonManager.playoffBracket.championship > 0 then
-            for _, match in ipairs(SeasonManager.playoffBracket.championship) do
-                if match.homeTeam == viewingTeam or match.awayTeam == viewingTeam then
-                    yOffset = ScheduleScreen.drawGameRow(match, 21, yOffset, true, "Championship", viewingTeam)
-                end
-            end
-        end
+        love.graphics.setColor(0.7, 0.7, 0.8)
+        love.graphics.print("Use 'Show Bracket' to view playoff games", startX, yOffset)
     end
 end
 
