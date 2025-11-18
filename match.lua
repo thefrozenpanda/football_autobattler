@@ -1249,7 +1249,7 @@ end
 --- Runs at accelerated speed for quick results
 --- @param teamA table Home team
 --- @param teamB table Away team
---- @return number, number, table, table Home score, away score, offensive MVP, defensive MVP
+--- @return number, number, table, table, table, table Home score, away score, offensive MVP, defensive MVP, teamA offense cards, teamA defense cards
 function match.simulateAIMatch(teamA, teamB)
     -- Create a temporary phase manager for simulation
     local simPhaseManager = PhaseManager:new(teamA.coachId, teamB.coachId, teamA.kicker, teamA.punter, teamB.kicker, teamB.punter)
@@ -1306,7 +1306,10 @@ function match.simulateAIMatch(teamA, teamB)
     local offensiveMVP = match.getOffensiveMVP(winnerCards.offense)
     local defensiveMVP = match.getDefensiveMVP(winnerCards.defense)
 
-    return homeScore, awayScore, offensiveMVP, defensiveMVP
+    -- Return both teams' cards (simPhaseManager treats teamA as "player", teamB as "ai")
+    return homeScore, awayScore, offensiveMVP, defensiveMVP,
+           simPhaseManager.playerOffense.cards, simPhaseManager.playerDefense.cards,
+           simPhaseManager.aiOffense.cards, simPhaseManager.aiDefense.cards
 end
 
 return match

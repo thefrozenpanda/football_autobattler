@@ -381,16 +381,17 @@ function PhaseManager:checkSpecialTeams()
     end
 
     -- Field goal conditions:
-    -- 1. On 4th down in FG range
-    -- 2. Trailing by ≤3 with <7s and in range
+    -- 1. On 4th down in FG range (normal situation)
+    -- 2. Trailing by ≤3 with ≤3s and in range (desperation to tie/take lead)
     local shouldKickFG = false
 
-    if inFGRange then
-        shouldKickFG = true  -- Default: always attempt if in range on 4th down
-    end
-
-    if scoreDiff <= -1 and scoreDiff >= -3 and self.timeLeft < 7 and inFGRange then
-        shouldKickFG = true  -- Desperation field goal
+    -- Desperation field goal: Down by 3 or less with 3 seconds or less
+    -- This takes priority - only continue driving if down by MORE than 3
+    if scoreDiff <= -1 and scoreDiff >= -3 and self.timeLeft <= 3 and inFGRange then
+        shouldKickFG = true  -- Desperation field goal to tie or take lead
+    elseif inFGRange then
+        -- Normal 4th down situation: attempt if in range
+        shouldKickFG = true
     end
 
     if shouldKickFG then
