@@ -976,6 +976,21 @@ function SeasonManager.saveSeason()
     if SeasonManager.playoffBracket and SeasonManager.playoffBracket.currentRound then
         saveData.playoffBracket.currentRound = SeasonManager.playoffBracket.currentRound
 
+        -- Save playoff seeds (needed for bracket advancement)
+        if SeasonManager.playoffBracket.seedsA then
+            saveData.playoffBracket.seedsA = {}
+            for _, team in ipairs(SeasonManager.playoffBracket.seedsA) do
+                table.insert(saveData.playoffBracket.seedsA, team.name)
+            end
+        end
+
+        if SeasonManager.playoffBracket.seedsB then
+            saveData.playoffBracket.seedsB = {}
+            for _, team in ipairs(SeasonManager.playoffBracket.seedsB) do
+                table.insert(saveData.playoffBracket.seedsB, team.name)
+            end
+        end
+
         -- Helper function to save a playoff match
         local function saveMatch(match)
             if match then
@@ -984,7 +999,8 @@ function SeasonManager.saveSeason()
                     awayTeamName = match.awayTeam.name,
                     homeScore = match.homeScore,
                     awayScore = match.awayScore,
-                    played = match.played
+                    played = match.played,
+                    conference = match.conference
                 }
             end
             return nil
@@ -1225,6 +1241,27 @@ function SeasonManager.loadSeason()
     if saveData.playoffBracket and saveData.playoffBracket.currentRound then
         SeasonManager.playoffBracket = {currentRound = saveData.playoffBracket.currentRound}
 
+        -- Restore playoff seeds (needed for bracket advancement)
+        if saveData.playoffBracket.seedsA then
+            SeasonManager.playoffBracket.seedsA = {}
+            for _, teamName in ipairs(saveData.playoffBracket.seedsA) do
+                local team = teamByName[teamName]
+                if team then
+                    table.insert(SeasonManager.playoffBracket.seedsA, team)
+                end
+            end
+        end
+
+        if saveData.playoffBracket.seedsB then
+            SeasonManager.playoffBracket.seedsB = {}
+            for _, teamName in ipairs(saveData.playoffBracket.seedsB) do
+                local team = teamByName[teamName]
+                if team then
+                    table.insert(SeasonManager.playoffBracket.seedsB, team)
+                end
+            end
+        end
+
         -- Use team lookup index for playoff matches (O(1) access)
         local function loadMatch(matchData)
             if matchData then
@@ -1244,7 +1281,8 @@ function SeasonManager.loadSeason()
                     awayTeam = awayTeam,
                     homeScore = matchData.homeScore,
                     awayScore = matchData.awayScore,
-                    played = matchData.played
+                    played = matchData.played,
+                    conference = matchData.conference
                 }
             end
             return nil
