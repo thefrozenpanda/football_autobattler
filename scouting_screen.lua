@@ -23,6 +23,7 @@ ScoutingScreen.startMatchRequested = false
 ScoutingScreen.simulateMatchRequested = false
 ScoutingScreen.playoffsSimulated = false
 ScoutingScreen.viewBracketRequested = false
+ScoutingScreen.viewSeasonSummaryRequested = false
 ScoutingScreen.contentHeight = 700
 
 -- UI configuration (base values for 1600x900)
@@ -625,22 +626,35 @@ function ScoutingScreen.mousepressed(x, y, button)
 
     -- Check if on eliminated screen
     if ScoutingScreen.playerIsEliminated() and not SeasonManager.playerHasByeWeek() then
-        -- Button click detection for eliminated screen
-        -- Note: We can't easily calculate the exact y position without duplicating logic,
-        -- so we'll use a more generous hit detection area
+        -- Button click detection for eliminated screen (two buttons side by side)
         local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
         local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
-        local buttonX = UIScale.centerX(scaledButtonWidth)
+        local buttonSpacing = UIScale.scaleUniform(20)
+        local totalButtonWidth = (scaledButtonWidth * 2) + buttonSpacing
+        local button1X = UIScale.centerX(totalButtonWidth)
+        local button2X = button1X + scaledButtonWidth + buttonSpacing
 
-        -- Check if click is in general button area (anywhere in lower half of screen)
-        if x >= buttonX and x <= buttonX + scaledButtonWidth and
-           y >= UIScale.scaleHeight(400) and y <= UIScale.scaleHeight(650) then
-            if ScoutingScreen.playoffsSimulated then
-                -- Navigate to bracket view
-                ScoutingScreen.viewBracketRequested = true
-            else
-                -- Will be handled in main.lua to simulate playoffs
-                ScoutingScreen.simulateMatchRequested = true
+        -- Adjust y for header offset
+        local adjustedY = y - UIScale.scaleHeight(100)
+
+        -- Check if click is in button area (generous y range)
+        if adjustedY >= UIScale.scaleHeight(400) and adjustedY <= UIScale.scaleHeight(650) then
+            -- Button 1: Simulate Playoffs / View Bracket
+            if x >= button1X and x <= button1X + scaledButtonWidth then
+                if ScoutingScreen.playoffsSimulated then
+                    -- Navigate to bracket view
+                    ScoutingScreen.viewBracketRequested = true
+                else
+                    -- Will be handled in main.lua to simulate playoffs
+                    ScoutingScreen.simulateMatchRequested = true
+                end
+                return
+            end
+
+            -- Button 2: View Season Summary
+            if x >= button2X and x <= button2X + scaledButtonWidth then
+                ScoutingScreen.viewSeasonSummaryRequested = true
+                return
             end
         end
         return
@@ -698,6 +712,12 @@ end
 --- @return boolean True if button clicked
 function ScoutingScreen.isViewBracketRequested()
     return ScoutingScreen.viewBracketRequested
+end
+
+--- Checks if view season summary was requested
+--- @return boolean True if button clicked
+function ScoutingScreen.isViewSeasonSummaryRequested()
+    return ScoutingScreen.viewSeasonSummaryRequested
 end
 
 --- Checks if player is eliminated (wrapper for SeasonManager function)
@@ -816,50 +836,79 @@ function ScoutingScreen.drawEliminatedScreen()
 
     yOffset = yOffset + UIScale.scaleHeight(20)
 
-    -- Button: "Simulate the Playoffs" or "View Bracket"
+    -- Buttons: Two buttons side by side
     local scaledButtonWidth = UIScale.scaleWidth(START_BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(START_BUTTON_HEIGHT)
-    local buttonX = UIScale.centerX(scaledButtonWidth)
+    local buttonSpacing = UIScale.scaleUniform(20)
+    local totalButtonWidth = (scaledButtonWidth * 2) + buttonSpacing
+    local button1X = UIScale.centerX(totalButtonWidth)
+    local button2X = button1X + scaledButtonWidth + buttonSpacing
     local buttonY = yOffset
 
     local mx, my = love.mouse.getPosition()
     my = my - UIScale.scaleHeight(100)  -- Adjust for header
-    local hoveringButton = mx >= buttonX and mx <= buttonX + scaledButtonWidth and
-                          my >= buttonY and my <= buttonY + scaledButtonHeight
+    local hoveringButton1 = mx >= button1X and mx <= button1X + scaledButtonWidth and
+                           my >= buttonY and my <= buttonY + scaledButtonHeight
+    local hoveringButton2 = mx >= button2X and mx <= button2X + scaledButtonWidth and
+                           my >= buttonY and my <= buttonY + scaledButtonHeight
 
-    -- Button background
+    -- Button 1: "Simulate the Playoffs" or "View Bracket"
     if ScoutingScreen.playoffsSimulated then
         -- View Bracket button (blue)
-        if hoveringButton then
+        if hoveringButton1 then
             love.graphics.setColor(0.4, 0.6, 0.9)
         else
             love.graphics.setColor(0.3, 0.5, 0.8)
         end
     else
         -- Simulate Playoffs button (green)
-        if hoveringButton then
+        if hoveringButton1 then
             love.graphics.setColor(0.4, 0.8, 0.5)
         else
             love.graphics.setColor(0.3, 0.7, 0.4)
         end
     end
-    love.graphics.rectangle("fill", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+    love.graphics.rectangle("fill", button1X, buttonY, scaledButtonWidth, scaledButtonHeight)
 
-    -- Button border
-    if hoveringButton then
+    -- Button 1 border
+    if hoveringButton1 then
         love.graphics.setColor(0.6, 0.9, 1)
     else
         love.graphics.setColor(0.5, 0.7, 0.9)
     end
     love.graphics.setLineWidth(UIScale.scaleUniform(3))
-    love.graphics.rectangle("line", buttonX, buttonY, scaledButtonWidth, scaledButtonHeight)
+    love.graphics.rectangle("line", button1X, buttonY, scaledButtonWidth, scaledButtonHeight)
 
-    -- Button text
+    -- Button 1 text
     love.graphics.setFont(buttonFont)
     love.graphics.setColor(1, 1, 1)
-    local buttonText = ScoutingScreen.playoffsSimulated and "View Bracket" or "Simulate the Playoffs"
-    local buttonTextWidth = buttonFont:getWidth(buttonText)
-    love.graphics.print(buttonText, buttonX + (scaledButtonWidth - buttonTextWidth) / 2, buttonY + UIScale.scaleHeight(15))
+    local button1Text = ScoutingScreen.playoffsSimulated and "View Bracket" or "Simulate the Playoffs"
+    local button1TextWidth = buttonFont:getWidth(button1Text)
+    love.graphics.print(button1Text, button1X + (scaledButtonWidth - button1TextWidth) / 2, buttonY + UIScale.scaleHeight(15))
+
+    -- Button 2: "View Season Summary"
+    if hoveringButton2 then
+        love.graphics.setColor(0.7, 0.6, 0.9)
+    else
+        love.graphics.setColor(0.6, 0.5, 0.8)
+    end
+    love.graphics.rectangle("fill", button2X, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    -- Button 2 border
+    if hoveringButton2 then
+        love.graphics.setColor(0.9, 0.8, 1)
+    else
+        love.graphics.setColor(0.7, 0.6, 0.9)
+    end
+    love.graphics.setLineWidth(UIScale.scaleUniform(3))
+    love.graphics.rectangle("line", button2X, buttonY, scaledButtonWidth, scaledButtonHeight)
+
+    -- Button 2 text
+    love.graphics.setFont(buttonFont)
+    love.graphics.setColor(1, 1, 1)
+    local button2Text = "View Season Summary"
+    local button2TextWidth = buttonFont:getWidth(button2Text)
+    love.graphics.print(button2Text, button2X + (scaledButtonWidth - button2TextWidth) / 2, buttonY + UIScale.scaleHeight(15))
 end
 
 return ScoutingScreen

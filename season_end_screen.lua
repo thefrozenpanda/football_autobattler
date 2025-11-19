@@ -23,6 +23,7 @@ SeasonEndScreen.outcome = "missed_playoffs"  -- "champion", "playoffs", "missed_
 SeasonEndScreen.finalRecord = ""
 SeasonEndScreen.returnToMenuRequested = false
 SeasonEndScreen.newSeasonRequested = false
+SeasonEndScreen.backRequested = false
 
 -- Animation state
 local titleAnimState = {scale = 1.0, glow = 0}
@@ -56,6 +57,7 @@ function SeasonEndScreen.load()
 
     SeasonEndScreen.returnToMenuRequested = false
     SeasonEndScreen.newSeasonRequested = false
+    SeasonEndScreen.backRequested = false
 
     -- Determine outcome
     if not SeasonManager.playerTeam then
@@ -226,14 +228,15 @@ function SeasonEndScreen.draw()
 
     yOffset = yOffset + UIScale.scaleHeight(150)
 
-    -- Buttons
+    -- Buttons (3 buttons: Back, Main Menu, New Season)
     local scaledButtonWidth = UIScale.scaleWidth(BUTTON_WIDTH)
     local scaledButtonSpacing = UIScale.scaleUniform(BUTTON_SPACING)
-    local totalButtonWidth = (scaledButtonWidth * 2) + scaledButtonSpacing
+    local totalButtonWidth = (scaledButtonWidth * 3) + (scaledButtonSpacing * 2)
     local buttonStartX = (UIScale.getWidth() - totalButtonWidth) / 2
 
-    SeasonEndScreen.drawButton("Main Menu", buttonStartX, yOffset, scaledButtonWidth, UIScale.scaleHeight(BUTTON_HEIGHT), "menu")
-    SeasonEndScreen.drawButton("New Season", buttonStartX + scaledButtonWidth + scaledButtonSpacing, yOffset, scaledButtonWidth, UIScale.scaleHeight(BUTTON_HEIGHT), "new_season")
+    SeasonEndScreen.drawButton("Back", buttonStartX, yOffset, scaledButtonWidth, UIScale.scaleHeight(BUTTON_HEIGHT), "back")
+    SeasonEndScreen.drawButton("Main Menu", buttonStartX + scaledButtonWidth + scaledButtonSpacing, yOffset, scaledButtonWidth, UIScale.scaleHeight(BUTTON_HEIGHT), "menu")
+    SeasonEndScreen.drawButton("New Season", buttonStartX + (scaledButtonWidth * 2) + (scaledButtonSpacing * 2), yOffset, scaledButtonWidth, UIScale.scaleHeight(BUTTON_HEIGHT), "new_season")
 end
 
 --- Draws a button
@@ -291,17 +294,24 @@ function SeasonEndScreen.mousepressed(x, y, button)
     local scaledButtonWidth = UIScale.scaleWidth(BUTTON_WIDTH)
     local scaledButtonHeight = UIScale.scaleHeight(BUTTON_HEIGHT)
     local scaledButtonSpacing = UIScale.scaleUniform(BUTTON_SPACING)
-    local totalButtonWidth = (scaledButtonWidth * 2) + scaledButtonSpacing
+    local totalButtonWidth = (scaledButtonWidth * 3) + (scaledButtonSpacing * 2)
     local buttonStartX = (UIScale.getWidth() - totalButtonWidth) / 2
 
-    -- Main Menu button
+    -- Back button
     if x >= buttonStartX and x <= buttonStartX + scaledButtonWidth and
+       y >= yOffset and y <= yOffset + scaledButtonHeight then
+        SeasonEndScreen.backRequested = true
+    end
+
+    -- Main Menu button
+    local mainMenuX = buttonStartX + scaledButtonWidth + scaledButtonSpacing
+    if x >= mainMenuX and x <= mainMenuX + scaledButtonWidth and
        y >= yOffset and y <= yOffset + scaledButtonHeight then
         SeasonEndScreen.returnToMenuRequested = true
     end
 
     -- New Season button
-    local newSeasonX = buttonStartX + scaledButtonWidth + scaledButtonSpacing
+    local newSeasonX = buttonStartX + (scaledButtonWidth * 2) + (scaledButtonSpacing * 2)
     if x >= newSeasonX and x <= newSeasonX + scaledButtonWidth and
        y >= yOffset and y <= yOffset + scaledButtonHeight then
         SeasonEndScreen.newSeasonRequested = true
@@ -318,6 +328,12 @@ end
 --- @return boolean True if button clicked
 function SeasonEndScreen.isNewSeasonRequested()
     return SeasonEndScreen.newSeasonRequested
+end
+
+--- Checks if back was requested
+--- @return boolean True if button clicked
+function SeasonEndScreen.isBackRequested()
+    return SeasonEndScreen.backRequested
 end
 
 return SeasonEndScreen

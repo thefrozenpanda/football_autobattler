@@ -216,8 +216,9 @@ function love.update(dt)
             scheduleScreen.showBracket = true
             seasonMenu.switchScreen("schedule")
 
-        -- Check if season is complete
-        elseif SeasonManager.isSeasonComplete() then
+        -- Check if player wants to view season summary
+        elseif scoutingScreen.isViewSeasonSummaryRequested() then
+            scoutingScreen.viewSeasonSummaryRequested = false
             gameState = "season_end"
             seasonEndScreen.load()
 
@@ -286,9 +287,12 @@ function love.update(dt)
                     -- Then simulate all remaining playoff games
                     SeasonManager.simulateRemainingPlayoffs()
 
-                    -- Transition directly to season end screen
-                    gameState = "season_end"
-                    seasonEndScreen.load()
+                    -- Mark season as complete (but don't force to end screen)
+                    SeasonManager.currentPhase = "season_end"
+
+                    -- Return to season menu (player can explore results)
+                    gameState = "season_menu"
+                    seasonMenu.load()
                 else
                     -- Transition to simulation state (regular season or playoff win)
                     gameState = "simulating"
@@ -410,9 +414,12 @@ function love.update(dt)
                     -- Then simulate all remaining playoff games
                     SeasonManager.simulateRemainingPlayoffs()
 
-                    -- Transition directly to season end screen
-                    gameState = "season_end"
-                    seasonEndScreen.load()
+                    -- Mark season as complete (but don't force to end screen)
+                    SeasonManager.currentPhase = "season_end"
+
+                    -- Return to season menu (player can explore results)
+                    gameState = "season_menu"
+                    seasonMenu.load()
                     simulatedMatchData = nil
                     simulatedPlayerScore = 0
                     simulatedOpponentScore = 0
@@ -526,8 +533,14 @@ function love.update(dt)
     elseif gameState == "season_end" then
         seasonEndScreen.update(dt)
 
-        -- Return to menu
-        if seasonEndScreen.isReturnToMenuRequested() then
+        -- Back to season menu (explore results)
+        if seasonEndScreen.isBackRequested() then
+            seasonEndScreen.backRequested = false
+            gameState = "season_menu"
+            seasonMenu.load()
+
+        -- Return to main menu
+        elseif seasonEndScreen.isReturnToMenuRequested() then
             -- Delete save file when season ends
             SeasonManager.deleteSave()
 
