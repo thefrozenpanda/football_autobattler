@@ -1278,15 +1278,21 @@ function match.simulateAIMatch(teamA, teamB)
             simPhaseManager:update(timeStep)
             simPhaseManager:checkPhaseEnd()  -- Critical: Check for phase transitions and scoring
             simTime = simTime - timeStep
+
+            -- Sudden death: end immediately if anyone scores in overtime
+            if simPhaseManager.playerScore ~= simPhaseManager.aiScore then
+                break
+            end
         end
 
-        -- Prevent infinite overtime (safety)
-        if simOvertimePeriod > 10 then
-            -- Force a winner by adding 1 point to random team
+        -- Safety check to prevent truly infinite loops (should rarely happen with sudden death)
+        if simOvertimePeriod > 50 then
+            -- This should almost never happen with sudden death, but just in case
+            -- Award field goal (3 points) to random team
             if math.random() > 0.5 then
-                simPhaseManager.playerScore = simPhaseManager.playerScore + 1
+                simPhaseManager.playerScore = simPhaseManager.playerScore + 3
             else
-                simPhaseManager.aiScore = simPhaseManager.aiScore + 1
+                simPhaseManager.aiScore = simPhaseManager.aiScore + 3
             end
             break
         end
