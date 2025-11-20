@@ -35,7 +35,8 @@ function PhaseManager:new(playerCoachId, aiCoachId, playerKicker, playerPunter, 
         lastEventSuccess = nil,  -- For field goals
 
         -- Game clock (set externally by match.lua)
-        timeLeft = 60  -- Will be updated by match.lua
+        timeLeft = 60,  -- Will be updated by match.lua
+        overtimePeriod = 0  -- Will be updated by match.lua (0 = regulation, 1+ = overtime)
     }
     setmetatable(p, PhaseManager)
 
@@ -165,7 +166,7 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
         -- Find target offensive cards
         local targets = offenseManager:getCardsByPosition(action.targets)
         for _, target in ipairs(targets) do
-            local applied = target:applySlow(action.strength)
+            local applied = target:applySlow(action.strength, self.overtimePeriod)
             if applied then
                 card.timesSlowed = card.timesSlowed + 1
             end
@@ -175,7 +176,7 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
         -- Find target offensive cards
         local targets = offenseManager:getCardsByPosition(action.targets)
         for _, target in ipairs(targets) do
-            local applied = target:applyFreeze(action.strength)
+            local applied = target:applyFreeze(action.strength, self.overtimePeriod)
             if applied then
                 card.timesFroze = card.timesFroze + 1
             end
@@ -191,6 +192,12 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
             if love.math.random() < 0.05 then
                 yardsToRemove = yardsToRemove + 2
             end
+        end
+
+        -- Apply overtime scaling (1.0x, 1.2x, 1.4x, 1.6x, 1.8x, 2.0x)
+        if self.overtimePeriod > 0 then
+            local overtimeMultiplier = math.min(1.0 + (self.overtimePeriod * 0.2), 2.0)
+            yardsToRemove = yardsToRemove * overtimeMultiplier
         end
 
         -- Track yards reduced
@@ -433,7 +440,10 @@ function PhaseManager:isInFieldGoalRange(yardsToEndzone, kicker)
     -- Field goal distance = yards to endzone + 7 (for conversion from line of scrimmage)
     local fgDistance = yardsToEndzone + 7
 
-    return fgDistance <= kicker.kickerMaxRange
+    -- Apply overtime max range buff (+1 yard per OT period)
+    local maxRange = kicker.kickerMaxRange + (self.overtimePeriod or 0)
+
+    return fgDistance <= maxRange
 end
 
 --- Attempt a field goal
@@ -444,8 +454,8 @@ function PhaseManager:attemptFieldGoal(kicker, yardsToEndzone, isPlayerOffense)
     -- Calculate field goal distance (line of scrimmage + 7 yards)
     local fgDistance = yardsToEndzone + 7
 
-    -- Calculate accuracy: Linear from 100% at 1 yard to maxRangeAccuracy at maxRange
-    local maxRange = kicker.kickerMaxRange
+    -- Apply overtime max range buff (+1 yard per OT period)
+    local maxRange = kicker.kickerMaxRange + (self.overtimePeriod or 0)
     local maxAccuracy = kicker.kickerMaxRangeAccuracy / 100  -- Convert to 0-1
 
     local accuracy

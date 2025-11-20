@@ -222,8 +222,9 @@ function match.update(dt)
     matchStartTime = matchStartTime + dt  -- Track time since match start
     timeLeft = math.max(0, timeLeft - dt)
 
-    -- Update phaseManager with current time
+    -- Update phaseManager with current time and overtime period
     phaseManager.timeLeft = timeLeft
+    phaseManager.overtimePeriod = overtimePeriod
 
     phaseManager:update(dt)
     phaseManager:checkPhaseEnd()

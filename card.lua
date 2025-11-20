@@ -176,10 +176,20 @@ function Card:act()
     return nil
 end
 
-function Card:applySlow(duration)
+function Card:applySlow(duration, overtimePeriod)
+    overtimePeriod = overtimePeriod or 0
+
     -- Check immunity first
     if self.hasImmunity then
         return false  -- Immune to slow
+    end
+
+    -- RB overtime resistance (20% per OT period, up to 100%)
+    if self.position == "RB" and overtimePeriod > 0 then
+        local resistanceChance = math.min(overtimePeriod * 0.20, 1.0)
+        if math.random() < resistanceChance then
+            return false  -- Resisted slow
+        end
     end
 
     -- Only apply if not already slowed
@@ -195,10 +205,20 @@ function Card:applySlow(duration)
     return false  -- Already slowed
 end
 
-function Card:applyFreeze(duration)
+function Card:applyFreeze(duration, overtimePeriod)
+    overtimePeriod = overtimePeriod or 0
+
     -- Check immunity first
     if self.hasImmunity then
         return false  -- Immune to freeze
+    end
+
+    -- RB overtime resistance (20% per OT period, up to 100%)
+    if self.position == "RB" and overtimePeriod > 0 then
+        local resistanceChance = math.min(overtimePeriod * 0.20, 1.0)
+        if math.random() < resistanceChance then
+            return false  -- Resisted freeze
+        end
     end
 
     -- Only apply if not already frozen
