@@ -104,12 +104,6 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
     if action.type == "yards" then
         -- Calculate yards with boosts
         local baseYards = action.value
-
-        -- Apply QB overtime range buff (+1 yard per OT period)
-        if card.position == "QB" and self.overtimePeriod > 0 then
-            baseYards = baseYards + self.overtimePeriod
-        end
-
         local totalBoost = 0
         local boosterCards = {}
 
@@ -446,7 +440,10 @@ function PhaseManager:isInFieldGoalRange(yardsToEndzone, kicker)
     -- Field goal distance = yards to endzone + 7 (for conversion from line of scrimmage)
     local fgDistance = yardsToEndzone + 7
 
-    return fgDistance <= kicker.kickerMaxRange
+    -- Apply overtime max range buff (+1 yard per OT period)
+    local maxRange = kicker.kickerMaxRange + (self.overtimePeriod or 0)
+
+    return fgDistance <= maxRange
 end
 
 --- Attempt a field goal
@@ -457,8 +454,8 @@ function PhaseManager:attemptFieldGoal(kicker, yardsToEndzone, isPlayerOffense)
     -- Calculate field goal distance (line of scrimmage + 7 yards)
     local fgDistance = yardsToEndzone + 7
 
-    -- Calculate accuracy: Linear from 100% at 1 yard to maxRangeAccuracy at maxRange
-    local maxRange = kicker.kickerMaxRange
+    -- Apply overtime max range buff (+1 yard per OT period)
+    local maxRange = kicker.kickerMaxRange + (self.overtimePeriod or 0)
     local maxAccuracy = kicker.kickerMaxRangeAccuracy / 100  -- Convert to 0-1
 
     local accuracy
