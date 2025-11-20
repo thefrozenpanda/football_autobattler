@@ -35,7 +35,8 @@ function PhaseManager:new(playerCoachId, aiCoachId, playerKicker, playerPunter, 
         lastEventSuccess = nil,  -- For field goals
 
         -- Game clock (set externally by match.lua)
-        timeLeft = 60  -- Will be updated by match.lua
+        timeLeft = 60,  -- Will be updated by match.lua
+        overtimePeriod = 0  -- Will be updated by match.lua (0 = regulation, 1+ = overtime)
     }
     setmetatable(p, PhaseManager)
 
@@ -103,6 +104,12 @@ function PhaseManager:processOffensiveCard(card, offenseManager)
     if action.type == "yards" then
         -- Calculate yards with boosts
         local baseYards = action.value
+
+        -- Apply QB overtime range buff (+1 yard per OT period)
+        if card.position == "QB" and self.overtimePeriod > 0 then
+            baseYards = baseYards + self.overtimePeriod
+        end
+
         local totalBoost = 0
         local boosterCards = {}
 
@@ -165,7 +172,7 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
         -- Find target offensive cards
         local targets = offenseManager:getCardsByPosition(action.targets)
         for _, target in ipairs(targets) do
-            local applied = target:applySlow(action.strength)
+            local applied = target:applySlow(action.strength, self.overtimePeriod)
             if applied then
                 card.timesSlowed = card.timesSlowed + 1
             end
@@ -175,7 +182,7 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
         -- Find target offensive cards
         local targets = offenseManager:getCardsByPosition(action.targets)
         for _, target in ipairs(targets) do
-            local applied = target:applyFreeze(action.strength)
+            local applied = target:applyFreeze(action.strength, self.overtimePeriod)
             if applied then
                 card.timesFroze = card.timesFroze + 1
             end
@@ -191,6 +198,12 @@ function PhaseManager:processDefensiveCard(card, offenseManager)
             if love.math.random() < 0.05 then
                 yardsToRemove = yardsToRemove + 2
             end
+        end
+
+        -- Apply overtime scaling (1.0x, 1.2x, 1.4x, 1.6x, 1.8x, 2.0x)
+        if self.overtimePeriod > 0 then
+            local overtimeMultiplier = math.min(1.0 + (self.overtimePeriod * 0.2), 2.0)
+            yardsToRemove = yardsToRemove * overtimeMultiplier
         end
 
         -- Track yards reduced
