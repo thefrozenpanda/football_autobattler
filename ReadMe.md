@@ -13,6 +13,7 @@ A strategic auto-battler game where players build football teams through coach s
 - [Installation](#installation)
 - [Controls](#controls)
 - [Planned Features](#planned-features)
+- [Potential Future Features](#potential-future-features)
 - [Suggestions for Enhanced Football Realism](#suggestions-for-enhanced-football-realism)
 
 ---
@@ -384,6 +385,130 @@ The Gridiron Bazaar transforms American football into a strategic auto-battler e
 - **Media System**: Press conferences, headline news, social media reactions
 - **Stadium Atmosphere**: Crowd noise affects gameplay, different stadium types
 - **Broadcast Integration**: Simulated commentary and replays for big moments
+
+---
+
+## Potential Future Features
+
+These features aim to add more strategic depth and interactivity to the game, particularly between matches and during gameplay.
+
+### High-Impact Features
+
+#### 1. Formation/Playbook System
+Let players choose between 3-4 formations before each match (Spread, I-Formation, Shotgun, etc.). Each formation affects card positioning and provides different bonuses:
+- **Spread**: WRs get +15% yards, OL loses -10% boost
+- **I-Formation**: RBs get +2 yards, QB loses -5% accuracy
+- **Shotgun**: QB gets faster cooldown, RBs slower
+
+AI opponents would have preferred formations based on their coach.
+
+#### 2. Halftime Adjustments
+Pause at halftime and let the player make ONE tactical choice:
+- **Aggressive Defense**: REMOVE_YARDS +30%, but SLOW/FREEZE duration -25%
+- **Ball Control**: Offensive cooldowns +10% slower, but yards +15%
+- **Hurry Up**: All offensive cooldowns -15%, but yards -10%
+- **No Change**: Keep current strategy
+
+Creates a mini-game of reading your opponent.
+
+#### 3. Weekly Scouting & Gameplanning
+Before each match, show opponent's tendencies:
+- "Opponent favors run game (RBs generate 65% of yards)"
+- "Weak secondary (DBs have low FREEZE duration)"
+
+Let player assign ONE of their cards to a "game plan" bonus:
+- **Spy Assignment**: One LB gets +50% effect vs one opponent position
+- **Feature Back**: One RB gets +1 yard this game only
+- **Go-To Target**: One WR gets -10% cooldown this game only
+
+#### 4. Card Fatigue & Rotation
+- Cards lose -5% effectiveness each game unless rested
+- Forces strategic roster decisions: "Do I rest my star QB this game?"
+- Bench depth becomes valuable
+- Bye weeks auto-restore fatigue
+
+### Medium-Impact Features
+
+#### 5. 4th Down Decision Mini-Game
+When 4th down timer starts, show player a quick choice:
+- **Go For It**: Continue drive
+- **Field Goal**: Attempt FG (existing mechanic)
+- **Punt**: Punt (existing mechanic)
+- **Fake It**: 30% chance to convert, 70% chance turnover at current spot
+
+Adds real decision-making during matches.
+
+#### 6. Momentum/Streak System
+Track consecutive first downs, TDs, or defensive stops. After 3 consecutive successful actions by same position:
+- "HOT STREAK: QB #12 gets +1 yard for 10 seconds!"
+
+Visual feedback (fire effects, speed lines) creates exciting "runs" during matches.
+
+#### 7. Rival System
+Each coach has 2-3 rivals in the league. Beating a rival grants bonus rewards:
+- +50% cash for that game
+- Random card upgrade
+- Unlocks special cosmetic (team color, logo)
+
+Rivalry games show special intro screen.
+
+#### 8. Season Objectives & Rewards
+At season start, give player 3 optional objectives:
+- "Win 8+ games" → Unlock new coach
+- "Score 30+ points in 3 games" → +500 cash
+- "Hold opponent under 14 points 5 times" → Free card upgrade
+
+Adds goals beyond just winning championship.
+
+### Lower-Impact Quick Wins
+
+#### 9. Player Nicknames & Stories
+Cards with high stats get generated nicknames:
+- QB #12 becomes "The Cannon"
+- RB #24 becomes "Touchdown Machine"
+
+Show their season stats in training screen.
+
+#### 10. Draft System (Season Start)
+Instead of random starter cards, have a 3-round snake draft:
+- Pick from 3 randomly generated cards each round
+- Creates variety between seasons
+- Makes each playthrough feel different
+
+#### 11. Weather Effects
+Random weather for each match (10% chance):
+- **Rain**: All cooldowns +10% slower
+- **Snow**: FREEZE effects last +0.5s longer
+- **Dome**: No effect (normal game)
+- **Wind**: Kicker max range -5 yards
+
+Shown on match screen, affects both teams.
+
+#### 12. Post-Game Awards
+After each match, show "Game Balls" to top 3 performers:
+- Game Ball: Most yards (QB #7, 127 yards)
+- Defensive MVP: Most stops (LB #52, 8 freezes)
+- Clutch Play: Game-winning FG (K #5, 48 yards)
+
+### Advanced Long-Term Ideas
+
+#### 13. Multi-Season Franchise Mode
+- Cards "retire" after 3 seasons → must draft new ones
+- Hall of Fame for legendary cards
+- Dynasty scoring (win championships across multiple seasons)
+
+#### 14. Ultimate Abilities (Super Moves)
+Each position type has an "ultimate" that charges during the match:
+- QB: "Hail Mary" - guaranteed 15 yards
+- RB: "Bulldozer" - immune to all effects for 5s
+- DL: "Sack" - remove 10 yards instantly
+
+Charges once per match when conditions are met.
+
+#### 15. Card Chemistry System
+Cards from same "college" or "draft class" get bonuses when played together:
+- "Ohio State" cards: +5% when 3+ on field
+- "2024 Draft Class": +10% yards when paired
 
 ---
 
